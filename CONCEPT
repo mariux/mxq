@@ -20,6 +20,17 @@ phase 1:
     - stdout (absolute path, amd fixed)
     - stderr (absolute path, amd fixed)
 
+
+= CLIENT =
+
+  - write directly into the database
+
+  - setuid (to mxquser) to get connection information via my.cnf file
+    - host
+    - user
+    - password
+
+
 phase 2:
 
 - host selectors
