@@ -1,0 +1,26 @@
+
+
+
+phase 1:
+
+- simple q+exec
+- first come, first serve
+
+- data:
+
+  - who?
+    - username
+
+  - job?
+    - jobname
+    
+  - task?
+    - pwd (absolute path, amd fixed)
+    - command
+    - stdout (absolute path, amd fixed)
+    - stderr (absolute path, amd fixed)
+
+phase 2:
+
+- host selectors
+
