@@ -17,6 +17,8 @@ phase 1:
   - task?
     - pwd (absolute path, amd fixed)
     - command
+      - argc
+      - argv (to strring)
     - stdout (absolute path, amd fixed)
     - stderr (absolute path, amd fixed)
 
