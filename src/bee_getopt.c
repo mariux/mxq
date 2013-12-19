@@ -267,7 +267,7 @@ static int handle_option(struct bee_getopt_ctl *ctl, const int index)
 
        if (!o->required_args) {
 
-           /* only optional argumentsBEE_FLAG_STOPONNOOPT - set optarg if not set */
+           /* only optional arguments - set optarg if not set */
            if (!ctl->optarg) {
                /* no optarg and no more arguments -> done without optional argument */
                if (ctl->optind == ctl->_argc)

@@ -1,0 +1,88 @@
+
+DROP TABLE jobs;
+
+CREATE TABLE IF NOT EXISTS jobs (
+   id         INT4 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   
+   jobname    VARCHAR(4096) NOT NULL,
+
+   status     INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   uid        INT4 UNSIGNED NOT NULL,
+   username   VARCHAR(255)  NOT NULL,
+   
+   priority   INT1 UNSIGNED NOT NULL DEFAULT 127,
+   
+   INDEX jobname (jobname(767)),
+   INDEX uid (uid),
+   INDEX username (username)
+);
+
+
+DROP TABLE tasks;
+
+CREATE TABLE IF NOT EXISTS tasks (
+   id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   job_id     INT4 UNSIGNED   NOT NULL,
+
+   status     INT4 UNSIGNED   NOT NULL DEFAULT 0,
+
+   gid        INT4 UNSIGNED   NOT NULL,
+   groupname  VARCHAR(255)    NOT NULL,
+
+   priority   INT1 UNSIGNED   NOT NULL DEFAULT 127,
+
+   command    VARCHAR(4096)   NOT NULL,
+   argc       INT2 UNSIGNED   NOT NULL,
+   argv       VARCHAR(40960)  NOT NULL,
+
+   workdir    VARCHAR(4096)   NOT NULL,
+
+   stdout     VARCHAR(4096)   NOT NULL DEFAULT '/dev/null',
+   stderr     VARCHAR(4096)   NOT NULL DEFAULT '/dev/null',
+
+   host       VARCHAR(1024)   DEFAULT NULL,
+   pid        INT4 UNSIGNED   DEFAULT NULL,
+
+   INDEX job_id (job_id),
+   INDEX host (host(767))
+);
+
+DROP VIEW v_tasks;
+
+CREATE VIEW v_tasks AS
+SELECT 
+    j.id        AS job_id,
+    j.jobname   AS job_name,
+    j.status    AS job_status,
+    j.priority  AS job_priority,
+
+    j.uid       AS user_uid,
+    j.username  AS user_name,
+
+    t.gid       AS group_gid,
+    t.groupname AS group_name,
+
+    t.id        AS task_id,
+    t.status    AS task_status,
+    t.priority  AS task_priority,
+    t.command   AS task_command,
+    t.argc      AS task_argc,
+    t.argv      AS task_argv,
+    t.workdir   AS task_workdir,
+    t.stdout    AS task_stdout,
+    t.stderr    AS task_stderr,
+    
+    t.host      AS host_hostname,
+    t.pid       AS host_pid
+FROM 
+    jobs  AS j, 
+    tasks AS t
+WHERE 
+    j.id = t.job_id
+    ;
+
+update v_tasks set task_status = 1 where task_status = 0 order by id limit 1;
+SELECT * from v_tasks where task_status=1;
+
+
