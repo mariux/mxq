@@ -3,28 +3,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <unistd.h>
-
 #include <sys/types.h>
+#include <sys/stat.h>
+
 
 #include <pwd.h>
 #include <grp.h>
-
 
 #include <assert.h>
 
 #include <sysexits.h>
 
-#include <string.h>
 #include <stdarg.h>
 
 #include <my_global.h>
 #include <mysql.h>
 
 
-#include "util.h"
+#include "mxq_mysql.h"
+#include "mxq_util.h"
 #include "bee_getopt.h"
-
 
 
 #define MXQ_TASK_JOB_FORCE_APPEND  (1<<0)
@@ -33,162 +31,17 @@
 #define MXQ_JOB_STATUS_ACTIVE      (1)
 
 
-struct mxq_job {
-    int   id;
-
-    char *jobname;
-
-    int   status;    
-    
-    int   uid;
-    char *username;
-
-    int   priority;
-};
-
-struct mxq_task {
-    int   id;
-
-    struct mxq_job *job;
-
-    int   status;
-
-    int   gid;
-    char *groupname;
-
-    int   priority;
-    
-    char *command;
-    int   argc;
-    char *argv;
-    
-    char *workdir;
-
-    char *stdout;
-    char *stderr;
-};
-
-struct mxq_mysql {
-    char *default_file;
-    char *default_group;
-};
-
-char *stringvectostring(int argc, char *argv[]);
-int chrcnt(char *s, char c);
-int mxq_mysql_load_job_by_name(MYSQL *mysql, struct mxq_job *job);
-int mxq_mysql_add_task(MYSQL *mysql, struct mxq_task *task);
-
-int mxq_submit_task(struct mxq_mysql *mmysql, struct mxq_task *task, int flags)
-{
-    MYSQL *mysql;
-    MYSQL *mres;
-
-    mysql = mysql_init(NULL);
-    assert(mysql);
-
-
-    if (mmysql->default_file)
-        mysql_options(mysql, MYSQL_READ_DEFAULT_FILE,  mmysql->default_file);
-    
-    mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "mxq_submit");
-    mres = mysql_real_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, 0);
-    if (mres != mysql) {
-        fprintf(stderr, "Failed to connect to database: Error: %s\n",
-          mysql_error(mysql));
-        exit(1);
-    }
-
-    mxq_mysql_load_job_by_name(mysql, task->job);
-    mxq_mysql_add_task(mysql, task);
-    
-    mysql_close(mysql);    
-    
-    return 1;
-}
-
-int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...)
-{
-    
-    va_list ap;
-    _cleanup_free_ char *query = NULL;
-    int res;
-    size_t len;
-
-
-    va_start(ap, fmt);
-    len = vasprintf(&query, fmt, ap);
-    va_end(ap);
-
-    if (len == -1)
-        return 0;
-
-    assert(len == strlen(query));
-
-    //printf("QUERY(%d): %s;\n", (int)len, query);
-
-    res = mysql_real_query(mysql, query, len);
-
-    return res;    
-}
-
-MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
-{
-    
-    va_list ap;
-    _cleanup_free_ char *query = NULL;
-    MYSQL_RES *mres;
-    size_t len;
-    int res;
-
-    va_start(ap, fmt);
-    len = vasprintf(&query, fmt, ap);
-    va_end(ap);
-
-    if (len == -1)
-        return 0;
-
-    assert(len == strlen(query));
-
-    //printf("QUERY(%d): %s;\n", (int)len, query);
-
-    res = mysql_real_query(mysql, query, len);    
-    if (res)
-        return NULL;
-
-    mres = mysql_store_result(mysql);
-    if (!mres)
-        return NULL;
-
-    return mres;
-}
-
-char *mxq_mysql_escape_string(MYSQL *mysql, char *s)
-{
-    char *quoted = NULL;
-    size_t len;
-    
-    len    = strlen(s);
-    quoted = malloc(len*2 + 1);
-    if (!quoted)
-       return NULL;
-
-    mysql_real_escape_string(mysql, quoted, s,  len);
-
-    return quoted;
-}
-
-
-
 int mxq_mysql_add_task(MYSQL *mysql, struct mxq_task *task)
 {
     assert(task);
 
-    _cleanup_free_ char *q_groupname = NULL;
-    _cleanup_free_ char *q_command   = NULL;
-    _cleanup_free_ char *q_argv      = NULL;
-    _cleanup_free_ char *q_workdir   = NULL;
-    _cleanup_free_ char *q_stdout    = NULL;
-    _cleanup_free_ char *q_stderr    = NULL;
+    _cleanup_free_ char *q_groupname   = NULL;
+    _cleanup_free_ char *q_command     = NULL;
+    _cleanup_free_ char *q_argv        = NULL;
+    _cleanup_free_ char *q_workdir     = NULL;
+    _cleanup_free_ char *q_stdout      = NULL;
+    _cleanup_free_ char *q_stderr      = NULL;
+    _cleanup_free_ char *q_submit_host = NULL;
 
     int   len;
     int   res;
@@ -200,12 +53,13 @@ int mxq_mysql_add_task(MYSQL *mysql, struct mxq_task *task)
     unsigned int num_fields;
     unsigned int num_rows;
 
-    if (!(q_groupname = mxq_mysql_escape_string(mysql, task->groupname) )) return 0;
-    if (!(q_command   = mxq_mysql_escape_string(mysql, task->command)   )) return 0;
-    if (!(q_argv      = mxq_mysql_escape_string(mysql, task->argv)      )) return 0;
-    if (!(q_workdir   = mxq_mysql_escape_string(mysql, task->workdir)   )) return 0;
-    if (!(q_stdout    = mxq_mysql_escape_string(mysql, task->stdout)    )) return 0;
-    if (!(q_stderr    = mxq_mysql_escape_string(mysql, task->stderr)    )) return 0;
+    if (!(q_groupname   = mxq_mysql_escape_string(mysql, task->groupname)   )) return 0;
+    if (!(q_command     = mxq_mysql_escape_string(mysql, task->command)     )) return 0;
+    if (!(q_argv        = mxq_mysql_escape_string(mysql, task->argv)        )) return 0;
+    if (!(q_workdir     = mxq_mysql_escape_string(mysql, task->workdir)     )) return 0;
+    if (!(q_stdout      = mxq_mysql_escape_string(mysql, task->stdout)      )) return 0;
+    if (!(q_stderr      = mxq_mysql_escape_string(mysql, task->stderr)      )) return 0;
+    if (!(q_submit_host = mxq_mysql_escape_string(mysql, task->submit_host) )) return 0;
 
     res = mxq_mysql_query(mysql, "INSERT INTO tasks"
              " SET job_id = '%d'"
@@ -218,9 +72,12 @@ int mxq_mysql_add_task(MYSQL *mysql, struct mxq_task *task)
              ", argv = '%s'"             
              ", workdir = '%s'"             
              ", stdout = '%s'"             
-             ", stderr = '%s'",
+             ", stderr = '%s'"
+             ", umask = %d"
+             ", submit_host = '%s'",
              task->job->id, task->status, task->gid, q_groupname, task->priority,
-             q_command, task->argc, q_argv, q_workdir, q_stdout, q_stderr); 
+             q_command, task->argc, q_argv, q_workdir, q_stdout, q_stderr, 
+             task->umask, q_submit_host); 
     if (res) {
         fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
         return 0;
@@ -248,28 +105,14 @@ int mxq_mysql_load_job_by_name(MYSQL *mysql, struct mxq_job *job)
     int   res;
     int   i;
 
-    size_t len_jobname;
-    size_t len_username;
-
     MYSQL_RES *mres;
     MYSQL_ROW  row;
 
     unsigned int num_fields;
     unsigned int num_rows;
 
-    len_jobname  = strlen(job->jobname);
-    len_username = strlen(job->username);
-
-    q_jobname = malloc(len_jobname*2 + 1);
-    if (!q_jobname)
-        return 0;
-
-    q_username = malloc(len_username*2 + 1);
-    if (!q_username)
-        return 0;
-
-    mysql_real_escape_string(mysql, q_jobname,  job->jobname,  len_jobname);
-    mysql_real_escape_string(mysql, q_username, job->username, len_username);
+    if (!(q_jobname  = mxq_mysql_escape_string(mysql, job->jobname)  )) return 0;
+    if (!(q_username = mxq_mysql_escape_string(mysql, job->username) )) return 0;
 
     mres = mxq_mysql_query_with_result(mysql, "SELECT id from jobs"
              " WHERE jobname = '%s'"
@@ -319,6 +162,20 @@ int mxq_mysql_load_job_by_name(MYSQL *mysql, struct mxq_job *job)
     return 1;
 }
 
+int mxq_submit_task(struct mxq_mysql *mmysql, struct mxq_task *task, int flags)
+{
+    MYSQL *mysql;
+
+    mysql = mxq_mysql_connect(mmysql);
+
+    mxq_mysql_load_job_by_name(mysql, task->job);
+    mxq_mysql_add_task(mysql, task);
+
+    mysql_close(mysql);
+
+    return 1;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -333,6 +190,7 @@ int main(int argc, char *argv[])
     char *arg_taskpriority;
     char *arg_jobpriority;
     char *arg_workdir;
+    char *arg_umask;
     char *current_workdir;
 
     short arg_append;
@@ -340,6 +198,8 @@ int main(int argc, char *argv[])
 
     char *arg_mysql_default_file;
     char *arg_mysql_default_group;
+    
+    char hostname[1024];    
     
     int opt;
     int flags = 0;
@@ -356,6 +216,7 @@ int main(int argc, char *argv[])
         BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
         BEE_OPTION_REQUIRED_ARG("stderr",       'e'),
         BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
+        BEE_OPTION_REQUIRED_ARG("umask",        'm'),
         BEE_OPTION_REQUIRED_ARG("jobname",      'n'),
         BEE_OPTION_REQUIRED_ARG("priority",     'p'),
         BEE_OPTION_REQUIRED_ARG("taskpriority", 'p'),
@@ -371,12 +232,13 @@ int main(int argc, char *argv[])
     struct group  *group;
 
     arg_stdout       = "/dev/null";
-    arg_stderr       = "/dev/null";
+    arg_stderr       = "stdout";
     arg_taskpriority = "default(127)";
     arg_jobpriority  = "default(127)";
     arg_jobname      = NULL;
     current_workdir  = get_current_dir_name();
     arg_workdir      = current_workdir;
+    arg_umask        = NULL;
     
     arg_append = 0;
     arg_newjob = 0;
@@ -386,6 +248,8 @@ int main(int argc, char *argv[])
         arg_mysql_default_group = "mxq_submit";
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
+    if (!arg_mysql_default_file)
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     bee_getopt_init(&optctl, argc-1, &argv[1], opts);
 
@@ -431,6 +295,10 @@ int main(int argc, char *argv[])
                 arg_jobpriority = optctl.optarg;
                 break;
                 
+            case 'm':
+                arg_umask = optctl.optarg;
+                break;
+
             case 'M':
                 arg_mysql_default_file = optctl.optarg;
                 break;
@@ -472,6 +340,11 @@ int main(int argc, char *argv[])
     group = getgrgid(rgid);
     assert(group != NULL);
     
+    res = gethostname(hostname, 1024);
+    if (res == -1) {
+        assert(errno == ENAMETOOLONG);
+        hostname[1024-1] = 0;
+    }
 
     task.job          = &job;
 
@@ -488,7 +361,19 @@ int main(int argc, char *argv[])
     task.status       = 0;
     task.workdir      = arg_workdir;
     task.stdout       = arg_stdout;
-    task.stderr       = arg_stderr;
+    if (streq(arg_stderr, "stdout")) {
+        task.stderr       = arg_stdout;
+    } else {
+        task.stderr       = arg_stderr;
+    }
+    
+    if (arg_umask) { 
+        task.umask = strtol(arg_umask, NULL, 0);
+    } else {
+        task.umask = getumask();
+    }
+
+    task.submit_host  = hostname;
     task.argc         = argc;
     task.argv         = stringvectostring(argc, argv);
     assert(task.argv);
@@ -513,51 +398,3 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-char *stringvectostring(int argc, char *argv[])
-{
-    int     i,j,k;
-    char   *buf;
-    char   *s;
-    size_t  len = 1;
-    
-    for (i=0; i < argc; i++) {
-        len += strlen(argv[i]); 
-        len += chrcnt(argv[i], '\\');
-        len += 2;
-    }
-    
-    buf = malloc(len);
-    if (!buf)
-        return NULL;
-    
-    for (i=0, k=0; i < argc; i++) {
-        s = argv[i];
-        for (j=0; j < strlen(s); j++) {
-             buf[k++] = s[j];
-             if (s[j] == '\\')
-                 buf[k++] = '\\';
-        }
-        buf[k++] = '\\';
-        buf[k++] = '0';
-    }
-    
-    assert(k == len-1);
-    buf[k] = 0;
-
-    return buf;
-}
-
-int chrcnt(char *s, char c) 
-{
-    int i = 0;
-    char *p;
-    
-    p = s;
-    
-    while ((p = strchr(p, c))) {
-        i++;
-        p++;
-    }
-    
-    return i; 
-}

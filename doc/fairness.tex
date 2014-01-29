@@ -1,0 +1,57 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amstext}
+
+\begin{document}
+
+Available ressources defined by every host:\\
+\(S_H =\) total number of slots available on host (number of cores)\\
+\(M_H =\) total amount of memory available on host
+
+Needed ressources defined by every job/task:\\
+\(S_J =\) minimum number of slots needed by task (number of threads)\\
+\(M_J =\) total amount of memory needed by task (total for all threads)
+
+Calculated resources for memory per slot available or needed:\\
+\(M_S =\) per slot amount of memory available on host\\
+\(M_T =\) per slot (thread)  amount of memory needed by task
+
+\begin{align}
+M_S &= \frac{M_H}{S_H}\\
+M_T &= \frac{M_J}{S_J}
+\end{align}
+
+\(F_O =\) factor of overcommitted memory if job would run on host
+\begin{equation}
+\begin{split}
+F_O &= \frac{M_T}{M_S} = \frac{\frac{M_J}{S_J}}{\frac{M_H}{S_H}}\\
+F_O &= \frac{M_J S_H}{S_J M_H}
+\end{split}
+\end{equation}
+
+\(M_O = \) maximum amount of memory available for a job:
+\begin{equation}
+\begin{split}
+M_O &= \frac{M_H}{F_O} = \frac{M_H}{\frac{M_J S_H}{S_J M_H}}\\
+M_O &= \frac{{M_H}^2 S_J}{M_J S_H}
+\end{split}
+\end{equation}
+
+\(S_P = \) number of slots a job can start with \(M_O\) memory:
+\begin{equation}
+\begin{split}
+S_P &= \frac{M_O}{M_T} = \frac{\frac{{M_H}^2 S_J}{M_J S_H}}{M_T}\\
+S_P &= \frac{{M_H}^2 S_J}{M_J S_H} \frac{S_J}{M_J}\\
+S_P &= \frac{{M_H}^2 {S_J}^2}{{M_J}^2 S_H}
+\end{split}
+\end{equation}
+
+\(S_O = \) maximum number of slots a job is allowed to use:
+\begin{equation}
+\begin{split}
+S_O &= \left \lfloor \frac{\lfloor (S_P + 0.5) \rfloor}{S_J} \right\rfloor \cdot S_J\\
+S_O &= \left \lfloor \frac{\left\lfloor\left(\frac{{M_H}^2 {S_J}^2}{{M_J}^2 S_H} + 0.5 \right)\right\rfloor}{S_J} \right\rfloor \cdot S_J
+\end{split}
+\end{equation}
+
+\end{document}

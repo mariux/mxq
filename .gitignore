@@ -1,1 +1,9 @@
 mxq_submit
+mxq_exec
+*.o
+*~
+core
+vgcore.*
+*.log
+*.aux
+*.pdf

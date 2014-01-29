@@ -41,11 +41,16 @@ CREATE TABLE IF NOT EXISTS tasks (
    stdout     VARCHAR(4096)   NOT NULL DEFAULT '/dev/null',
    stderr     VARCHAR(4096)   NOT NULL DEFAULT '/dev/null',
 
+   umask      INT2            NOT NULL,
+
+   submit_host VARCHAR(1024)  DEFAULT NULL,
+   server_id  VARCHAR(1024)   DEFAULT NULL,
    host       VARCHAR(1024)   DEFAULT NULL,
    pid        INT4 UNSIGNED   DEFAULT NULL,
 
    INDEX job_id (job_id),
-   INDEX host (host(767))
+   INDEX host (host(767)),
+   INDEX server_id (server_id(767))
 );
 
 DROP VIEW v_tasks;
@@ -72,7 +77,11 @@ SELECT
     t.workdir   AS task_workdir,
     t.stdout    AS task_stdout,
     t.stderr    AS task_stderr,
+    t.umask     AS task_umask,
     
+    t.submit_host AS host_submit_host,
+    
+    t.server_id AS host_server_id,
     t.host      AS host_hostname,
     t.pid       AS host_pid
 FROM 
