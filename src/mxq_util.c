@@ -64,6 +64,7 @@ int log_msg(int prio, const char *fmt, ...)
         cnt = 0;
     }
     printf("%s[%d]: %s",program_invocation_short_name, getpid(), msg);
+    fflush(stdout);
     return 1;
 }
 
