@@ -541,20 +541,93 @@ int main(int argc, char *argv[])
     int res;
     pid_t pid;
 
-    mmysql.default_file  = MXQ_MYSQL_DEFAULT_FILE;
-    mmysql.default_group = "mxq_submit";
-
-    mysql = mxq_mysql_connect(&mmysql);
-
-    setup_reaper();
-
     int i = 1000000;
     
-    int threads_max     = 6;
+    int threads_max     = 1;
     int threads_current = 0;
     
     int fh;
+    int opt;
+  
+    char *arg_mysql_default_file;
+    char *arg_mysql_default_group;
+
+    struct bee_getopt_ctl optctl;
     
+    struct bee_option opts[] = {
+        BEE_OPTION_NO_ARG("help",               'h'),
+        BEE_OPTION_NO_ARG("version",            'V'),
+        BEE_OPTION_REQUIRED_ARG("threads",      'j'),
+        BEE_OPTION_REQUIRED_ARG("mysql-default-file", 'M'),
+        BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'G'),
+        BEE_OPTION_END
+    };
+
+
+    arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
+    if (!arg_mysql_default_group)
+        arg_mysql_default_group = "mxq_submit";
+
+    arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
+    if (!arg_mysql_default_file)
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
+
+
+    bee_getopt_init(&optctl, argc-1, &argv[1], opts);
+
+    optctl.flags = BEE_FLAG_STOPONUNKNOWN|BEE_FLAG_STOPONNOOPT;
+//    optctl.flags = BEE_FLAG_STOPONUNKNOWN;
+
+    while ((opt=bee_getopt(&optctl, &i)) != BEE_GETOPT_END) {
+        if (opt == BEE_GETOPT_ERROR) {
+            exit(EX_USAGE);
+        }
+        
+        switch (opt) {
+            case 'h':
+            case 'V':
+                printf("help/version\n");
+                printf("mxq_exec [mxq-options]\n");
+                exit(EX_USAGE);
+                
+            case 'j':
+                threads_max = atoi(optctl.optarg);
+                if (!threads_max)
+                    threads_max = 1;
+                break;
+
+            case 'M':
+                arg_mysql_default_file = optctl.optarg;
+                break;
+                
+            case 'G':
+                arg_mysql_default_group = optctl.optarg;
+                break;
+        }
+    }
+
+    BEE_GETOPT_FINISH(optctl, argc, argv);
+
+
+    mmysql.default_file  = arg_mysql_default_file;
+    mmysql.default_group = arg_mysql_default_group;
+
+/*
+    i=0;
+    while (1) {
+       printf("connection %d\n", ++i);
+       mysql = mxq_mysql_connect(&mmysql);
+       mxq_mysql_close(mysql);
+    }
+*/
+
+    mysql = mxq_mysql_connect(&mmysql);
+    setup_reaper();
+
+
+
+
+
     while (1) {
 
         threads_current -= mxq_mysql_finish_reaped_tasks(mysql);
