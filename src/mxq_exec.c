@@ -185,7 +185,8 @@ int mxq_mysql_select_next_task(MYSQL *mysql, struct mxq_task **task, char *hostn
        q_hostname, q_serverid);
 
     if (!mres) {
-        fprintf(stderr, "Error: %s\n", mysql_error(mysql));
+        log_msg(0, "mxq_mysql_select_next_task: Failed to query database: Error: %s\n", mysql_error(mysql));
+        sleep(10);
         return -1;
     }
 
@@ -237,7 +238,8 @@ int mxq_mysql_task_started(MYSQL  *mysql, int task_id, int host_pid)
              " AND   host_pid IS NULL",
              host_pid, task_id);
     if (res) {
-        fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
+        log_msg(0, "mxq_mysql_task_started: Failed to query database: Error(%d): %s\n", res, mysql_error(mysql));
+        sleep(10);
         return -1;
     }
 
@@ -279,7 +281,8 @@ int mxq_mysql_reserve_task(MYSQL  *mysql, char *hostname, char *server_id)
              " LIMIT 1",
              q_hostname, q_server_id);
     if (res) {
-        fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
+        log_msg(0, "mxq_mysql_reserve_task: Failed to query database: Error: %s\n", mysql_error(mysql));
+        sleep(10);
         return -1;
     }
 
@@ -308,7 +311,8 @@ int mxq_mysql_finish_task(MYSQL  *mysql, struct mxq_task *task)
              " AND task_id = %d",
              task->status, task->id);
     if (res) {
-        fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
+        log_msg(0, "mxq_mysql_finish_task: Failed to query database: Error: %s\n", mysql_error(mysql));
+        sleep(10);
         return -1;
     }
 
@@ -457,6 +461,8 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
                 prev->next = next;
             }
         
+            log_msg(0, "task=%d action=finish-task pid=%d\n", t->id, t->stats.pid);       
+        
             // finish_task 
             // update db stats and status..
         
@@ -565,7 +571,7 @@ int main(int argc, char *argv[])
         
         if (!task) {
             if (!(task = mxq_mysql_load_next_task(mysql, mxq_hostname(), server_id))) {
-                log_msg(0, "MAIN: slots_running=%d slots_available=%d action=wait_for_task\n", threads_current, threads_max);
+                log_msg(0, "MAIN: action=wait_for_task slots_running=%d slots_available=%d  \n", threads_current, threads_max);
                 sleep(1);
                 continue;
             }
