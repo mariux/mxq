@@ -632,7 +632,7 @@ int main(int argc, char *argv[])
 
         threads_current -= mxq_mysql_finish_reaped_tasks(mysql);
 
-        if (! (i--)) break;
+        //if (! (i--)) break;
 
         if (threads_current == threads_max) {
             log_msg(0, "MAIN: waiting for tasks to finish (%d of %d running)\n", threads_current, threads_max);
