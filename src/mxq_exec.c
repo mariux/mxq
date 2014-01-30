@@ -670,21 +670,49 @@ int main(int argc, char *argv[])
             return 1;
         } else if (pid == 0) {
             char **argv;
-            
+            FILE *fp;
+
+            struct passwd *passwd;
+            /*
             log_msg(0, "task=%d action=wait-for-parent ppid=%d\n", task->id, getppid());
             pause();
+*/
+            res = clearenv();
+            assert(!res);
+
+            passwd = getpwuid(task->job->uid);
+            assert(passwd != NULL);
+
+            setenv("USER",     task->job->username, 1);
+            setenv("USERNAME", task->job->username, 1);
+            setenv("LOGNAME",  task->job->username, 1);
+            setenv("PATH",     "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/local/package/bin", 1);
+            setenv("PWD",      task->workdir , 1);
+            setenv("HOME",     passwd->pw_dir, 1);
             
-            mxq_mysql_close(mysql);
+            res = initgroups(task->job->username, task->gid);
+            assert(!res);
             
-            res = setreuid(task->job->uid, task->job->uid);
-            if (res == -1) {
-                log_msg(0, "task %d: setreuid(%d, %d) failed (%s)\n", task->id, task->job->uid, task->job->uid, strerror(errno));
-                _exit(EX__MAX + 1);
+            fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
+            if (fh == -1) {
+                log_msg(0, "task=%d fopen(%s) failed (%s)\n", task->id, "/proc/self/loginuid", strerror(errno));
+                 _exit(EX__MAX + 1);
             }
+            dprintf(fh, "%d", task->job->uid);
+            close(fh);
+            
+            
+            
             
             res = setregid(task->gid, task->gid);
             if (res == -1) {
                 log_msg(0, "task %d: setregid(%d, %d) failed (%s)\n", task->id, task->gid, task->gid, strerror(errno));
+                _exit(EX__MAX + 1);
+            }
+            
+            res = setreuid(task->job->uid, task->job->uid);
+            if (res == -1) {
+                log_msg(0, "task %d: setreuid(%d, %d) failed (%s)\n", task->id, task->job->uid, task->job->uid, strerror(errno));
                 _exit(EX__MAX + 1);
             }
             
