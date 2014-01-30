@@ -192,6 +192,9 @@ int main(int argc, char *argv[])
     char *arg_workdir;
     char *arg_umask;
     char *current_workdir;
+    
+    _cleanup_free_ char *arg_stdout_absolute = NULL;
+    _cleanup_free_ char *arg_stderr_absolute = NULL;
 
     short arg_append;
     short arg_newjob;
@@ -365,6 +368,17 @@ int main(int argc, char *argv[])
         task.stderr       = arg_stdout;
     } else {
         task.stderr       = arg_stderr;
+    }
+    
+    if (! (*task.stdout == '/')) {
+        res = asprintf(&arg_stdout_absolute, "%s/%s", task.workdir, task.stdout);
+        assert(res != -1);
+        task.stdout = arg_stdout_absolute;
+    }
+    if (! (*task.stderr == '/')) {
+        res = asprintf(&arg_stderr_absolute, "%s/%s", task.workdir, task.stderr);
+        assert(res != -1);
+        task.stderr = arg_stderr_absolute;
     }
     
     if (arg_umask) { 
