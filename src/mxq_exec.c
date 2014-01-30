@@ -664,6 +664,8 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        mxq_mysql_close(mysql);
+
         pid = fork();
         if (pid < 0) {
             perror("fork");
@@ -787,24 +789,27 @@ int main(int argc, char *argv[])
             _exit(EX__MAX + 1);
         }
 
-        mxq_mysql_close(mysql);
-        mysql = mxq_mysql_connect(&mmysql);
-        
-        threads_current++;
+        task->status    = 2;
+        task->stats.pid = pid;
 
         gettimeofday(&task->stats.starttime, NULL);
-        task->stats.pid = pid;
-        task->status    = 2;
 
         add_task_to_tasklist(task);
 
+        assert(mxq_task_find_by_pid(pid));
+
+        threads_current++;
+
+        mysql = mxq_mysql_connect(&mmysql);
+        
         res = mxq_mysql_task_started(mysql, task->id, pid);
         if (res < 0) {
             return 1;
         }
+/*
         log_msg(0, "task=%d action=signal-child pid=%d signal=%s(%d)\n", task->id, pid, "SIGUSR1", SIGUSR1);
         kill(pid, SIGUSR1);
-        
+  */      
         task = NULL;
     };
 
