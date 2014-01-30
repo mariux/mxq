@@ -650,14 +650,16 @@ int main(int argc, char *argv[])
             }
             log_msg(0, "task %d: task loaded..\n", task->id);
         }
+
+#define THREADSPERTASK 1
         
-        if (threads_current + 3 > threads_max) {
-            log_msg(0, "task=%d slots_running=%d slots_available=%d slots_needed=%d slots_needed_by_task=%d\n", 
+        if (threads_current + THREADSPERTASK > threads_max) {
+            log_msg(0, "task=%d action=wait_for_slots slots_running=%d slots_available=%d slots_needed=%d slots_needed_by_task=%d\n", 
                     task->id, 
                     threads_current, 
                     threads_max, 
-                    (threads_current + 3 - threads_max),
-                    3);
+                    (threads_current + THREADSPERTASK - threads_max),
+                    THREADSPERTASK);
             sleep(1);
             continue;
         }
