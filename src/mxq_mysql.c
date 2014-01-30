@@ -30,13 +30,16 @@ MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql)
     mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
     
     
-    mres = mysql_real_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, CLIENT_REMEMBER_OPTIONS);
-    if (mres != mysql) {
-        fprintf(stderr, "Failed to connect to database: Error: %s\n",
-          mysql_error(mysql));
-        exit(1);
+    while (1) {
+        mres = mysql_real_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, CLIENT_REMEMBER_OPTIONS);
+        if (mres == mysql)
+            return mysql;
+
+        log_msg(0, "MAIN: Failed to connect to database: Error: %s\n", mysql_error(mysql));
+        log_msg(0, "MAIN: retrying\n");
+        sleep(1);
     }
-    return mysql;
+    return NULL;
 }
 
 void mxq_mysql_close(MYSQL *mysql) {
