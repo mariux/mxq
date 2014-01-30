@@ -363,6 +363,58 @@ struct mxq_task *mxq_task_find_by_pid(pid_t pid)
     return NULL;
 }
 
+struct mxq_reaped_child {
+    struct mxq_reaped_child *next;
+    
+    pid_t pid;
+    int status;
+    struct rusage rusage;
+    struct timeval time;
+    int signal;
+    int reaped;
+};
+
+static struct mxq_reaped_child *mxq_childs = NULL;
+
+
+void mxq_free_reaped_childs(void)
+{
+    struct mxq_reaped_child *list;
+
+    for (list = mxq_childs; list && list->reaped; list = list->next) {
+        mxq_childs = list->next;
+        free(list);
+    }
+}
+
+struct mxq_reaped_child *mxq_reaped_child_new(void)
+{
+    struct mxq_reaped_child *child;
+    struct mxq_reaped_child *list;
+
+    mxq_free_reaped_childs();
+
+    do {
+        child = calloc(1, sizeof(*child));
+        if (child)
+            sleep(1);
+    } while (!child);
+
+    if (!mxq_childs) {
+        mxq_childs = child;
+        return child;
+    }
+
+    list = mxq_childs;
+
+    while (list->next)
+        list = list->next;
+
+    list->next = child;
+
+    return child;
+}
+
 static void child_handler(int sig) 
 {
     pid_t pid;
@@ -370,12 +422,25 @@ static void child_handler(int sig)
     int status;
     
     struct mxq_task *task;
+
+    struct mxq_reaped_child *child;
     
     while ((pid = wait3(&status, WNOHANG, &rusage)) > 0) {
         
+        child = mxq_reaped_child_new();
+        
+        gettimeofday(&child->time, NULL);
+        child->rusage = rusage;
+        child->status = status;
+        child->signal = sig;
+        child->pid    = pid;
+        
         task = mxq_task_find_by_pid(pid);
         
-        assert(task);
+        if (!task) {
+            log_msg(0, "XXXXXX caught signal %d from pid %d without a task\n", sig, pid);
+            continue;
+        }
         
         gettimeofday(&task->stats.elapsed, NULL);
 
@@ -450,6 +515,19 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
     
     char *exit_status;
     int exit_code = -1;
+
+    struct mxq_reaped_child *clist;
+
+    for (clist = mxq_childs; clist; clist = clist->next) {
+        t = mxq_task_find_by_pid(clist->pid);
+        if (!t) {
+            log_msg(0, "spurious pid=%d without task (reaped=%d)\n", clist->pid, clist->reaped);
+            continue;
+        }
+        if (t->status < 3) {
+            log_msg(0, "spurious unreaped task=%d pid=%d\n", t->id, clist->pid);
+        }
+    }
 
     for (l = tasks; l;) {
         next = l->next;
