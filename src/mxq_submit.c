@@ -202,8 +202,6 @@ int main(int argc, char *argv[])
     char *arg_mysql_default_file;
     char *arg_mysql_default_group;
     
-    char hostname[1024];    
-    
     int opt;
     int flags = 0;
     
@@ -343,12 +341,6 @@ int main(int argc, char *argv[])
     group = getgrgid(rgid);
     assert(group != NULL);
     
-    res = gethostname(hostname, 1024);
-    if (res == -1) {
-        assert(errno == ENAMETOOLONG);
-        hostname[1024-1] = 0;
-    }
-
     task.job          = &job;
 
     task.job->jobname  = arg_jobname;
@@ -387,7 +379,7 @@ int main(int argc, char *argv[])
         task.umask = getumask();
     }
 
-    task.submit_host  = hostname;
+    task.submit_host  = mxq_hostname();
     task.argc         = argc;
     task.argv         = stringvectostring(argc, argv);
     assert(task.argv);
