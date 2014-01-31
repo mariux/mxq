@@ -381,7 +381,7 @@ void mxq_free_reaped_childs(void)
 {
     struct mxq_reaped_child *list;
 
-    for (list = mxq_childs; list && list->reaped; list = list->next) {
+    for (list = mxq_childs; list && list->reaped; list = mxq_childs) {
         mxq_childs = list->next;
         free(list);
     }
@@ -434,26 +434,6 @@ static void child_handler(int sig)
         child->status = status;
         child->signal = sig;
         child->pid    = pid;
-        
-        task = mxq_task_find_by_pid(pid);
-        
-        if (!task) {
-            log_msg(0, "XXXXXX caught signal %d from pid %d without a task\n", sig, pid);
-            continue;
-        }
-        
-        gettimeofday(&task->stats.elapsed, NULL);
-
-        if (task->stats.elapsed.tv_usec < task->stats.starttime.tv_usec) {
-            task->stats.elapsed.tv_usec += 1000000L;
-            assert(task->stats.elapsed.tv_sec > 0);
-            task->stats.elapsed.tv_sec -= 1;
-        }
-        task->stats.elapsed.tv_sec  -=  task->stats.starttime.tv_sec;
-        task->stats.elapsed.tv_usec -=  task->stats.starttime.tv_usec;
-        task->stats.exit_status = status;
-        task->stats.rusage      = rusage;
-        task->status            = 3;
     };
 }
 
@@ -507,7 +487,9 @@ void setup_reaper(void)
 int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
 {
     struct mxq_task *t;
+    struct mxq_task *task;
     struct mxq_task_list_item *l;
+    struct mxq_task_list_item *this;
     struct mxq_task_list_item *prev = NULL;
     struct mxq_task_list_item *next = NULL;
     int cnt = 0;
@@ -519,81 +501,95 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
     struct mxq_reaped_child *clist;
 
     for (clist = mxq_childs; clist; clist = clist->next) {
-        t = mxq_task_find_by_pid(clist->pid);
-        if (!t) {
-            log_msg(0, "spurious pid=%d without task (reaped=%d)\n", clist->pid, clist->reaped);
-            continue;
-        }
-        if (t->status < 3) {
-            log_msg(0, "spurious unreaped task=%d pid=%d\n", t->id, clist->pid);
-        }
-    }
+        
+        for (this = tasks, prev = NULL; this ; this = next) {
+            task = this->task;
+            next = this->next;
 
-    for (l = tasks; l;) {
-        next = l->next;
-        t = l->task;
-        if (t->status >= 3) {
+            if (task->stats.pid != clist->pid) {
+                prev = this;
+                continue;
+            }
+
+            /* unlink task from tasklist and free list entry */
             if (!prev) {
                 tasks = next;
             } else {
                 prev->next = next;
             }
-        
-            log_msg(0, "task=%d action=finish-task pid=%d\n", t->id, t->stats.pid);       
-        
-            // finish_task 
-            // update db stats and status..
-        
-            if (WIFEXITED(t->stats.exit_status)) {
+            free(this);
+            this = NULL;
+            
+            
+            task->stats.elapsed     = clist->time;
+            task->stats.exit_status = clist->status;
+            task->stats.rusage      = clist->rusage;
+            task->status            = 3;
+            
+            if (task->stats.elapsed.tv_usec < task->stats.starttime.tv_usec) {
+                task->stats.elapsed.tv_usec += 1000000L;
+                assert(task->stats.elapsed.tv_sec > 0);
+                task->stats.elapsed.tv_sec -= 1;
+            }
+            task->stats.elapsed.tv_sec  -=  task->stats.starttime.tv_sec;
+            task->stats.elapsed.tv_usec -=  task->stats.starttime.tv_usec;
+
+
+            log_msg(0, "task=%d action=finish-task pid=%d signal=%d\n", task->id, task->stats.pid, clist->signal);
+
+            if (!streq(task->stdout, "/dev/null")) {
+                res = rename(task->stdouttmp, task->stdout);
+                if (res == -1) {
+                    log_msg(0, "task=%d rename(%s, %s) failed (%s)\n", task->id, task->stdouttmp, task->stdout, strerror(errno));
+                } else {
+                    log_msg(0, "task=%d action=rename-stdout stdouttmp=%s stdout=%s\n", task->id, task->stdouttmp, task->stdout);
+                }
+            }
+
+            if (!streq(task->stderr, "/dev/null") && !streq(task->stderr, task->stdout)) {
+                res = rename(task->stderrtmp, task->stderr);
+                if (res == -1) {
+                    log_msg(0, "task=%d rename(%s, %s) failed (%s)\n", task->id, task->stderrtmp, task->stderr, strerror(errno));
+                } else {
+                    log_msg(0, "task=%d action=rename-stderr stdouttmp=%s stdout=%s\n", task->id, task->stderrtmp, task->stderr);
+                }
+            }
+
+            if (WIFEXITED(task->stats.exit_status)) {
                 exit_status = "exited";
-                exit_code = WEXITSTATUS(t->stats.exit_status);
-            } else if(WIFSIGNALED(t->stats.exit_status)) {
+                exit_code = WEXITSTATUS(task->stats.exit_status);
+            } else if(WIFSIGNALED(task->stats.exit_status)) {
                 exit_status = "killed";
-                exit_code = WTERMSIG(t->stats.exit_status);
-            } else if(WIFSTOPPED(t->stats.exit_status)) {
+                exit_code = WTERMSIG(task->stats.exit_status);
+            } else if(WIFSTOPPED(task->stats.exit_status)) {
                 exit_status = "stopped";
-                exit_code = WSTOPSIG(t->stats.exit_status);
+                exit_code = WSTOPSIG(task->stats.exit_status);
             } else {
-                assert(WIFCONTINUED(t->stats.exit_status));
+                assert(WIFCONTINUED(task->stats.exit_status));
                 exit_status = "continued";
             }
 
-            if (!streq(t->stdout, "/dev/null")) {
-                res = rename(t->stdouttmp, t->stdout);
-                if (res == -1) {
-                    log_msg(0, "task=%d rename(%s, %s) failed (%s)\n", t->id, t->stdouttmp, t->stdout, strerror(errno));
-                } else {
-                    log_msg(0, "task=%d action=rename-stdout stdouttmp=%s stdout=%s\n", t->id, t->stdouttmp, t->stdout);
-                }
-            }
-            if (!streq(t->stderr, "/dev/null") && !streq(t->stderr, t->stdout)) {
-                res = rename(t->stderrtmp, t->stderr);
-                if (res == -1) {
-                    log_msg(0, "task=%d rename(%s, %s) failed (%s)\n", t->id, t->stderrtmp, t->stderr, strerror(errno));
-                } else {
-                    log_msg(0, "task=%d action=rename-stderr stdouttmp=%s stdout=%s\n", t->id, t->stderrtmp, t->stderr);
-                }
-            }
-        
-            mxq_mysql_finish_task(mysql, t);
+            mxq_mysql_finish_task(mysql, task);
         
             log_msg(0, "task=%d exit_status=%s exit_code=%d status=%d usr=%lf sys=%lf real=%lf \n", 
-               t->id,
+               task->id,
                exit_status,
                exit_code,
-               MXQ_TOTIME(t->stats.rusage.ru_utime),
-               MXQ_TOTIME(t->stats.rusage.ru_stime),
-               MXQ_TOTIME(t->stats.elapsed)
+               MXQ_TOTIME(task->stats.rusage.ru_utime),
+               MXQ_TOTIME(task->stats.rusage.ru_stime),
+               MXQ_TOTIME(task->stats.elapsed)
                );
             cnt++;
-            mxq_free_task(t);
-            free(t);
-            free(l);
-            l = NULL;
+            mxq_free_task(task);
+            free(task);
+            
+            clist->reaped = 1;
         }
         
-        prev = l;
-        l = next;
+        if (!clist->reaped) {
+            log_msg(0, "spurious pid=%d without task\n", clist->pid);
+        }
+
     }
 
     return cnt;
