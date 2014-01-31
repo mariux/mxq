@@ -765,6 +765,7 @@ int main(int argc, char *argv[])
             setenv("PATH",     "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/local/package/bin", 1);
             setenv("PWD",      task->workdir , 1);
             setenv("HOME",     passwd->pw_dir, 1);
+            setenv("HOSTNAME", mxq_hostname(), 1);
             
             res = initgroups(task->job->username, task->gid);
             assert(!res);
