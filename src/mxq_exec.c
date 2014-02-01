@@ -217,31 +217,24 @@ int mxq_mysql_select_next_task(MYSQL *mysql, struct mxq_task **task, char *hostn
 }
 
 
-int mxq_mysql_task_started(MYSQL  *mysql, int task_id, int host_pid)
+int mxq_mysql_task_started(MYSQL *mysql, int task_id, int host_pid)
 {
     assert(mysql);
 
-    int   len;
-    int   res;
-    int   i;
+    int res;
 
-    MYSQL_RES *mres;
-    MYSQL_ROW  row;
-
-    unsigned int num_fields;
-    unsigned int num_rows;
-
-    res = mxq_mysql_query(mysql, "UPDATE v_tasks SET"
-             " host_pid = %d,"
-             " task_status = 2"
-             " WHERE task_id = %d"
-             " AND   host_pid IS NULL",
-             host_pid, task_id);
-    if (res) {
-        log_msg(0, "mxq_mysql_task_started: Failed to query database: Error(%d): %s\n", res, mysql_error(mysql));
-        sleep(10);
-        return -1;
-    }
+    do {
+        res = mxq_mysql_query(mysql, "UPDATE v_tasks SET"
+                 " host_pid = %d,"
+                 " task_status = 2"
+                 " WHERE task_id = %d"
+                 " AND   host_pid IS NULL",
+                 host_pid, task_id);
+        if (res) {
+            log_msg(0, "mxq_mysql_task_started: Failed to query database: Error(%d): %s\n", res, mysql_error(mysql));
+            sleep(1);
+        }
+    } while (res);
 
     return mysql_affected_rows(mysql);
 }
@@ -291,34 +284,25 @@ int mxq_mysql_reserve_task(MYSQL  *mysql, char *hostname, char *server_id)
     return 0;
 }
 
-int mxq_mysql_finish_task(MYSQL  *mysql, struct mxq_task *task)
+int mxq_mysql_finish_task(MYSQL *mysql, struct mxq_task *task)
 {
     assert(mysql);
 
-    int   len;
     int   res;
-    int   i;
 
-    MYSQL_RES *mres;
-    MYSQL_ROW  row;
-
-    unsigned int num_fields;
-    unsigned int num_rows;
-
-    res = mxq_mysql_query(mysql, "UPDATE v_tasks SET"
-             " task_status = %d"
-             " WHERE task_status = 2"
-             " AND task_id = %d",
-             task->status, task->id);
-    if (res) {
-        log_msg(0, "mxq_mysql_finish_task: Failed to query database: Error: %s\n", mysql_error(mysql));
-        sleep(10);
-        return -1;
-    }
+    do {
+        res = mxq_mysql_query(mysql, "UPDATE v_tasks SET"
+                 " task_status = %d"
+                 " WHERE task_status = 2"
+                 " AND task_id = %d",
+                 task->status, task->id);
+        if (res) {
+            log_msg(0, "mxq_mysql_finish_task: Failed to query database: Error: %s\n", mysql_error(mysql));
+            sleep(1);
+        }
+    } while (res);
 
     return mysql_affected_rows(mysql);
-    
-    return 0;
 }
 
 
