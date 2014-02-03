@@ -50,8 +50,10 @@ CREATE TABLE IF NOT EXISTS tasks (
    host       VARCHAR(1024)   DEFAULT NULL,
    pid        INT4 UNSIGNED   DEFAULT NULL,
 
+   INDEX status (status),
    INDEX job_id (job_id),
    INDEX host (host(767)),
+   INDEX command (command(767)),
    INDEX server_id (server_id(767))
 );
 
@@ -93,6 +95,47 @@ FROM
 WHERE 
     j.id = t.job_id
     ;
+
+DROP VIEW v_running_by_host;
+
+CREATE VIEW v_running_by_host AS
+SELECT 
+    j.uid       AS user_uid,
+    j.username  AS user_name,
+    t.command   AS task_command,
+    t.host      AS host_hostname,
+    COUNT(t.host) AS num_tasks,
+    SUM(t.threads) AS num_threads
+FROM 
+    jobs  AS j, 
+    tasks AS t
+WHERE 
+        t.status = 2
+    AND j.id = t.job_id
+GROUP BY
+    t.host
+    ;
+
+DROP VIEW v_queued;
+
+CREATE VIEW v_queued AS
+SELECT 
+    j.uid       AS user_uid,
+    j.username  AS user_name,
+    t.command   AS task_command,
+    COUNT(t.command) AS num_tasks,
+    SUM(t.threads) AS num_threads
+FROM 
+    jobs  AS j, 
+    tasks AS t
+WHERE 
+        ( t.status = 0 OR t.status = 1) 
+    AND j.id = t.job_id
+GROUP BY
+    j.uid,
+    t.command
+    ;
+
 
 update v_tasks set task_status = 1 where task_status = 0 order by id limit 1;
 SELECT * from v_tasks where task_status=1;
