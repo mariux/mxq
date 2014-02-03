@@ -39,7 +39,9 @@ struct mxq_task {
     char *groupname;
 
     int   priority;
-    
+
+    int   threads;    
+
     char *command;
     int   argc;
     char *argv;

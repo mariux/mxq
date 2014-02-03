@@ -67,6 +67,7 @@ int mxq_mysql_add_task(MYSQL *mysql, struct mxq_task *task)
              ", gid = %d"
              ", groupname = '%s'"
              ", priority = %d"
+             ", threads = %d"
              ", command = '%s'"             
              ", argc = %d"
              ", argv = '%s'"             
@@ -76,7 +77,7 @@ int mxq_mysql_add_task(MYSQL *mysql, struct mxq_task *task)
              ", umask = %d"
              ", submit_host = '%s'",
              task->job->id, task->status, task->gid, q_groupname, task->priority,
-             q_command, task->argc, q_argv, q_workdir, q_stdout, q_stderr, 
+             task->threads, q_command, task->argc, q_argv, q_workdir, q_stdout, q_stderr, 
              task->umask, q_submit_host); 
     if (res) {
         fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
@@ -189,6 +190,7 @@ int main(int argc, char *argv[])
     char *arg_jobname;
     char *arg_taskpriority;
     char *arg_jobpriority;
+    char *arg_threads;
     char *arg_workdir;
     char *arg_umask;
     char *current_workdir;
@@ -218,14 +220,15 @@ int main(int argc, char *argv[])
         BEE_OPTION_REQUIRED_ARG("stderr",       'e'),
         BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
         BEE_OPTION_REQUIRED_ARG("umask",        'm'),
-        BEE_OPTION_REQUIRED_ARG("jobname",      'n'),
+        BEE_OPTION_REQUIRED_ARG("jobname",      'N'),
         BEE_OPTION_REQUIRED_ARG("priority",     'p'),
+        BEE_OPTION_REQUIRED_ARG("threads",      'j'),
         BEE_OPTION_REQUIRED_ARG("taskpriority", 'p'),
         BEE_OPTION_REQUIRED_ARG("jobpriority",  'P'),
         BEE_OPTION_NO_ARG("append",  'A'),
-        BEE_OPTION_NO_ARG("new-job", 'N'),
+        BEE_OPTION_NO_ARG("new-job", 'G'),
         BEE_OPTION_REQUIRED_ARG("mysql-default-file", 'M'),
-        BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'G'),
+        BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
         BEE_OPTION_END
     };
 
@@ -234,8 +237,9 @@ int main(int argc, char *argv[])
 
     arg_stdout       = "/dev/null";
     arg_stderr       = "stdout";
-    arg_taskpriority = "default(127)";
-    arg_jobpriority  = "default(127)";
+    arg_taskpriority = "127";
+    arg_jobpriority  = "127";
+    arg_threads      = "1";
     arg_jobname      = NULL;
     current_workdir  = get_current_dir_name();
     arg_workdir      = current_workdir;
@@ -300,11 +304,15 @@ int main(int argc, char *argv[])
                 arg_umask = optctl.optarg;
                 break;
 
+            case 'j':
+                arg_threads = optctl.optarg;
+                break;
+
             case 'M':
                 arg_mysql_default_file = optctl.optarg;
                 break;
                 
-            case 'G':
+            case 'S':
                 arg_mysql_default_group = optctl.optarg;
                 break;
                 
@@ -313,7 +321,7 @@ int main(int argc, char *argv[])
                 arg_newjob = 0;
                 break;
                 
-            case 'N':
+            case 'G':
                 arg_newjob = 1;
                 arg_append = 0;
                 break;
@@ -351,6 +359,7 @@ int main(int argc, char *argv[])
 
     task.gid          = rgid;
     task.groupname    = group->gr_name;
+    task.threads      = atoi(arg_threads);
     task.command      = argv[0];
     task.priority     = atoi(arg_taskpriority);
     task.status       = 0;
@@ -360,6 +369,10 @@ int main(int argc, char *argv[])
         task.stderr       = arg_stdout;
     } else {
         task.stderr       = arg_stderr;
+    }
+    
+    if(!task.threads) {
+        task.threads = 1;
     }
     
     if (! (*task.stdout == '/')) {
