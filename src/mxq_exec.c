@@ -51,6 +51,7 @@
        " task_id," \
        " task_status," \
        " task_priority," \
+       " task_threads, " \
        " task_command," \
        " task_argc," \
        " task_argv," \
@@ -101,27 +102,28 @@ struct mxq_task *mxq_mysql_row_to_task(MYSQL_ROW row)
     task->id          = atoi(row[8]);
     task->status      = atoi(row[9]);
     task->priority    = atoi(row[10]);
-    task->command     = strdup(row[11]);
-    task->argc        = atoi(row[12]);
-    task->argv        = strdup(row[13]);
-    task->workdir     = strdup(row[14]);
+    task->threads     = atoi(row[11]);
+    task->command     = strdup(row[12]);
+    task->argc        = atoi(row[13]);
+    task->argv        = strdup(row[14]);
+    task->workdir     = strdup(row[15]);
 
-    task->stdout = strdup(row[15]);
-    if (streq(row[15], "/dev/null")) {
-        task->stdouttmp = strdup(row[15]);
+    task->stdout = strdup(row[16]);
+    if (streq(row[16], "/dev/null")) {
+        task->stdouttmp = strdup(row[16]);
     } else {
-        asprintf(&task->stdouttmp, "%s.%d.mxqtmp", row[15], task->id);
+        asprintf(&task->stdouttmp, "%s.%d.mxqtmp", row[16], task->id);
     }
     
-    task->stderr = strdup(row[16]);
-    if (streq(row[16], "/dev/null")) {
-        task->stderrtmp = strdup(row[16]);
+    task->stderr = strdup(row[17]);
+    if (streq(row[17], "/dev/null")) {
+        task->stderrtmp = strdup(row[17]);
     } else {
-        asprintf(&task->stderrtmp, "%s.%d.mxqtmp", row[16], task->id);
+        asprintf(&task->stderrtmp, "%s.%d.mxqtmp", row[17], task->id);
     }
 
-    task->umask = atoi(row[17]);
-    task->submit_host = strdup(row[18]);
+    task->umask = atoi(row[18]);
+    task->submit_host = strdup(row[19]);
 
     if (!task->groupname || !task->command || !task->argv ||
         !task->workdir   || !task->stdout  || !task->stderr ||
@@ -165,6 +167,7 @@ int mxq_mysql_select_next_task(MYSQL *mysql, struct mxq_task **task, char *hostn
        " task_id,"
        " task_status,"
        " task_priority,"
+       " task_threads,"
        " task_command,"
        " task_argc,"
        " task_argv,"
@@ -195,7 +198,7 @@ int mxq_mysql_select_next_task(MYSQL *mysql, struct mxq_task **task, char *hostn
 
     if (num_rows == 1) {
         num_fields = mysql_num_fields(mres);
-        assert(num_fields == 22);
+        assert(num_fields == 23);
 
         row = mysql_fetch_row(mres);
         if (!row) {
@@ -555,15 +558,17 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
 
             mxq_mysql_finish_task(mysql, task);
         
-            log_msg(0, "task=%d exit_status=%s exit_code=%d status=%d usr=%lf sys=%lf real=%lf \n", 
+            log_msg(0, "task=%d exit_status=%s exit_code=%d threads=%d status=%d usr=%lf sys=%lf real=%lf\n",
                task->id,
                exit_status,
                exit_code,
+               task->threads,
+               task->stats.exit_status,
                MXQ_TOTIME(task->stats.rusage.ru_utime),
                MXQ_TOTIME(task->stats.rusage.ru_stime),
                MXQ_TOTIME(task->stats.elapsed)
                );
-            cnt++;
+            cnt += task->threads;
             mxq_free_task(task);
             free(task);
             
@@ -711,13 +716,13 @@ int main(int argc, char *argv[])
 
 #define THREADSPERTASK 1
         
-        if (threads_current + THREADSPERTASK > threads_max) {
+        if (threads_current + task->threads > threads_max) {
             log_msg(0, "task=%d action=wait_for_slots slots_running=%d slots_available=%d slots_needed=%d slots_needed_by_task=%d\n", 
                     task->id, 
                     threads_current, 
                     threads_max, 
-                    (threads_current + THREADSPERTASK - threads_max),
-                    THREADSPERTASK);
+                    (threads_current + task->threads - threads_max),
+                    task->threads);
             sleep(1);
             continue;
         }
@@ -784,7 +789,7 @@ int main(int argc, char *argv[])
             }
             
             argv = stringtostringvec(task->argc, task->argv);
-            log_msg(0, "task=%d action=delayed-execute command=%s uid=%d gid=%d umask=%04o workdir=%s\n", task->id, argv[0], task->job->uid, task->gid, task->umask, task->workdir);
+            log_msg(0, "task=%d action=delayed-execute command=%s threads=%d uid=%d gid=%d umask=%04o workdir=%s\n", task->id, argv[0], task->threads, task->job->uid, task->gid, task->umask, task->workdir);
             umask(task->umask);
 
             log_msg(0, "task=%d action=redirect-stderr stderr=%s\n", task->id, task->stderrtmp);
@@ -857,7 +862,7 @@ int main(int argc, char *argv[])
 
         assert(mxq_task_find_by_pid(pid));
 
-        threads_current++;
+        threads_current += task->threads;
 
         mysql = mxq_mysql_connect(&mmysql);
         
