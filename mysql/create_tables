@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS tasks (
    job_id     INT4 UNSIGNED   NOT NULL,
 
    status     INT4 UNSIGNED   NOT NULL DEFAULT 0,
+   
+   threads    INT2 UNSIGNED   NOT NULL DEFAULT 1,
 
    gid        INT4 UNSIGNED   NOT NULL,
    groupname  VARCHAR(255)    NOT NULL,
@@ -71,6 +73,7 @@ SELECT
     t.id        AS task_id,
     t.status    AS task_status,
     t.priority  AS task_priority,
+    t.threads   AS task_threads,
     t.command   AS task_command,
     t.argc      AS task_argc,
     t.argv      AS task_argv,
