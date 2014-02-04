@@ -797,33 +797,43 @@ int main(int argc, char *argv[])
                 if (res == -1) {
                     log_msg(0, "task=%d close(fh=%d) failed (%s)\n", task->id, fh, strerror(errno));
                     _exit(EX__MAX + 1);
-            }
-            }
-
-            log_msg(0, "task=%d action=redirect-stdout stdout=%s\n", task->id, task->stdouttmp);
-
-            if (!streq(task->stdouttmp, "/dev/null") && !streq(task->stdouttmp, task->stderrtmp)) {
-                res = unlink(task->stdouttmp);
-                if (res == -1 && errno != ENOENT) {
-                    log_msg(0, "task=%d unlink(%s) failed (%s)\n", task->id, task->stdouttmp, strerror(errno));
-                    _exit(EX__MAX + 1);
                 }
             }
-
-            fh = open(task->stdouttmp, O_WRONLY|O_CREAT|O_NOFOLLOW|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-            if (fh == -1) {
-                log_msg(0, "task=%d open(%s) failed (%s)\n", task->id, task->stdouttmp, strerror(errno));
-                _exit(EX__MAX + 1);
-            }
-            if (fh != STDOUT_FILENO) {
-                res = dup2(fh, STDOUT_FILENO);
-                if (res == -1) {
-                    log_msg(0, "task=%d dup2(fh=%d, %d) failed (%s)\n", task->id, fh, STDOUT_FILENO, strerror(errno));
+            
+            
+            if (!streq(task->stdouttmp, task->stderrtmp)) {
+                log_msg(0, "task=%d action=redirect-stdout stdout=%s\n", task->id, task->stdouttmp);
+    
+                if (!streq(task->stdouttmp, "/dev/null")) {
+                    res = unlink(task->stdouttmp);
+                    if (res == -1 && errno != ENOENT) {
+                        log_msg(0, "task=%d unlink(%s) failed (%s)\n", task->id, task->stdouttmp, strerror(errno));
+                        _exit(EX__MAX + 1);
+                    }
+                }
+    
+                fh = open(task->stdouttmp, O_WRONLY|O_CREAT|O_NOFOLLOW|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+                if (fh == -1) {
+                    log_msg(0, "task=%d open(%s) failed (%s)\n", task->id, task->stdouttmp, strerror(errno));
                     _exit(EX__MAX + 1);
-            }
-                res = close(fh);
+                }
+                if (fh != STDOUT_FILENO) {
+                    res = dup2(fh, STDOUT_FILENO);
+                    if (res == -1) {
+                        log_msg(0, "task=%d dup2(fh=%d, %d) failed (%s)\n", task->id, fh, STDOUT_FILENO, strerror(errno));
+                        _exit(EX__MAX + 1);
+                    }
+                    res = close(fh);
+                    if (res == -1) {
+    //                    log_msg(0, "task=%d close(fh=%d) failed (%s)\n", task->id, fh, strerror(errno));
+                        _exit(EX__MAX + 1);
+                    }
+                }
+            } else {
+                log_msg(0, "task=%d action=redirect-stdout stdout=stderr(%s)\n", task->id, task->stdouttmp);
+                res = dup2(STDERR_FILENO, STDOUT_FILENO);
                 if (res == -1) {
-//                    log_msg(0, "task=%d close(fh=%d) failed (%s)\n", task->id, fh, strerror(errno));
+                    log_msg(0, "task=%d dup2(STDERR_FILENO=%d, STDOUT_FILENO=%d) failed (%s)\n", task->id, STDERR_FILENO, STDOUT_FILENO, strerror(errno));
                     _exit(EX__MAX + 1);
                 }
             }
