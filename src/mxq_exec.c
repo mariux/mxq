@@ -736,6 +736,7 @@ int main(int argc, char *argv[])
         } else if (pid == 0) {
             char **argv;
             FILE *fp;
+            char *job_id_str = NULL;
 
             struct passwd *passwd;
             /*
@@ -755,6 +756,12 @@ int main(int argc, char *argv[])
             setenv("PWD",      task->workdir , 1);
             setenv("HOME",     passwd->pw_dir, 1);
             setenv("HOSTNAME", mxq_hostname(), 1);
+            
+            res = asprintf(&job_id_str, "%d", task->id);
+            if (res != -1) {
+                setenv("JOB_ID", job_id_str, 1);
+                free(job_id_str);
+            }
             
             res = initgroups(task->job->username, task->gid);
             assert(!res);
