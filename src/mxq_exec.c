@@ -768,9 +768,10 @@ int main(int argc, char *argv[])
             }
             
             argv = stringtostringvec(task->argc, task->argv);
-            log_msg(0, "task=%d action=delayed-execute command=%s threads=%d uid=%d gid=%d umask=%04o workdir=%s\n", task->id, argv[0], task->threads, task->job->uid, task->gid, task->umask, task->workdir);
-            umask(task->umask);
+            log_msg(0, "task=%d action=delayed-execute command=%s threads=%d uid=%d gid=%d umask=%04o workdir=%s\n",
+                       task->id, argv[0], task->threads, task->job->uid, task->gid, task->umask, task->workdir);
 
+            umask(task->umask);
             log_msg(0, "task=%d action=redirect-stderr stderr=%s\n", task->id, task->stderrtmp);
             
             
