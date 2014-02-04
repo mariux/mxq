@@ -351,8 +351,6 @@ struct mxq_task *mxq_task_find_by_pid(pid_t pid)
 }
 
 struct mxq_reaped_child {
-    struct mxq_reaped_child *next;
-    
     pid_t pid;
     int status;
     struct rusage rusage;
@@ -362,44 +360,38 @@ struct mxq_reaped_child {
 };
 
 static struct mxq_reaped_child *mxq_childs = NULL;
+static int mxq_child_index_reaped   = 0;
+static int mxq_child_index_finished = 0;
+static int mxq_max_childs           = 0;       
 
+static void child_handler(int sig);
 
-void mxq_free_reaped_childs(void)
+static struct mxq_reaped_child *mxq_setup_reaper(int max_childs)
 {
-    struct mxq_reaped_child *list;
+    struct sigaction sa;
+    
+    sigemptyset(&sa.sa_mask);
 
-    for (list = mxq_childs; list && list->reaped; list = mxq_childs) {
-        mxq_childs = list->next;
-        free(list);
-    }
+    sa.sa_flags = 0;
+    sa.sa_handler = child_handler;
+
+    sigaction(SIGCHLD, &sa, NULL);
+    
+    assert(mxq_childs == NULL);
+    assert(max_childs > 0);
+
+    mxq_child_index_reaped   = 0;
+    mxq_child_index_finished = 0;
+    mxq_max_childs           = max_childs;       
+    
+    mxq_childs = calloc(mxq_max_childs, sizeof(*mxq_childs));
+    return mxq_childs;
 }
 
-struct mxq_reaped_child *mxq_reaped_child_new(void)
+void mxq_cleanup_reaper(void)
 {
-    struct mxq_reaped_child *child;
-    struct mxq_reaped_child *list;
-
-    mxq_free_reaped_childs();
-
-    do {
-        child = calloc(1, sizeof(*child));
-        if (child)
-            sleep(1);
-    } while (!child);
-
-    if (!mxq_childs) {
-        mxq_childs = child;
-        return child;
-    }
-
-    list = mxq_childs;
-
-    while (list->next)
-        list = list->next;
-
-    list->next = child;
-
-    return child;
+    free(mxq_childs);
+    mxq_childs = NULL;
 }
 
 static void child_handler(int sig) 
@@ -408,27 +400,21 @@ static void child_handler(int sig)
     struct rusage rusage;
     int status;
     
-    struct mxq_task *task;
-
     struct mxq_reaped_child *child;
     
-    while ((pid = wait3(&status, WNOHANG, &rusage)) > 0) {
+    while ((mxq_childs[mxq_child_index_reaped].reaped == 0) && (pid = wait3(&status, WNOHANG, &rusage)) > 0) {
+        child = &mxq_childs[mxq_child_index_reaped];
         
-        child = mxq_reaped_child_new();
+        mxq_child_index_reaped = (mxq_child_index_reaped + 1) % mxq_max_childs;
         
         gettimeofday(&child->time, NULL);
         child->rusage = rusage;
         child->status = status;
         child->signal = sig;
         child->pid    = pid;
+        child->reaped = 1;
     };
 }
-
-static void dummy_handler(int sig)
-{
-    return;
-} 
-
 
 struct mxq_task_list_item *add_task_to_tasklist(struct mxq_task *task)
 {
@@ -454,19 +440,6 @@ struct mxq_task_list_item *add_task_to_tasklist(struct mxq_task *task)
 }
 
 
-void setup_reaper(void)
-{
-    struct sigaction sa;
-    
-    sigemptyset(&sa.sa_mask);
-
-    sa.sa_flags = 0;
-    sa.sa_handler = child_handler;
-
-    sigaction(SIGCHLD, &sa, NULL);
-    
-    signal(SIGUSR1, dummy_handler);
-}
 
 
 #define MXQ_TOTIME(x) ((double)(( (double)(x).tv_sec*1000000L + (double)(x).tv_usec)/1000000L))
@@ -484,16 +457,20 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
     
     char *exit_status;
     int exit_code = -1;
+    int index;
 
-    struct mxq_reaped_child *clist;
+    struct mxq_reaped_child *child;
 
-    for (clist = mxq_childs; clist; clist = clist->next) {
-        
+
+    //log_msg(0, "action=finish-tasks mxq_child_index_finished=%d mxq_child_index_reaped=%d\n", mxq_child_index_finished, mxq_child_index_reaped);
+
+    for (index = mxq_child_index_finished ; mxq_childs[mxq_child_index_finished].reaped == 1; mxq_child_index_finished = (mxq_child_index_finished + 1) % mxq_max_childs) {
+        child = &mxq_childs[mxq_child_index_finished];
         for (this = tasks, prev = NULL; this ; this = next) {
             task = this->task;
             next = this->next;
 
-            if (task->stats.pid != clist->pid) {
+            if (task->stats.pid != child->pid) {
                 prev = this;
                 continue;
             }
@@ -508,9 +485,9 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
             this = NULL;
             
             
-            task->stats.elapsed     = clist->time;
-            task->stats.exit_status = clist->status;
-            task->stats.rusage      = clist->rusage;
+            task->stats.elapsed     = child->time;
+            task->stats.exit_status = child->status;
+            task->stats.rusage      = child->rusage;
             task->status            = 3;
             
             if (task->stats.elapsed.tv_usec < task->stats.starttime.tv_usec) {
@@ -522,7 +499,7 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
             task->stats.elapsed.tv_usec -=  task->stats.starttime.tv_usec;
 
 
-            log_msg(0, "task=%d action=finish-task pid=%d signal=%d\n", task->id, task->stats.pid, clist->signal);
+            log_msg(0, "task=%d action=finish-task pid=%d signal=%d mxq_child_index_finished=%d mxq_child_index_reaped=%d\n", task->id, task->stats.pid, child->signal, mxq_child_index_finished, mxq_child_index_reaped);
 
             if (!streq(task->stdout, "/dev/null")) {
                 res = rename(task->stdouttmp, task->stdout);
@@ -572,13 +549,8 @@ int mxq_mysql_finish_reaped_tasks(MYSQL *mysql)
             mxq_free_task(task);
             free(task);
             
-            clist->reaped = 1;
+            child->reaped = 0;
         }
-        
-        if (!clist->reaped) {
-            log_msg(0, "spurious pid=%d without task\n", clist->pid);
-        }
-
     }
 
     return cnt;
@@ -685,7 +657,7 @@ int main(int argc, char *argv[])
 */
 
     mysql = mxq_mysql_connect(&mmysql);
-    setup_reaper();
+    mxq_setup_reaper(threads_max);
 
 
 
