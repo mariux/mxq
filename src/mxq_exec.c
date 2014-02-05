@@ -568,8 +568,6 @@ int main(int argc, char *argv[])
     unsigned int num_rows;
     unsigned int num_fields;
 
-    char *server_id = "localhost-1";
-    
     struct timeval s1;
     struct timeval s2;
 
@@ -586,6 +584,7 @@ int main(int argc, char *argv[])
   
     char *arg_mysql_default_file;
     char *arg_mysql_default_group;
+    char *arg_server_id = "localhost-1";
 
     struct bee_getopt_ctl optctl;
     
@@ -593,6 +592,7 @@ int main(int argc, char *argv[])
         BEE_OPTION_NO_ARG("help",               'h'),
         BEE_OPTION_NO_ARG("version",            'V'),
         BEE_OPTION_REQUIRED_ARG("threads",      'j'),
+        BEE_OPTION_REQUIRED_ARG("server_id",    'N'),
         BEE_OPTION_REQUIRED_ARG("mysql-default-file", 'M'),
         BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'G'),
         BEE_OPTION_END
@@ -629,6 +629,10 @@ int main(int argc, char *argv[])
                 threads_max = atoi(optctl.optarg);
                 if (!threads_max)
                     threads_max = 1;
+                break;
+
+            case 'N':
+                arg_server_id = optctl.optarg;
                 break;
 
             case 'M':
@@ -678,7 +682,7 @@ int main(int argc, char *argv[])
         assert(threads_current <= threads_max);
         
         if (!task) {
-            if (!(task = mxq_mysql_load_next_task(mysql, mxq_hostname(), server_id))) {
+            if (!(task = mxq_mysql_load_next_task(mysql, mxq_hostname(), arg_server_id))) {
                 log_msg(0, "MAIN: action=wait_for_task slots_running=%d slots_available=%d  \n", threads_current, threads_max);
                 sleep(1);
                 continue;
