@@ -719,6 +719,8 @@ int main(int argc, char *argv[])
             if (res != -1) {
                 setenv("JOB_ID", job_id_str, 1);
                 free(job_id_str);
+            } else {
+                setenv("JOB_ID", "0", 1);
             }
             
             res = initgroups(task->job->username, task->gid);
