@@ -594,7 +594,7 @@ int main(int argc, char *argv[])
         BEE_OPTION_REQUIRED_ARG("threads",      'j'),
         BEE_OPTION_REQUIRED_ARG("server_id",    'N'),
         BEE_OPTION_REQUIRED_ARG("mysql-default-file", 'M'),
-        BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'G'),
+        BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
         BEE_OPTION_END
     };
 
@@ -639,7 +639,7 @@ int main(int argc, char *argv[])
                 arg_mysql_default_file = optctl.optarg;
                 break;
                 
-            case 'G':
+            case 'S':
                 arg_mysql_default_group = optctl.optarg;
                 break;
         }
