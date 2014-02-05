@@ -19,24 +19,24 @@ MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql)
     MYSQL *mres;
 
     my_bool reconnect = 1;
+    int try = 1;
 
     mysql = mysql_init(NULL);
-    assert(mysql);
+    if (!mysql)
+        return NULL;
 
     if (mmysql->default_file)
         mysql_options(mysql, MYSQL_READ_DEFAULT_FILE,  mmysql->default_file);
 
     mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "mxq_submit");
     mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-    
-    
+
     while (1) {
         mres = mysql_real_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, CLIENT_REMEMBER_OPTIONS);
         if (mres == mysql)
             return mysql;
 
-        log_msg(0, "MAIN: Failed to connect to database: Error: %s\n", mysql_error(mysql));
-        log_msg(0, "MAIN: retrying\n");
+        log_msg(0, "MAIN: Failed to connect to database (try=%d): Error: %s\n", try++, mysql_error(mysql));
         sleep(1);
     }
     return NULL;
@@ -53,7 +53,6 @@ int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...)
     _cleanup_free_ char *query = NULL;
     int res;
     size_t len;
-
 
     va_start(ap, fmt);
     len = vasprintf(&query, fmt, ap);
@@ -73,7 +72,6 @@ int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...)
 
 MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
 {
-    
     va_list ap;
     _cleanup_free_ char *query = NULL;
     MYSQL_RES *mres;

@@ -20,7 +20,7 @@ struct mxq_job {
 
     char *jobname;
 
-    int   status;    
+    int   status;
     
     int   uid;
     char *username;
