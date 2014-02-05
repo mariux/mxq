@@ -407,8 +407,8 @@ int main(int argc, char *argv[])
 
     mxq_submit_task(&mmysql, &task, flags);
 
-    printf("mxq_job_id=%d\n", task.job->id);
-    printf("mxq_task_id=%d\n", task.id);
+    printf("mxq_group_id=%d\n", task.job->id);
+    printf("mxq_job_id=%d\n", task.id);
     
     
     free(task.argv);
