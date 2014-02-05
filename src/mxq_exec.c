@@ -574,7 +574,7 @@ int main(int argc, char *argv[])
     int res;
     pid_t pid;
 
-    int i = 1000000;
+    int i;
     
     int threads_max     = 1;
     int threads_current = 0;
@@ -651,27 +651,12 @@ int main(int argc, char *argv[])
     mmysql.default_file  = arg_mysql_default_file;
     mmysql.default_group = arg_mysql_default_group;
 
-/*
-    i=0;
-    while (1) {
-       printf("connection %d\n", ++i);
-       mysql = mxq_mysql_connect(&mmysql);
-       mxq_mysql_close(mysql);
-    }
-*/
-
     mysql = mxq_mysql_connect(&mmysql);
     mxq_setup_reaper(threads_max);
-
-
-
-
 
     while (1) {
 
         threads_current -= mxq_mysql_finish_reaped_tasks(mysql);
-
-        //if (! (i--)) break;
 
         if (threads_current == threads_max) {
             log_msg(0, "MAIN: waiting for tasks to finish (%d of %d running)\n", threads_current, threads_max);
@@ -715,10 +700,7 @@ int main(int argc, char *argv[])
             char *job_id_str = NULL;
 
             struct passwd *passwd;
-            /*
-            log_msg(0, "task=%d action=wait-for-parent ppid=%d\n", task->id, getppid());
-            pause();
-*/
+
             res = clearenv();
             assert(!res);
 
@@ -864,10 +846,7 @@ int main(int argc, char *argv[])
         if (res < 0) {
             return 1;
         }
-/*
-        log_msg(0, "task=%d action=signal-child pid=%d signal=%s(%d)\n", task->id, pid, "SIGUSR1", SIGUSR1);
-        kill(pid, SIGUSR1);
-  */      
+
         task = NULL;
     };
 
