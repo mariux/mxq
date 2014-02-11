@@ -1,4 +1,123 @@
 
+
+
+DROP TABLE job;
+
+CREATE TABLE IF NOT EXISTS job (
+   job_id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   job_status     INT1 UNSIGNED   NOT NULL DEFAULT 0,
+   job_priority   INT2 UNSIGNED   NOT NULL DEFAULT 127,
+
+   group_id       VARCHAR(511)    NOT NULL DEFAULT 'default',
+   group_status   INT1 UNSIGNED   NOT NULL DEFAULT 0,
+   group_priority INT2 UNSIGNED   NOT NULL DEFAULT 127,
+
+   user_uid        INT4 UNSIGNED   NOT NULL,
+   user_name       VARCHAR(255)    NOT NULL,
+   user_gid        INT4 UNSIGNED   NOT NULL,
+   user_group      VARCHAR(255)    NOT NULL,
+
+   job_threads    INT2 UNSIGNED   NOT NULL DEFAULT 1,
+   job_memory     INT8 UNSIGNED   NOT NULL DEFAULT 1024,
+   job_time       INT4 UNSIGNED   NOT NULL DEFAULT 15,
+
+   job_workdir    VARCHAR(4095)   NOT NULL,
+   job_command    VARCHAR(4095)   NOT NULL,
+   job_argc       INT2 UNSIGNED   NOT NULL,
+   job_argv       VARCHAR(40959)  NOT NULL,
+
+   job_stdout     VARCHAR(4095)   NOT NULL DEFAULT '/dev/null',
+   job_stderr     VARCHAR(4095)   NOT NULL DEFAULT '/dev/null',
+
+   job_umask      INT4            NOT NULL,
+
+   host_submit    VARCHAR(1023)   NOT NULL,
+
+   server_id      VARCHAR(1023)   DEFAULT NULL,
+
+   host_hostname  VARCHAR(1023)   DEFAULT NULL,
+   host_pid       INT4 UNSIGNED   DEFAULT NULL,
+
+   date_submit  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   date_start   TIMESTAMP DEFAULT 0,
+   date_end     TIMESTAMP DEFAULT 0,
+
+   stats_status   INT4 UNSIGNED DEFAULT NULL,
+
+   stats_utime    DECIMAL(12,6) DEFAULT NULL,
+   stats_stime    DECIMAL(12,6) DEFAULT NULL,
+   stats_real     DECIMAL(12,6) DEFAULT NULL,
+
+   stats_maxrss   INT4 NOT NULL DEFAULT 0,
+   stats_minflt   INT4 NOT NULL DEFAULT 0,
+   stats_majflt   INT4 NOT NULL DEFAULT 0,
+   stats_nswap    INT4 NOT NULL DEFAULT 0,
+   stats_inblock  INT4 NOT NULL DEFAULT 0,
+   stats_oublock  INT4 NOT NULL DEFAULT 0,
+   stats_nvcsw    INT4 NOT NULL DEFAULT 0,
+   stats_nivcsw   INT4 NOT NULL DEFAULT 0,
+
+   INDEX (job_id),
+   INDEX (group_id),
+   INDEX (group_priority),
+   INDEX (job_status),
+   INDEX (job_threads),
+   INDEX (job_memory),
+   INDEX (job_time),
+   INDEX (job_priority),
+   INDEX (user_uid),
+   INDEX (host_hostname(767)),
+   INDEX (job_command(767)),
+   INDEX (server_id(767))
+);
+
+INSERT INTO job SET user_uid=1,user_name='user1',user_gid=1,user_group='group1',job_command="sleep", job_argc=1, job_argv='sleep\\0', job_workdir='/tmp',job_umask=0,host_submit='localhost';
+
+INSERT INTO job SET user_uid=1,user_name='user1',user_gid=1,user_group='group1',
+                    job_memory=4096, job_threads=2, job_time=60,
+                    job_command="sleep", job_argc=1, job_argv='sleep\\0', job_workdir='/tmp',job_umask=0,
+                    host_submit='localhost';
+
+INSERT INTO job SET user_uid=1,user_name='user1',user_gid=1,user_group='group1',
+                    group_id='test',
+                    job_memory=4096, job_threads=2, job_time=60,
+                    job_command="sleep", job_argc=1, job_argv='sleep\\0', job_workdir='/tmp',job_umask=0,
+                    host_submit='localhost';
+
+INSERT INTO job SET user_uid=1,user_name='user1',user_gid=1,user_group='group1',
+                    group_id='test',
+                    job_memory=4096*10, job_threads=7, job_time=60,
+                    job_command="sleep", job_argc=1, job_argv='sleep\\0', job_workdir='/tmp',job_umask=0,
+                    host_submit='localhost';
+
+INSERT INTO job SET user_uid=1,user_name='user1',user_gid=1,user_group='group1',
+                    group_id='test',
+                    job_memory=4096*10*7, job_threads=7, job_time=60,
+                    job_command="sleep", job_argc=1, job_argv='sleep\\0', job_workdir='/tmp',job_umask=0,
+                    host_submit='localhost';
+
+SELECT user_uid,group_id,group_priority,job_priority,job_memory,job_threads,job_time,COUNT(*) AS sum,
+         SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0, 
+         SUM(CASE WHEN job_status = 1 THEN 1 ELSE 0 END) AS status1,
+         SUM(CASE WHEN job_status = 2 THEN 1 ELSE 0 END) AS status2,
+         SUM(CASE WHEN job_status = 3 THEN 1 ELSE 0 END) AS status3,
+
+         (job_memory*80)/(job_threads*1024*1024),
+         
+         POW(1024*1024,2)*POW(job_threads,2) / (POW(job_memory,2)*80) AS max_slots_total,
+
+         LEAST(80,FLOOR(FLOOR((POW(1024*1024,2)*POW(job_threads,2)) / (POW(job_memory,2)*80) + 0.5) / job_threads) * job_threads) AS max_slots_host,
+
+         LEAST(FLOOR(80/job_threads)*job_threads ,FLOOR(FLOOR((POW(1024*1024,2)*POW(job_threads,2)) / (POW(job_memory,2)*80) + 0.5) / job_threads) * job_threads) AS max_slots_real,
+
+         LEAST(FLOOR(80/job_threads) ,FLOOR(FLOOR((POW(1024*1024,2)*POW(job_threads,2)) / (POW(job_memory,2)*80) + 0.5) / job_threads)) AS max_jobs_real,
+         
+         MIN(date_submit)
+         from job GROUP BY user_uid,group_id,job_memory,group_priority,job_priority,job_threads,job_time;
+
+
+
+
 DROP TABLE jobs;
 
 CREATE TABLE IF NOT EXISTS jobs (
@@ -114,6 +233,25 @@ WHERE
     AND j.id = t.job_id
 GROUP BY
     t.host
+    ;
+
+DROP VIEW v_running_by_job;
+
+CREATE VIEW v_running_by_job AS
+SELECT 
+    j.uid       AS user_uid,
+    j.username  AS user_name,
+    t.command   AS task_command,
+    COUNT(t.host) AS num_tasks,
+    SUM(t.threads) AS num_threads
+FROM 
+    jobs  AS j, 
+    tasks AS t
+WHERE 
+        t.status = 2
+    AND j.id = t.job_id
+GROUP BY
+    t.command
     ;
 
 DROP VIEW v_queued;

@@ -86,32 +86,95 @@ char *mxq_hostname(void)
     return hostname;
 }
 
-void mxq_free_job(struct mxq_job *job)
+int safe_convert_string_to_ull(char *string, unsigned long long int *integer)
+{
+	unsigned long long int ull;
+	char *endptr;
+
+	assert(integer);
+	
+	if (!string) {
+		*integer = 0;
+		return 1;
+    }
+	
+	errno = 0;
+	
+	ull = strtoull(string, &endptr, 0);
+
+	if (errno) {
+		return 0;
+	}
+	if (string == endptr || *endptr) {
+		errno = EINVAL;
+		return 0;
+	}
+
+	*integer = ull;
+
+	return 1;
+}
+
+
+int safe_convert_string_to_ui8(char *string, u_int8_t *integer)
+{
+	unsigned long long int ull;
+	int res;
+
+    res = safe_convert_string_to_ull(string, &ull);
+    
+    if (res)
+	   *integer = (u_int8_t)ull;
+
+	return res;
+}
+
+int safe_convert_string_to_ui16(char *string, u_int16_t *integer)
+{
+	unsigned long long int ull;
+	int res;
+
+    res = safe_convert_string_to_ull(string, &ull);
+    
+    if (res)
+	   *integer = (u_int16_t)ull;
+
+	return res;
+}
+
+
+int safe_convert_string_to_ui32(char *string, u_int32_t *integer)
+{
+	unsigned long long int ull;
+	int res;
+
+    res = safe_convert_string_to_ull(string, &ull);
+    
+    if (res)
+	   *integer = (u_int32_t)ull;
+
+	return res;
+}
+
+int safe_convert_string_to_ui64(char *string, u_int64_t *integer)
+{
+	unsigned long long int ull;
+	int res;
+
+    res = safe_convert_string_to_ull(string, &ull);
+    
+    if (res)
+	   *integer = (u_int64_t)ull;
+
+	return res;
+}
+
+void mxq_free_job(struct mxq_job_full *job)
 {
     if (!job)
         return;
 
-    free(job->jobname);
-    free(job->username);
-}
-
-void mxq_free_task(struct mxq_task *task)
-{
-    if (!task)
-        return;
-    
-    mxq_free_job(task->job);
-    free(task->job);
-
-    free(task->groupname);
-    free(task->command);
-    free(task->argv);
-    free(task->workdir);
-    free(task->stdout);
-    free(task->stdouttmp);
-    free(task->stderr);
-    free(task->stderrtmp);
-    free(task->submit_host);
+    free(job);
 }
 
 char *stringvectostring(int argc, char *argv[])
@@ -155,19 +218,22 @@ char **stringtostringvec(int argc, char *s)
     char **argv;
     
     argv = calloc(argc+1, sizeof(*argv));
-    assert(argv);
-    
+    if (!argv)
+        return NULL;    
+
     for (i=0, p=s; i < argc; i++) {
         argv[i] = p;
-        p = strstr(p, "\\0");
-        assert(p);
-        *p = 0;
-        p += 2;
+        p = strstr(p, "\\0");  /* search "\0" */
+        if (!p) {
+	    errno = EINVAL; /* "\0" need to be there or string is invalid */
+	    return NULL;
+        }
+        *p = 0;     /* add end of string */
+        p += 2;     /* skip "\0" */
     }
+
     return argv;
 }
-
-
 
 int chrcnt(char *s, char c) 
 {
