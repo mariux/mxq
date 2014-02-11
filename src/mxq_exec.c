@@ -364,13 +364,6 @@ static struct mxq_reaped_child *mxq_setup_reaper(int max_childs)
 {
     struct sigaction sa;
 
-    sigemptyset(&sa.sa_mask);
-
-    sa.sa_flags = 0;
-    sa.sa_handler = child_handler;
-
-    sigaction(SIGCHLD, &sa, NULL);
-
     assert(mxq_childs == NULL);
     assert(max_childs > 0);
 
@@ -379,6 +372,17 @@ static struct mxq_reaped_child *mxq_setup_reaper(int max_childs)
     mxq_max_childs           = max_childs;
 
     mxq_childs = calloc(mxq_max_childs, sizeof(*mxq_childs));
+
+    if (!mxq_childs)
+        return NULL;
+
+    sigemptyset(&sa.sa_mask);
+
+    sa.sa_flags = 0;
+    sa.sa_handler = child_handler;
+
+    sigaction(SIGCHLD, &sa, NULL);
+
     return mxq_childs;
 }
 
