@@ -41,12 +41,12 @@ int log_msg(int prio, const char *fmt, ...)
     va_start(ap, fmt);
     len = vasprintf(&msg, fmt, ap);
     va_end(ap);
-    
+
     if (len == -1)
         return 0;
 
     assert(len == strlen(msg));
-    
+
     if (lastmsg) {
         res = strcmp(msg, lastmsg);
         if (res == 0) {
@@ -57,8 +57,8 @@ int log_msg(int prio, const char *fmt, ...)
         free(lastmsg);
     }
     lastmsg = msg;
-    
-    
+
+
     if (cnt) {
         printf("%s[%d]: last message repeated %d times\n",program_invocation_short_name, getpid(), cnt);
         cnt = 0;
@@ -122,7 +122,7 @@ int safe_convert_string_to_ui8(char *string, u_int8_t *integer)
 	int res;
 
     res = safe_convert_string_to_ull(string, &ull);
-    
+
     if (res)
 	   *integer = (u_int8_t)ull;
 
@@ -135,7 +135,7 @@ int safe_convert_string_to_ui16(char *string, u_int16_t *integer)
 	int res;
 
     res = safe_convert_string_to_ull(string, &ull);
-    
+
     if (res)
 	   *integer = (u_int16_t)ull;
 
@@ -149,7 +149,7 @@ int safe_convert_string_to_ui32(char *string, u_int32_t *integer)
 	int res;
 
     res = safe_convert_string_to_ull(string, &ull);
-    
+
     if (res)
 	   *integer = (u_int32_t)ull;
 
@@ -162,7 +162,7 @@ int safe_convert_string_to_ui64(char *string, u_int64_t *integer)
 	int res;
 
     res = safe_convert_string_to_ull(string, &ull);
-    
+
     if (res)
 	   *integer = (u_int64_t)ull;
 
@@ -183,17 +183,17 @@ char *stringvectostring(int argc, char *argv[])
     char   *buf;
     char   *s;
     size_t  len = 1;
-    
+
     for (i=0; i < argc; i++) {
-        len += strlen(argv[i]); 
+        len += strlen(argv[i]);
         len += chrcnt(argv[i], '\\');
         len += 2;
     }
-    
+
     buf = malloc(len);
     if (!buf)
         return NULL;
-    
+
     for (i=0, k=0; i < argc; i++) {
         s = argv[i];
         for (j=0; j < strlen(s); j++) {
@@ -204,7 +204,7 @@ char *stringvectostring(int argc, char *argv[])
         buf[k++] = '\\';
         buf[k++] = '0';
     }
-    
+
     assert(k == len-1);
     buf[k] = 0;
 
@@ -216,10 +216,10 @@ char **stringtostringvec(int argc, char *s)
     int i;
     char *p;
     char **argv;
-    
+
     argv = calloc(argc+1, sizeof(*argv));
     if (!argv)
-        return NULL;    
+        return NULL;
 
     for (i=0, p=s; i < argc; i++) {
         argv[i] = p;
@@ -235,17 +235,17 @@ char **stringtostringvec(int argc, char *s)
     return argv;
 }
 
-int chrcnt(char *s, char c) 
+int chrcnt(char *s, char c)
 {
     int i = 0;
     char *p;
-    
+
     p = s;
-    
+
     while ((p = strchr(p, c))) {
         i++;
         p++;
     }
-    
-    return i; 
+
+    return i;
 }

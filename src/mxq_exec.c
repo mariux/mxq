@@ -101,7 +101,7 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
 
     strncpy(job->job_stdout,  *r++, sizeof(job->job_stdout)-1);
     strncpy(job->job_stderr,  *r++, sizeof(job->job_stderr)-1);
-    
+
     if (streq(job->job_stdout, "/dev/null")) {
 	strncpy(job->tmp_stdout, job->job_stdout, sizeof(job->tmp_stdout)-1);
     } else {
@@ -134,12 +134,12 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
 
     _cleanup_free_ char *q_hostname = NULL;
     _cleanup_free_ char *q_serverid = NULL;
-    
+
     struct mxq_job_full *job = NULL;
-    
+
     if (!(q_hostname = mxq_mysql_escape_string(mysql, hostname) )) return 0;
     if (!(q_serverid = mxq_mysql_escape_string(mysql, serverid) )) return 0;
-    
+
     mres = mxq_mysql_query_with_result(mysql, "SELECT "
        "job_id, "
        "job_status, "
@@ -165,7 +165,7 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
        "server_id, "
        "host_hostname, "
        "host_pid "
-       "FROM job " 
+       "FROM job "
        "WHERE host_hostname = '%s' "
        "AND server_id = '%s' "
        "AND host_pid IS NULL "
@@ -247,11 +247,11 @@ int mxq_mysql_reserve_job(MYSQL  *mysql, char *hostname, char *server_id)
 
     _cleanup_free_ char *q_hostname  = NULL;
     _cleanup_free_ char *q_server_id = NULL;
-    
+
     if (!(q_hostname  = mxq_mysql_escape_string(mysql, hostname)  )) return 0;
     if (!(q_server_id = mxq_mysql_escape_string(mysql, server_id) )) return 0;
 
-    // update v_tasks set task_status=1,host_hostname='localhost',host_server_id='localhost-1' 
+    // update v_tasks set task_status=1,host_hostname='localhost',host_server_id='localhost-1'
     // where task_status = 0 AND host_hostname='localhost' AND host_pid IS NULL order by job_id limit 1;
 
     res = mxq_mysql_query(mysql, "UPDATE job SET "
@@ -272,7 +272,7 @@ int mxq_mysql_reserve_job(MYSQL  *mysql, char *hostname, char *server_id)
     }
 
     return mysql_affected_rows(mysql);
-    
+
     return 0;
 }
 
@@ -303,7 +303,7 @@ int mxq_mysql_finish_job(MYSQL *mysql, struct mxq_job_full *job)
                  "job_status = %d "
                  "WHERE job_status = 2 "
                  "AND job_id = %d ",
-                 job->stats_status, 
+                 job->stats_status,
                  MXQ_TOTIME(job->stats_rusage.ru_utime),
                  MXQ_TOTIME(job->stats_rusage.ru_stime),
                  MXQ_TOTIME(job->stats_realtime),
@@ -356,28 +356,28 @@ struct mxq_reaped_child {
 static struct mxq_reaped_child *mxq_childs = NULL;
 static int mxq_child_index_reaped   = 0;
 static int mxq_child_index_finished = 0;
-static int mxq_max_childs           = 0;       
+static int mxq_max_childs           = 0;
 
 static void child_handler(int sig);
 
 static struct mxq_reaped_child *mxq_setup_reaper(int max_childs)
 {
     struct sigaction sa;
-    
+
     sigemptyset(&sa.sa_mask);
 
     sa.sa_flags = 0;
     sa.sa_handler = child_handler;
 
     sigaction(SIGCHLD, &sa, NULL);
-    
+
     assert(mxq_childs == NULL);
     assert(max_childs > 0);
 
     mxq_child_index_reaped   = 0;
     mxq_child_index_finished = 0;
-    mxq_max_childs           = max_childs;       
-    
+    mxq_max_childs           = max_childs;
+
     mxq_childs = calloc(mxq_max_childs, sizeof(*mxq_childs));
     return mxq_childs;
 }
@@ -565,9 +565,9 @@ void job_finish_log(struct mxq_job_full *job)
     int status;
     char *exit_status;
     int exit_code = -1;
-    
+
     assert(job);
-    
+
     status = job->stats_status;
 
 
@@ -604,7 +604,7 @@ int mxq_mysql_finish_reaped_jobs(MYSQL *mysql, struct mxq_job_full_list *job_lis
     struct mxq_job_full_list_item *li;
     int cnt = 0;
     int res;
-    
+
     char *exit_status;
     int exit_code = -1;
     int index;
@@ -613,7 +613,7 @@ int mxq_mysql_finish_reaped_jobs(MYSQL *mysql, struct mxq_job_full_list *job_lis
 
     while (mxq_childs[mxq_child_index_finished].reaped == 1) {
         child = &mxq_childs[mxq_child_index_finished];
-        
+
         log_msg(0, "pid=%d action=finish-child mxq_child_index_finished=%d mxq_child_index_reaped=%d\n", child->pid, mxq_child_index_finished, mxq_child_index_reaped);
 
         job = joblist_remove_job_by_host_pid(job_list, child->pid);
@@ -626,11 +626,11 @@ int mxq_mysql_finish_reaped_jobs(MYSQL *mysql, struct mxq_job_full_list *job_lis
         job_finish_cleanup_files(job);
         mxq_mysql_finish_job(mysql, job);
         job_finish_log(job);
-        
+
         cnt += job->job_threads;
 
         mxq_free_job(job);
-        
+
         child->reaped = 0;
 
         mxq_child_index_finished = (mxq_child_index_finished + 1) % mxq_max_childs;
@@ -639,7 +639,7 @@ int mxq_mysql_finish_reaped_jobs(MYSQL *mysql, struct mxq_job_full_list *job_lis
     return cnt;
 }
 
-int job_setup_environment(struct mxq_job_full *job) 
+int job_setup_environment(struct mxq_job_full *job)
 {
 	int res;
 	struct passwd *passwd;
@@ -708,7 +708,7 @@ int job_setup_environment(struct mxq_job_full *job)
 	umask(job->job_umask);
 
 	return 1;
- }           
+ }
 
 int main(int argc, char *argv[])
 {
@@ -724,13 +724,13 @@ int main(int argc, char *argv[])
     pid_t pid;
 
     int i;
-    
+
     u_int16_t threads_max     = 1;
     u_int16_t threads_current = 0;
-    
+
     int fh;
     int opt;
-  
+
     char *arg_mysql_default_file;
     char *arg_mysql_default_group;
     char *arg_server_id;
@@ -765,14 +765,14 @@ int main(int argc, char *argv[])
         if (opt == BEE_GETOPT_ERROR) {
             exit(EX_USAGE);
         }
-        
+
         switch (opt) {
             case 'h':
             case 'V':
                 printf("help/version\n");
                 printf("mxq_exec [mxq-options]\n");
                 exit(EX_USAGE);
-                
+
             case 'j':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &threads_max)) {
 					fprintf(stderr, "ignoring threads '%s': %s\n", optctl.optarg, strerror(errno));
@@ -788,7 +788,7 @@ int main(int argc, char *argv[])
             case 'M':
                 arg_mysql_default_file = optctl.optarg;
                 break;
-                
+
             case 'S':
                 arg_mysql_default_group = optctl.optarg;
                 break;
@@ -816,7 +816,7 @@ int main(int argc, char *argv[])
             sleep(1);
             continue;
         }
-        
+
         if (!job) {
             if (!(job = mxq_mysql_load_next_job(mysql, mxq_hostname(), arg_server_id))) {
                 log_msg(0, "MAIN: action=wait_for_task slots_running=%d slots_available=%d  \n", threads_current, threads_max);
@@ -827,10 +827,10 @@ int main(int argc, char *argv[])
         }
 
         if (threads_current + job->job_threads > threads_max) {
-            log_msg(0, "job_id=%d action=wait_for_slots slots_running=%d slots_available=%d slots_needed=%d slots_needed_by_task=%d\n", 
-                    job->job_id, 
-                    threads_current, 
-                    threads_max, 
+            log_msg(0, "job_id=%d action=wait_for_slots slots_running=%d slots_available=%d slots_needed=%d slots_needed_by_task=%d\n",
+                    job->job_id,
+                    threads_current,
+                    threads_max,
                     (threads_current + job->job_threads - threads_max),
                     job->job_threads);
             sleep(1);
@@ -861,8 +861,8 @@ int main(int argc, char *argv[])
             log_msg(0, "job_id=%d action=delayed-execute command=%s threads=%d uid=%d gid=%d umask=%04o workdir=%s\n",
                        job->job_id, argv[0], job->job_threads, job->user_uid, job->user_gid, job->job_umask, job->job_workdir);
 
-            
-            
+
+
             log_msg(0, "job_id=%d action=redirect-stderr tmpstderr=%s\n", job->job_id, job->tmp_stderr);
             if (!streq(job->tmp_stderr, "/dev/null")) {
                 res = unlink(job->tmp_stderr);
@@ -888,11 +888,11 @@ int main(int argc, char *argv[])
                     _exit(EX__MAX + 1);
                 }
             }
-            
-            
+
+
             if (!streq(job->tmp_stdout, job->tmp_stderr)) {
                 log_msg(0, "task=%d action=redirect-stdout stdout=%s\n", job->job_id, job->tmp_stdout);
-    
+
                 if (!streq(job->tmp_stdout, "/dev/null")) {
                     res = unlink(job->tmp_stdout);
                     if (res == -1 && errno != ENOENT) {
@@ -900,7 +900,7 @@ int main(int argc, char *argv[])
                         _exit(EX__MAX + 1);
                     }
                 }
-    
+
                 fh = open(job->tmp_stdout, O_WRONLY|O_CREAT|O_NOFOLLOW|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
                 if (fh == -1) {
                     log_msg(0, "task=%d open(%s) failed (%s)\n", job->job_id, job->tmp_stdout, strerror(errno));
@@ -942,7 +942,7 @@ int main(int argc, char *argv[])
         threads_current += job->job_threads;
 
         mysql = mxq_mysql_connect(&mmysql);
-        
+
         res = mxq_mysql_job_started(mysql, job->job_id, pid);
         if (res < 0) {
             return 1;

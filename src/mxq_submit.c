@@ -73,8 +73,8 @@ static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job_full *j)
     assert(j->job_stderr);
     assert(*j->job_stderr);
     assert(j->job_umask);
-    assert(j->host_submit); 
-    assert(*j->host_submit); 
+    assert(j->host_submit);
+    assert(*j->host_submit);
 
     if (!(q_group_id    = mxq_mysql_escape_string(mysql, j->group_id)   )) return 0;
     if (!(q_user        = mxq_mysql_escape_string(mysql, j->user_name)  )) return 0;
@@ -107,9 +107,9 @@ static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job_full *j)
              "host_submit = '%s'",
              j->job_priority, q_group_id, j->group_priority,
              j->user_uid, q_user, j->user_gid, q_group,
-             j->job_threads, j->job_memory, j->job_time, 
+             j->job_threads, j->job_memory, j->job_time,
              q_workdir, q_command, j->job_argc, q_argv,
-             q_stdout, q_stderr, j->job_umask, q_submit_host); 
+             q_stdout, q_stderr, j->job_umask, q_submit_host);
     if (res) {
         fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
         return 0;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
     uid_t ruid, euid, suid;
     gid_t rgid, egid, sgid;
     int res;
-    
+
     u_int16_t  arg_priority;
     char      *arg_group_id;
     u_int16_t  arg_group_priority;
@@ -155,13 +155,13 @@ int main(int argc, char *argv[])
     char      *arg_mysql_default_file;
     char      *arg_mysql_default_group;
 
-    _cleanup_free_ char *current_workdir;    
+    _cleanup_free_ char *current_workdir;
     _cleanup_free_ char *arg_stdout_absolute = NULL;
     _cleanup_free_ char *arg_stderr_absolute = NULL;
     _cleanup_free_ char *arg_args = NULL;
-    
+
     int flags = 0;
-    
+
     struct mxq_job_full job;
     struct mxq_mysql mmysql;
 
@@ -173,17 +173,17 @@ int main(int argc, char *argv[])
 
         BEE_OPTION_REQUIRED_ARG("group_id",       'N'),
         BEE_OPTION_REQUIRED_ARG("group_priority", 'P'),
-        
+
         BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
         BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
         BEE_OPTION_REQUIRED_ARG("stderr",       'e'),
         BEE_OPTION_REQUIRED_ARG("umask",        'u'),
         BEE_OPTION_REQUIRED_ARG("priority",     'p'),
-        
+
         BEE_OPTION_REQUIRED_ARG("threads",      'j'),
         BEE_OPTION_REQUIRED_ARG("memory",       'm'),
         BEE_OPTION_REQUIRED_ARG("time",         't'),
-        
+
         BEE_OPTION_REQUIRED_ARG("mysql-default-file",  'M'),
         BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
         BEE_OPTION_END
@@ -237,23 +237,23 @@ int main(int argc, char *argv[])
                 printf("help/version\n");
                 printf("mxq_submit [mxq-options] <command> [command-arguments]\n");
                 exit(EX_USAGE);
-                
+
             case 'p':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_priority)) {
 					fprintf(stderr, "ignoring priority '%s': %s\n", optctl.optarg, strerror(errno));
 				}
                 break;
-                
+
             case 'N':
                 arg_group_id = optctl.optarg;
                 break;
-                
+
             case 'P':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_group_priority)) {
 					fprintf(stderr, "ignoring group_priority '%s': %s\n", optctl.optarg, strerror(errno));
 				}
                 break;
-                
+
             case 'j':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_threads)) {
 					fprintf(stderr, "ignoring threads '%s': %s\n", optctl.optarg, strerror(errno));
@@ -282,11 +282,11 @@ int main(int argc, char *argv[])
             case 'o':
                 arg_stdout = optctl.optarg;
                 break;
-                
+
             case 'e':
                 arg_stderr = optctl.optarg;
                 break;
-                
+
             case 'u':
                 if (!safe_convert_string_to_ui32(optctl.optarg, &arg_umask)) {
 					fprintf(stderr, "ignoring umask '%s': %s\n", optctl.optarg, strerror(errno));
@@ -296,11 +296,11 @@ int main(int argc, char *argv[])
             case 'M':
                 arg_mysql_default_file = optctl.optarg;
                 break;
-                
+
             case 'S':
                 arg_mysql_default_group = optctl.optarg;
                 break;
-                
+
         }
     }
 
@@ -351,10 +351,10 @@ int main(int argc, char *argv[])
 
     passwd = getpwuid(ruid);
     assert(passwd != NULL);
-    
+
     res = getresgid(&rgid, &egid, &sgid);
     assert(res != -1);
-    
+
     group = getgrgid(rgid);
     assert(group != NULL);
 
@@ -362,12 +362,12 @@ int main(int argc, char *argv[])
     strncpy(job.user_name, passwd->pw_name, sizeof(job.user_name)-1);
     job.user_gid = rgid;
     strncpy(job.user_group, group->gr_name, sizeof(job.user_group)-1);
-    
+
     /******************************************************************/
 
     strncpy(job.job_command, argv[0], sizeof(job.job_command)-1);
     job.job_argc = argc;
-    
+
     arg_args = stringvectostring(argc, argv);
     assert(arg_args);
     strncpy(job.job_argv, arg_args, sizeof(job.job_argv)-1);
@@ -387,7 +387,7 @@ int main(int argc, char *argv[])
 
     printf("mxq_group_id=%s\n", job.group_id);
     printf("mxq_job_id=%d\n", job.job_id);
-    
+
     return 0;
 }
 
