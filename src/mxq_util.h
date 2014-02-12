@@ -33,14 +33,14 @@ int safe_convert_string_to_ui64(char *string, u_int64_t *integer);
 #define _cleanup_(x) __attribute__((cleanup(x)))
 
 static inline void freep(void *p) {
-        free(*(void**) p);
+    free(*(void**) p);
 }
 
 #define _cleanup_free_ _cleanup_(freep)
 
 static inline void free_mxq_taskp(void *p) {
-        mxq_free_task(*(void**) p);
-        free(*(void**) p);
+    mxq_free_task(*(void**) p);
+    free(*(void**) p);
 }
 
 #define _cleanup_free_mxq_task_ _cleanup_(free_mxq_taskp)

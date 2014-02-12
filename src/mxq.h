@@ -5,7 +5,7 @@
 #include <sys/resource.h>
 
 struct mxq_job_full {
-	u_int64_t  job_id;
+    u_int64_t  job_id;
     u_int8_t   job_status;
     u_int16_t  job_priority;
 
@@ -46,7 +46,7 @@ struct mxq_job_full {
     char       date_start[256];
     char       date_end[256];
 
-	struct timeval stats_starttime;
+    struct timeval stats_starttime;
 
     int            stats_status;
     struct timeval stats_realtime;

@@ -88,85 +88,85 @@ char *mxq_hostname(void)
 
 int safe_convert_string_to_ull(char *string, unsigned long long int *integer)
 {
-	unsigned long long int ull;
-	char *endptr;
+    unsigned long long int ull;
+    char *endptr;
 
-	assert(integer);
-	
-	if (!string) {
-		*integer = 0;
-		return 1;
+    assert(integer);
+    
+    if (!string) {
+        *integer = 0;
+        return 1;
     }
-	
-	errno = 0;
-	
-	ull = strtoull(string, &endptr, 0);
+        
+    errno = 0;
+    
+    ull = strtoull(string, &endptr, 0);
 
-	if (errno) {
-		return 0;
-	}
-	if (string == endptr || *endptr) {
-		errno = EINVAL;
-		return 0;
-	}
+    if (errno) {
+        return 0;
+    }
+    if (string == endptr || *endptr) {
+        errno = EINVAL;
+        return 0;
+    }
 
-	*integer = ull;
+    *integer = ull;
 
-	return 1;
+    return 1;
 }
 
 
 int safe_convert_string_to_ui8(char *string, u_int8_t *integer)
 {
-	unsigned long long int ull;
-	int res;
+    unsigned long long int ull;
+    int res;
 
     res = safe_convert_string_to_ull(string, &ull);
 
     if (res)
-	   *integer = (u_int8_t)ull;
+       *integer = (u_int8_t)ull;
 
-	return res;
+    return res;
 }
 
 int safe_convert_string_to_ui16(char *string, u_int16_t *integer)
 {
-	unsigned long long int ull;
-	int res;
+    unsigned long long int ull;
+    int res;
 
     res = safe_convert_string_to_ull(string, &ull);
 
     if (res)
-	   *integer = (u_int16_t)ull;
+       *integer = (u_int16_t)ull;
 
-	return res;
+    return res;
 }
 
 
 int safe_convert_string_to_ui32(char *string, u_int32_t *integer)
 {
-	unsigned long long int ull;
-	int res;
+    unsigned long long int ull;
+    int res;
 
     res = safe_convert_string_to_ull(string, &ull);
 
     if (res)
-	   *integer = (u_int32_t)ull;
+       *integer = (u_int32_t)ull;
 
-	return res;
+    return res;
 }
 
 int safe_convert_string_to_ui64(char *string, u_int64_t *integer)
 {
-	unsigned long long int ull;
-	int res;
+    unsigned long long int ull;
+    int res;
 
     res = safe_convert_string_to_ull(string, &ull);
 
     if (res)
-	   *integer = (u_int64_t)ull;
+       *integer = (u_int64_t)ull;
 
-	return res;
+    return res;
 }
 
 void mxq_free_job(struct mxq_job_full *job)
@@ -225,8 +225,8 @@ char **stringtostringvec(int argc, char *s)
         argv[i] = p;
         p = strstr(p, "\\0");  /* search "\0" */
         if (!p) {
-	    errno = EINVAL; /* "\0" need to be there or string is invalid */
-	    return NULL;
+            errno = EINVAL; /* "\0" need to be there or string is invalid */
+            return NULL;
         }
         *p = 0;     /* add end of string */
         p += 2;     /* skip "\0" */

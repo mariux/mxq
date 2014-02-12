@@ -22,9 +22,9 @@ char *mxq_mysql_escape_string(MYSQL *mysql, char *s);
 
 
 static inline void close_mysqlp(void *p) {
-        if (!p)
-           return;
-        mxq_mysql_close(*(void**) p);
+    if (!p)
+       return;
+    mxq_mysql_close(*(void**) p);
 }
 
 #define _cleanup_close_mysql_ _cleanup_(close_mysqlp)

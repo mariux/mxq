@@ -87,29 +87,29 @@ static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job_full *j)
     if (!(q_submit_host = mxq_mysql_escape_string(mysql, j->host_submit))) return 0;
 
     res = mxq_mysql_query(mysql, "INSERT INTO job SET "
-             "job_priority = %d, "
-             "group_id = '%s', "
-             "group_priority = %d, "
-             "user_uid = %d, "
-             "user_name = '%s', "
-             "user_gid = %d, "
-             "user_group = '%s', "
-             "job_threads = %d, "
-             "job_memory = %d, "
-             "job_time = %d, "
-             "job_workdir = '%s', "
-             "job_command = '%s', "
-             "job_argc = %d, "
-             "job_argv = '%s', "
-             "job_stdout = '%s', "
-             "job_stderr = '%s', "
-             "job_umask = %d, "
-             "host_submit = '%s'",
-             j->job_priority, q_group_id, j->group_priority,
-             j->user_uid, q_user, j->user_gid, q_group,
-             j->job_threads, j->job_memory, j->job_time,
-             q_workdir, q_command, j->job_argc, q_argv,
-             q_stdout, q_stderr, j->job_umask, q_submit_host);
+                "job_priority = %d, "
+                "group_id = '%s', "
+                "group_priority = %d, "
+                "user_uid = %d, "
+                "user_name = '%s', "
+                "user_gid = %d, "
+                "user_group = '%s', "
+                "job_threads = %d, "
+                "job_memory = %d, "
+                "job_time = %d, "
+                "job_workdir = '%s', "
+                "job_command = '%s', "
+                "job_argc = %d, "
+                "job_argv = '%s', "
+                "job_stdout = '%s', "
+                "job_stderr = '%s', "
+                "job_umask = %d, "
+                "host_submit = '%s'",
+                j->job_priority, q_group_id, j->group_priority,
+                j->user_uid, q_user, j->user_gid, q_group,
+                j->job_threads, j->job_memory, j->job_time,
+                q_workdir, q_command, j->job_argc, q_argv,
+                q_stdout, q_stderr, j->job_umask, q_submit_host);
     if (res) {
         fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
         return 0;
@@ -168,25 +168,25 @@ int main(int argc, char *argv[])
     int opt;
     struct bee_getopt_ctl optctl;
     struct bee_option opts[] = {
-        BEE_OPTION_NO_ARG("help",                 'h'),
-        BEE_OPTION_NO_ARG("version",              'V'),
+                BEE_OPTION_NO_ARG("help",                 'h'),
+                BEE_OPTION_NO_ARG("version",              'V'),
 
-        BEE_OPTION_REQUIRED_ARG("group_id",       'N'),
-        BEE_OPTION_REQUIRED_ARG("group_priority", 'P'),
+                BEE_OPTION_REQUIRED_ARG("group_id",       'N'),
+                BEE_OPTION_REQUIRED_ARG("group_priority", 'P'),
 
-        BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
-        BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
-        BEE_OPTION_REQUIRED_ARG("stderr",       'e'),
-        BEE_OPTION_REQUIRED_ARG("umask",        'u'),
-        BEE_OPTION_REQUIRED_ARG("priority",     'p'),
+                BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
+                BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
+                BEE_OPTION_REQUIRED_ARG("stderr",       'e'),
+                BEE_OPTION_REQUIRED_ARG("umask",        'u'),
+                BEE_OPTION_REQUIRED_ARG("priority",     'p'),
 
-        BEE_OPTION_REQUIRED_ARG("threads",      'j'),
-        BEE_OPTION_REQUIRED_ARG("memory",       'm'),
-        BEE_OPTION_REQUIRED_ARG("time",         't'),
+                BEE_OPTION_REQUIRED_ARG("threads",      'j'),
+                BEE_OPTION_REQUIRED_ARG("memory",       'm'),
+                BEE_OPTION_REQUIRED_ARG("time",         't'),
 
-        BEE_OPTION_REQUIRED_ARG("mysql-default-file",  'M'),
-        BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
-        BEE_OPTION_END
+                BEE_OPTION_REQUIRED_ARG("mysql-default-file",  'M'),
+                BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
+                BEE_OPTION_END
     };
 
     struct passwd *passwd;
@@ -223,10 +223,6 @@ int main(int argc, char *argv[])
     optctl.flags = BEE_FLAG_STOPONUNKNOWN|BEE_FLAG_STOPONNOOPT;
 
     while ((opt=bee_getopt(&optctl, &i)) != BEE_GETOPT_END) {
-
-   	    long int tmplong;
-		long long int tmplonglong;
-
         if (opt == BEE_GETOPT_ERROR) {
             exit(EX_USAGE);
         }
@@ -240,8 +236,8 @@ int main(int argc, char *argv[])
 
             case 'p':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_priority)) {
-					fprintf(stderr, "ignoring priority '%s': %s\n", optctl.optarg, strerror(errno));
-				}
+                    fprintf(stderr, "ignoring priority '%s': %s\n", optctl.optarg, strerror(errno));
+                }
                 break;
 
             case 'N':
@@ -250,26 +246,26 @@ int main(int argc, char *argv[])
 
             case 'P':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_group_priority)) {
-					fprintf(stderr, "ignoring group_priority '%s': %s\n", optctl.optarg, strerror(errno));
-				}
+                    fprintf(stderr, "ignoring group_priority '%s': %s\n", optctl.optarg, strerror(errno));
+                }
                 break;
 
             case 'j':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_threads)) {
-					fprintf(stderr, "ignoring threads '%s': %s\n", optctl.optarg, strerror(errno));
-				}
+                    fprintf(stderr, "ignoring threads '%s': %s\n", optctl.optarg, strerror(errno));
+                }
                 break;
 
             case 'm':
                 if (!safe_convert_string_to_ui64(optctl.optarg, &arg_memory)) {
-					fprintf(stderr, "ignoring time '%s': %s\n", optctl.optarg, strerror(errno));
-				}
+                    fprintf(stderr, "ignoring time '%s': %s\n", optctl.optarg, strerror(errno));
+                }
                 break;
 
             case 't':
                 if (!safe_convert_string_to_ui32(optctl.optarg, &arg_time)) {
-					fprintf(stderr, "ignoring time '%s': %s\n", optctl.optarg, strerror(errno));
-				}
+                    fprintf(stderr, "ignoring time '%s': %s\n", optctl.optarg, strerror(errno));
+                }
                 break;
 
             case 'w':
@@ -289,8 +285,8 @@ int main(int argc, char *argv[])
 
             case 'u':
                 if (!safe_convert_string_to_ui32(optctl.optarg, &arg_umask)) {
-					fprintf(stderr, "ignoring umask '%s': %s\n", optctl.optarg, strerror(errno));
-				}
+                    fprintf(stderr, "ignoring umask '%s': %s\n", optctl.optarg, strerror(errno));
+                }
                 break;
 
             case 'M':
