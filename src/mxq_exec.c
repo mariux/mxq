@@ -208,11 +208,12 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
 
 int mxq_mysql_job_started(MYSQL *mysql, int job_id, int host_pid)
 {
+    int res;
+    int tries = 1;
+
     assert(mysql);
     assert(job_id);
     assert(host_pid);
-
-    int res;
 
     do {
         res = mxq_mysql_query(mysql, "UPDATE job SET "
@@ -223,7 +224,7 @@ int mxq_mysql_job_started(MYSQL *mysql, int job_id, int host_pid)
                  "AND   host_pid IS NULL",
                  host_pid, job_id);
         if (res) {
-            log_msg(0, "mxq_mysql_job_started: Failed to query database: Error(%d): %s\n", res, mysql_error(mysql));
+            log_msg(0, "mxq_mysql_job_started: Failed to query database (tries=%d): Error(%d): %s\n", tries++, res, mysql_error(mysql));
             sleep(1);
         }
     } while (res);
@@ -281,9 +282,10 @@ int mxq_mysql_reserve_job(MYSQL  *mysql, char *hostname, char *server_id)
 
 int mxq_mysql_finish_job(MYSQL *mysql, struct mxq_job_full *job)
 {
-    assert(mysql);
-
     int   res;
+    int   tries = 1;
+
+    assert(mysql);
 
     do {
         res = mxq_mysql_query(mysql, "UPDATE job SET "
@@ -317,8 +319,8 @@ int mxq_mysql_finish_job(MYSQL *mysql, struct mxq_job_full *job)
                  job->stats_rusage.ru_nivcsw,
                  job->job_status, job->job_id);
         if (res) {
-            log_msg(0, "mxq_mysql_finish_job: Failed to query database: Error: %s\n", mysql_error(mysql));
-            sleep(1);
+            log_msg(0, "mxq_mysql_finish_job: Failed to query database (tries=%d): Error(%d): %s\n", tries++, res, mysql_error(mysql));
+            sleep(5);
         }
     } while (res);
 
