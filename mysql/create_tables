@@ -96,7 +96,63 @@ INSERT INTO job SET user_uid=1,user_name='user1',user_gid=1,user_group='group1',
                     job_command="sleep", job_argc=1, job_argv='sleep\\0', job_workdir='/tmp',job_umask=0,
                     host_submit='localhost';
 
-SELECT user_uid,group_id,group_priority,job_priority,job_memory,job_threads,job_time,COUNT(*) AS sum,
+DROP VIEW v_job_status;
+CREATE VIEW v_job_status AS
+SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads, job_time, job_command, COUNT(*) AS sum,
+        SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0, 
+        SUM(CASE WHEN job_status = 1 THEN 1 ELSE 0 END) AS status1,
+        SUM(CASE WHEN job_status = 2 THEN 1 ELSE 0 END) AS status2,
+        SUM(CASE WHEN job_status = 3 THEN 1 ELSE 0 END) AS status3,
+	MAX(stats_utime),
+	AVG(stats_utime),
+	MAX(stats_stime),
+	AVG(stats_stime),
+	MAX(stats_real),
+	AVG(stats_real),
+	MIN(date_submit) AS date_submit_min,
+	MIN(CASE WHEN date_start > 0 THEN date_start END) AS date_start_min,
+	MAX(date_end) AS date_end_max
+FROM 
+    job
+GROUP BY
+    user_uid,
+    group_id,
+    job_memory,
+    group_priority,
+    job_priority,
+    job_threads,
+    job_time,
+    job_command;
+
+
+DROP VIEW v_job_status;
+CREATE VIEW v_job_status AS
+SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads, job_time, job_command, host_hostname, COUNT(*) AS sum,
+        SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0, 
+        SUM(CASE WHEN job_status = 1 THEN 1 ELSE 0 END) AS status1,
+        SUM(CASE WHEN job_status = 2 THEN 1 ELSE 0 END) AS status2,
+        SUM(CASE WHEN job_status = 3 THEN 1 ELSE 0 END) AS status3,
+        SUM(CASE WHEN job_status >= 4 THEN 1 ELSE 0 END) AS status4plus,
+	MAX(stats_utime),
+	AVG(stats_utime),
+	MAX(stats_stime),
+	AVG(stats_stime),
+	MAX(stats_real),
+	AVG(stats_real)
+FROM 
+    job
+GROUP BY
+    user_uid,
+    group_id,
+    job_memory,
+    group_priority,
+    job_priority,
+    job_threads,
+    job_time,
+    job_command, host_hostname;
+
+
+SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads, job_time, COUNT(*) AS sum,
          SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0, 
          SUM(CASE WHEN job_status = 1 THEN 1 ELSE 0 END) AS status1,
          SUM(CASE WHEN job_status = 2 THEN 1 ELSE 0 END) AS status2,
@@ -112,170 +168,11 @@ SELECT user_uid,group_id,group_priority,job_priority,job_memory,job_threads,job_
 
          LEAST(FLOOR(80/job_threads) ,FLOOR(FLOOR((POW(1024*1024,2)*POW(job_threads,2)) / (POW(job_memory,2)*80) + 0.5) / job_threads)) AS max_jobs_real,
          
-         MIN(date_submit)
+         MIN(date_submit),
+	 MIN(date_start),
+	 MAX(date_end)
          from job GROUP BY user_uid,group_id,job_memory,group_priority,job_priority,job_threads,job_time;
 
 
-
-
-DROP TABLE jobs;
-
-CREATE TABLE IF NOT EXISTS jobs (
-   id         INT4 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   
-   jobname    VARCHAR(4096) NOT NULL,
-
-   status     INT4 UNSIGNED NOT NULL DEFAULT 0,
-
-   uid        INT4 UNSIGNED NOT NULL,
-   username   VARCHAR(255)  NOT NULL,
-   
-   priority   INT1 UNSIGNED NOT NULL DEFAULT 127,
-   
-   INDEX jobname (jobname(767)),
-   INDEX uid (uid),
-   INDEX username (username)
-);
-
-
-DROP TABLE tasks;
-
-CREATE TABLE IF NOT EXISTS tasks (
-   id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   job_id     INT4 UNSIGNED   NOT NULL,
-
-   status     INT4 UNSIGNED   NOT NULL DEFAULT 0,
-   
-   threads    INT2 UNSIGNED   NOT NULL DEFAULT 1,
-
-   gid        INT4 UNSIGNED   NOT NULL,
-   groupname  VARCHAR(255)    NOT NULL,
-
-   priority   INT1 UNSIGNED   NOT NULL DEFAULT 127,
-
-   command    VARCHAR(4096)   NOT NULL,
-   argc       INT2 UNSIGNED   NOT NULL,
-   argv       VARCHAR(40960)  NOT NULL,
-
-   workdir    VARCHAR(4096)   NOT NULL,
-
-   stdout     VARCHAR(4096)   NOT NULL DEFAULT '/dev/null',
-   stderr     VARCHAR(4096)   NOT NULL DEFAULT '/dev/null',
-
-   umask      INT2            NOT NULL,
-
-   submit_host VARCHAR(1024)  DEFAULT NULL,
-   server_id  VARCHAR(1024)   DEFAULT NULL,
-   host       VARCHAR(1024)   DEFAULT NULL,
-   pid        INT4 UNSIGNED   DEFAULT NULL,
-
-   INDEX status (status),
-   INDEX job_id (job_id),
-   INDEX host (host(767)),
-   INDEX command (command(767)),
-   INDEX server_id (server_id(767))
-);
-
-DROP VIEW v_tasks;
-
-CREATE VIEW v_tasks AS
-SELECT 
-    j.id        AS job_id,
-    j.jobname   AS job_name,
-    j.status    AS job_status,
-    j.priority  AS job_priority,
-
-    j.uid       AS user_uid,
-    j.username  AS user_name,
-
-    t.gid       AS group_gid,
-    t.groupname AS group_name,
-
-    t.id        AS task_id,
-    t.status    AS task_status,
-    t.priority  AS task_priority,
-    t.threads   AS task_threads,
-    t.command   AS task_command,
-    t.argc      AS task_argc,
-    t.argv      AS task_argv,
-    t.workdir   AS task_workdir,
-    t.stdout    AS task_stdout,
-    t.stderr    AS task_stderr,
-    t.umask     AS task_umask,
-    
-    t.submit_host AS host_submit_host,
-    
-    t.server_id AS host_server_id,
-    t.host      AS host_hostname,
-    t.pid       AS host_pid
-FROM 
-    jobs  AS j, 
-    tasks AS t
-WHERE 
-    j.id = t.job_id
-    ;
-
-DROP VIEW v_running_by_host;
-
-CREATE VIEW v_running_by_host AS
-SELECT 
-    j.uid       AS user_uid,
-    j.username  AS user_name,
-    t.command   AS task_command,
-    t.host      AS host_hostname,
-    COUNT(t.host) AS num_tasks,
-    SUM(t.threads) AS num_threads
-FROM 
-    jobs  AS j, 
-    tasks AS t
-WHERE 
-        t.status = 2
-    AND j.id = t.job_id
-GROUP BY
-    t.host
-    ;
-
-DROP VIEW v_running_by_job;
-
-CREATE VIEW v_running_by_job AS
-SELECT 
-    j.uid       AS user_uid,
-    j.username  AS user_name,
-    t.command   AS task_command,
-    COUNT(t.host) AS num_tasks,
-    SUM(t.threads) AS num_threads
-FROM 
-    jobs  AS j, 
-    tasks AS t
-WHERE 
-        t.status = 2
-    AND j.id = t.job_id
-GROUP BY
-    t.command
-    ;
-
-DROP VIEW v_queued;
-
-CREATE VIEW v_queued AS
-SELECT 
-    j.uid       AS user_uid,
-    j.username  AS user_name,
-    t.command   AS task_command,
-    COUNT(t.command) AS num_tasks,
-    SUM(t.threads) AS num_threads
-FROM 
-    jobs  AS j, 
-    tasks AS t
-WHERE 
-        ( t.status = 0 OR t.status = 1) 
-    AND j.id = t.job_id
-GROUP BY
-    j.uid,
-    t.command
-    ;
-
-
-update v_tasks set task_status = 1 where task_status = 0 order by id limit 1;
-SELECT * from v_tasks where task_status=1;
 
 
