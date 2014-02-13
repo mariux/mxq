@@ -361,6 +361,7 @@ static int mxq_child_index_finished = 0;
 static int mxq_max_childs           = 0;
 
 static void child_handler(int sig);
+static void exit_handler(int sig);
 
 static struct mxq_reaped_child *mxq_setup_reaper(int max_childs)
 {
@@ -386,6 +387,40 @@ static struct mxq_reaped_child *mxq_setup_reaper(int max_childs)
     sigaction(SIGCHLD, &sa, NULL);
 
     return mxq_childs;
+}
+
+static int _is_running(int status)
+{
+    static int is_running = 1;
+
+    if (status != -1) {
+        is_running = status;
+    }
+
+    return is_running;
+}
+
+static void exit_handler(int sig)
+{
+    _is_running(0);
+}
+
+static int is_running(void)
+{
+    return _is_running(-1);
+}
+
+void mxq_setup_exit(void)
+{
+    struct sigaction sa;
+
+    sigemptyset(&sa.sa_mask);
+
+    sa.sa_flags = 0;
+    sa.sa_handler = exit_handler;
+
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT, &sa, NULL);
 }
 
 void mxq_cleanup_reaper(void)
@@ -806,12 +841,13 @@ int main(int argc, char *argv[])
     mmysql.default_group = arg_mysql_default_group;
 
     mxq_setup_reaper(threads_max);
+    mxq_setup_exit();
 
     mysql = mxq_mysql_connect(&mmysql);
 
     memset(&job_list, 0, sizeof(job_list));
 
-    while (1) {
+    while (is_running()) {
         threads_current -= mxq_mysql_finish_reaped_jobs(mysql, &job_list);
         assert(threads_current <= threads_max);
         assert(threads_current >= 0);
@@ -953,6 +989,15 @@ int main(int argc, char *argv[])
         job = NULL;
     };
 
+    log_msg(0, "MAIN: Exiting..\n");
+
+    while (threads_current) {
+        log_msg(0, "MAIN: Exiting: waiting for tasks to finish (%d of %d running)\n", threads_current, threads_max);
+        threads_current -= mxq_mysql_finish_reaped_jobs(mysql, &job_list);
+        sleep(1);
+    }
+
+    log_msg(0, "MAIN: Good Bye..\n");
     log_msg(0, NULL);
 
     return 0;
