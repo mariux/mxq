@@ -30,6 +30,62 @@
 
 #define MXQ_JOB_STATUS_ACTIVE      (1)
 
+#ifndef VERSION
+#define VERSION "0.00"
+#endif
+
+#ifndef VERSIONFULL
+#define VERSIONFULL "MXQ v0.00 super alpha 0"
+#endif
+
+#ifndef VERSIONDATE
+#define VERSIONDATE "2014"
+#endif
+
+
+static void print_usage(void)
+{
+    printf(
+    VERSIONFULL "\n"
+    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " VERSIONDATE "\n"
+    "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
+    "\n"
+    "Usage:\n"
+    "  mxq_submit [options] <command> [arguments]\n"
+    "\n"
+    "Synopsis:\n"
+    "  queue a job to be executed on a cluster node.\n"
+    "  <command> [arguments] will be executed on a node that offers\n"
+    "  enough ressources to run the job. the following [options] can\n"
+    "  influence the job environment and the scheduling decisions made\n"
+    "  by the cluster:\n"
+    "\n"
+    "Job environment:\n"
+    "  -w | --workdir  <directory> set working directory (default: current workdir)\n"
+    "  -o | --stdout   <file>      set file to capture stdout (default: '/dev/null')\n"
+    "  -e | --stderr   <file>      set file to capture stderr (default: <stdout>)\n"
+    "  -u | --umask    <mode>      set mode to use as umask (default: current umask)\n"
+    "  -p | --priority <priority>  set priority (default: 127)\n"
+    "\n"
+    "Job ressource information:\n"
+    "  Scheduling is done based on the ressources a job needs and\n"
+    "  on the priority given to the job.\n"
+    "\n"
+    "  -j | --threads  <number>  set number of threads (default: 1)\n"
+    "  -m | --memory   <size>    set amount of memory (default: 2048MiB)\n"
+    "  -t | --time     <minutes> set runtime (default: 15 minutes)\n"
+    "\n"
+    "Job grouping:\n"
+    "  Grouping is done by default based on the jobs ressource\n"
+    "  and priority information, so that jobs using the same\n"
+    "  amount of ressources and having the same priority\n"
+    "  are grouped and executed in parallel.\n"
+    "\n"
+    "  -N | --group_id <name>            set group id (default: 'default')\n"
+    "  -P | --group_priority <priority>  set group priority (default: 127)\n"
+    "\n"
+    );
+}
 
 static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job_full *j)
 {
@@ -232,6 +288,7 @@ int main(int argc, char *argv[])
             case 'V':
                 printf("help/version\n");
                 printf("mxq_submit [mxq-options] <command> [command-arguments]\n");
+                print_usage();
                 exit(EX_USAGE);
 
             case 'p':
@@ -301,7 +358,10 @@ int main(int argc, char *argv[])
     }
 
     BEE_GETOPT_FINISH(optctl, argc, argv);
-    assert(argc >= 1);
+    if (argc < 1) {
+        print_usage();
+        exit(EX_USAGE);
+    }
 
     /* from this point values in argc,argv are the ones of the cluster job  */
 
