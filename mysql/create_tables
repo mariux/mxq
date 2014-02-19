@@ -174,5 +174,29 @@ SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads
          from job GROUP BY user_uid,group_id,job_memory,group_priority,job_priority,job_threads,job_time;
 
 
-
+drop view v_job_overview;
+create view v_job_overview as
+select 
+    user_name,
+    group_id,
+    job_command,
+    CASE WHEN stats_status THEN stats_status ELSE 0 END AS exit_status,
+    CEIL(MAX(stats_maxrss/1024)) as max_stats_maxrss_mib,
+    CEIL(SUM(CASE WHEN date_start and job_status < 4 THEN CASE WHEN stats_real THEN stats_real ELSE TIMESTAMPDIFF(SECOND, date_start, NOW()) END END)) AS total_runtime_seconds,
+    CEIL(TIMESTAMPDIFF(SECOND, MIN(CASE WHEN date_start THEN date_start END), MAX(CASE WHEN date_end THEN date_end ELSE CASE WHEN date_start THEN NOW() END END))) AS total_real_seconds,
+    COUNT(job_id) as total_jobs,
+    COUNT(CASE WHEN job_status < 2 THEN job_status END) AS total_jobs_in_q,
+    COUNT(CASE WHEN job_status = 2 THEN job_status END) AS total_jobs_runnning,
+    COUNT(CASE WHEN job_status > 2 THEN job_status END) AS total_jobs_done
+from
+    job 
+group by 
+    user_uid,
+    job_command,
+    job_memory,
+    job_threads,
+    job_time,
+    CASE WHEN stats_status THEN stats_status ELSE 0 END,
+    group_priority,
+    group_id;
 

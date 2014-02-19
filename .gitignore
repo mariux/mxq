@@ -1,5 +1,6 @@
 mxq_submit
 mxq_exec
+mxq_list
 *.o
 *~
 core
