@@ -966,7 +966,7 @@ int main(int argc, char *argv[])
             }
 
             execvp(argv[0], argv);
-            log_msg(0, "task %d: execvp failed (%s)\n", job->job_id, strerror(errno));
+            log_msg(0, "task %d: execvp('%s', ...) failed (%s)\n", job->job_id, job->job_command, strerror(errno));
             _exit(EX__MAX + 1);
         }
 
