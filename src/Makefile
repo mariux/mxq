@@ -89,6 +89,7 @@ all: mxq_list
 clean:
 	rm -f $(OBJECTS_MXQ_EXEC) 
 	rm -f $(OBJECTS_MXQ_SUBMIT)
+	rm -f $(OBJECTS_MXQ_LIST)
 
 .PHONY: install
 install: mxq_exec mxq_submit mxq_list
