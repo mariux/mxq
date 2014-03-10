@@ -81,8 +81,8 @@ static void print_usage(void)
     "  amount of ressources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
     "\n"
-    "  -N | --group_id <name>            set group id (default: 'default')\n"
-    "  -P | --group_priority <priority>  set group priority (default: 127)\n"
+    "  -N | --group-id <name>            set group id (default: 'default')\n"
+    "  -P | --group-priority <priority>  set group priority (default: 127)\n"
     "\n"
     );
 }
@@ -229,6 +229,8 @@ int main(int argc, char *argv[])
 
                 BEE_OPTION_REQUIRED_ARG("group_id",       'N'),
                 BEE_OPTION_REQUIRED_ARG("group_priority", 'P'),
+                BEE_OPTION_REQUIRED_ARG("group-id",       'N'),
+                BEE_OPTION_REQUIRED_ARG("group-priority", 'P'),
 
                 BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
                 BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
