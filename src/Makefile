@@ -77,22 +77,22 @@ CFLAGS += -DMXQ_MYSQL_DEFAULT_FILE=\"${SYSCONFDIR}/mxq/mysql.cnf\"
 CFLAGS += $(CFLAGS_MYSQL)
 CFLAGS += -g
 
-.PHONY: macheteinfach
-macheteinfach: all
+PROGRAMS += mxq_exec
+PROGRAMS += mxq_submit
+PROGRAMS += mxq_list
 
 .PHONY: all
-all: mxq_exec
-all: mxq_submit
-all: mxq_list
+all: $(PROGRAMS)
 
 .PHONY: clean
 clean:
+	rm -f $(PROGRAMS)
 	rm -f $(OBJECTS_MXQ_EXEC) 
 	rm -f $(OBJECTS_MXQ_SUBMIT)
 	rm -f $(OBJECTS_MXQ_LIST)
 
 .PHONY: install
-install: mxq_exec mxq_submit mxq_list
+install: $(PROGRAMS)
 	$(call quiet-installdir,0755,${DESTDIR}${BINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
 	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_exec,${DESTDIR}${BINDIR}/mxq_exec)
