@@ -65,7 +65,7 @@
 
 void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
 {
-    MYSQL_ROW r;
+    int r;
 
     assert(sizeof(uid_t)  <= 4);
     assert(sizeof(gid_t)  <= 4);
@@ -74,33 +74,33 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
 
     memset(job, 0, sizeof(*job));
 
-    r = row;
+    r = 0;
 
-    safe_convert_string_to_ui64(*r++, &job->job_id);
-    safe_convert_string_to_ui8(*r++,  &job->job_status);
-    safe_convert_string_to_ui16(*r++, &job->job_priority);
+    safe_convert_string_to_ui64(row[r++], &job->job_id);
+    safe_convert_string_to_ui8(row[r++],  &job->job_status);
+    safe_convert_string_to_ui16(row[r++], &job->job_priority);
 
-    strncpy(job->group_id, *r++, sizeof(job->group_id)-1);
+    strncpy(job->group_id, row[r++], sizeof(job->group_id)-1);
 
-    safe_convert_string_to_ui8(*r++,   &job->group_status);
-    safe_convert_string_to_ui16(*r++,  &job->group_priority);
+    safe_convert_string_to_ui8(row[r++],   &job->group_status);
+    safe_convert_string_to_ui16(row[r++],  &job->group_priority);
 
-    safe_convert_string_to_ui32(*r++,  &job->user_uid);
-    strncpy(job->user_name,  *r++, sizeof(job->user_name)-1);
-    safe_convert_string_to_ui32(*r++,  &job->user_gid);
-    strncpy(job->user_group, *r++, sizeof(job->user_group)-1);
+    safe_convert_string_to_ui32(row[r++],  &job->user_uid);
+    strncpy(job->user_name,  row[r++], sizeof(job->user_name)-1);
+    safe_convert_string_to_ui32(row[r++],  &job->user_gid);
+    strncpy(job->user_group, row[r++], sizeof(job->user_group)-1);
 
-    safe_convert_string_to_ui16(*r++,  &job->job_threads);
-    safe_convert_string_to_ui64(*r++,  &job->job_memory);
-    safe_convert_string_to_ui32(*r++,  &job->job_time);
+    safe_convert_string_to_ui16(row[r++],  &job->job_threads);
+    safe_convert_string_to_ui64(row[r++],  &job->job_memory);
+    safe_convert_string_to_ui32(row[r++],  &job->job_time);
 
-    strncpy(job->job_workdir, *r++, sizeof(job->job_workdir)-1);
-    strncpy(job->job_command, *r++, sizeof(job->job_command)-1);
-    safe_convert_string_to_ui16(*r++,  &job->job_argc);
-    strncpy(job->job_argv,    *r++, sizeof(job->job_argv)-1);
+    strncpy(job->job_workdir, row[r++], sizeof(job->job_workdir)-1);
+    strncpy(job->job_command, row[r++], sizeof(job->job_command)-1);
+    safe_convert_string_to_ui16(row[r++],  &job->job_argc);
+    strncpy(job->job_argv,    row[r++], sizeof(job->job_argv)-1);
 
-    strncpy(job->job_stdout,  *r++, sizeof(job->job_stdout)-1);
-    strncpy(job->job_stderr,  *r++, sizeof(job->job_stderr)-1);
+    strncpy(job->job_stdout,  row[r++], sizeof(job->job_stdout)-1);
+    strncpy(job->job_stderr,  row[r++], sizeof(job->job_stderr)-1);
 
     if (streq(job->job_stdout, "/dev/null")) {
         strncpy(job->tmp_stdout, job->job_stdout, sizeof(job->tmp_stdout)-1);
@@ -114,14 +114,14 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
         snprintf(job->tmp_stderr, sizeof(job->tmp_stderr)-1, "%s.%d.mxqtmp", job->job_stderr, job->job_id);
     }
 
-    safe_convert_string_to_ui32(*r++,  &job->job_umask);
+    safe_convert_string_to_ui32(row[r++],  &job->job_umask);
 
-    strncpy(job->host_submit,    *r++, sizeof(job->host_submit)-1);
+    strncpy(job->host_submit,    row[r++], sizeof(job->host_submit)-1);
 
-    strncpy(job->server_id,      *r++, sizeof(job->server_id)-1);
-    strncpy(job->host_hostname,  *r++, sizeof(job->host_hostname)-1);
+    strncpy(job->server_id,      row[r++], sizeof(job->server_id)-1);
+    strncpy(job->host_hostname,  row[r++], sizeof(job->host_hostname)-1);
 
-    safe_convert_string_to_ui32(*r++,  &job->host_pid);
+    safe_convert_string_to_ui32(row[r++],  &job->host_pid);
 }
 
  struct mxq_job_full *mxq_mysql_select_next_job(MYSQL *mysql, char *hostname, char *serverid)
