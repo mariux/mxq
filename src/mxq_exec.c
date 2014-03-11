@@ -33,36 +33,6 @@
 #include "mxq_util.h"
 #include "mxq_mysql.h"
 
-
-#define MXQ_TASK_JOB_FORCE_APPEND  (1<<0)
-#define MXQ_TASK_JOB_FORCE_NEW     (1<<1)
-
-#define MXQ_JOB_STATUS_ACTIVE      (1)
-
-#define MXQ_SELECT_TASK_FULL \
-        " job_id," \
-        " job_name," \
-        " job_status," \
-        " job_priority," \
-        " user_uid," \
-        " user_name," \
-        " group_gid," \
-        " group_name," \
-        " task_id," \
-        " task_status," \
-        " task_priority," \
-        " task_threads, " \
-        " task_command," \
-        " task_argc," \
-        " task_argv," \
-        " task_workdir," \
-        " task_stdout," \
-        " task_stderr," \
-        " host_server_id," \
-        " host_hostname," \
-        " host_pid"
-
-
 void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
 {
     int r;
@@ -124,7 +94,7 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
     safe_convert_string_to_ui32(row[r++],  &job->host_pid);
 }
 
- struct mxq_job_full *mxq_mysql_select_next_job(MYSQL *mysql, char *hostname, char *serverid)
+struct mxq_job_full *mxq_mysql_select_next_job(MYSQL *mysql, char *hostname, char *serverid)
 {
     MYSQL_RES *mres;
     MYSQL_ROW  row;
@@ -278,7 +248,6 @@ int mxq_mysql_reserve_job(MYSQL  *mysql, char *hostname, char *server_id)
 }
 
 #define MXQ_TOTIME(x) ((double)(( (double)(x).tv_sec*1000000L + (double)(x).tv_usec)/1000000L))
-
 
 int mxq_mysql_finish_job(MYSQL *mysql, struct mxq_job_full *job)
 {
@@ -795,7 +764,6 @@ int setup_cronolog(char *cronolog, char *link, char *format)\
 
     return 1;
 }
-
 
 int main(int argc, char *argv[])
 {
