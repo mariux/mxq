@@ -200,3 +200,54 @@ group by
     group_priority,
     group_id;
 
+
+
+CREATE TABLE IF NOT EXISTS servers (
+   host_hostname  VARCHAR(1023)   DEFAULT NULL,
+   server_id      VARCHAR(1023)   DEFAULT NULL,
+   
+   server_status  INT1 UNSIGNED   NOT NULL DEFAULT 0,
+
+   host_threads   INT2 UNSIGNED   NOT NULL DEFAULT 1,
+   host_memory    INT8 UNSIGNED   NOT NULL DEFAULT 1024,
+   host_time      INT4 UNSIGNED   NOT NULL DEFAULT 15,
+   
+   UNIQUE (host_hostname(767), server_id(767)),
+   INDEX  (server_status),
+   INDEX  (host_threads),
+   INDEX  (host_memory),
+   INDEX  (host_time)
+);
+
+
+insert into servers values('testhost1', 'testserver1', 1, 40,  2048, 15);
+insert into servers values('testhost1', 'testserver2', 1, 40, 20480, 60);
+insert into servers values('testhost2', 'testserver3', 1, 80,  2048, 45);
+
+
+drop view v_job_schedule;
+create view v_job_schedule as
+select 
+    user_name,
+    group_id,
+    job_command,
+    job_threads,
+    job_memory,
+    job_time,
+    CEIL(MAX(stats_maxrss/1024)) as max_stats_maxrss_mib,
+    CEIL(TIMESTAMPDIFF(SECOND, MIN(CASE WHEN date_start THEN date_start END), MAX(CASE WHEN date_end THEN date_end ELSE CASE WHEN date_start THEN NOW() END END))/60) AS total_real_minutes,
+    COUNT(CASE WHEN job_status = 0 THEN job_status END) AS total_jobs_waiting,
+    COUNT(CASE WHEN job_status = 2 OR job_status = 1 THEN job_status END) AS total_jobs_active
+from
+    job
+group by 
+    job_command,
+    user_uid,
+    job_memory,
+    job_threads,
+    job_time,
+    CASE WHEN stats_status THEN stats_status ELSE 0 END,
+    group_priority,
+    group_id;
+
+
