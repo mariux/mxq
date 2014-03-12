@@ -720,6 +720,33 @@ int job_setup_environment(struct mxq_job_full *job)
     return 1;
 }
 
+int setup_stdin(char *fname)
+{
+    int fh;
+    int res;
+
+    fh = open(fname, O_RDONLY|O_NOFOLLOW);
+    if (fh == -1) {
+        log_msg(0, "open(%s) for stdin failed (%s)\n", fname, strerror(errno));
+        return 0;
+    }
+
+    if (fh != STDIN_FILENO) {
+        res = dup2(fh, STDIN_FILENO);
+        if (res == -1) {
+            log_msg(0, "dup2(fh=%d, %d) failed (%s)\n", fh, STDIN_FILENO, strerror(errno));
+            return 0;
+        }
+        res = close(fh);
+        if (res == -1) {
+            log_msg(0, "close(fh=%d) failed (%s)\n", fh, strerror(errno));
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 int setup_cronolog(char *cronolog, char *link, char *format)
 {
     int res;
@@ -860,6 +887,12 @@ int main(int argc, char *argv[])
     res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxq.log", "/var/log/%Y/mxq_log-%Y-%m");
     if (!res) {
         log_msg(0, "MAIN: cronolog setup failed. exiting.\n");
+        return 1;
+    }
+
+    res = setup_stdin("/dev/null");
+    if (!res) {
+        log_msg(0, "MAIN: stdin setup failed. exiting.\n");
         return 1;
     }
 
