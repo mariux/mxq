@@ -718,14 +718,14 @@ int job_setup_environment(struct mxq_job_full *job)
     umask(job->job_umask);
 
     return 1;
- }
+}
 
-int setup_cronolog(char *cronolog, char *link, char *format)\
+int setup_cronolog(char *cronolog, char *link, char *format)
 {
     int res;
     int pipe_fd[2];
     int pid;
-    
+
     res = pipe(pipe_fd);
     if (res == -1) {
         log_msg(0, "can't create pipe for cronolog: (%s)\n", strerror(errno));
