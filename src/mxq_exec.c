@@ -654,7 +654,9 @@ int job_setup_environment(struct mxq_job_full *job)
     int res;
     struct passwd *passwd;
     char *job_id_str;
+    char *threads_str;
     _cleanup_free_ char *job_id_str_buf = NULL;
+    _cleanup_free_ char *threads_str_buf = NULL;
     int fh;
 
     res = clearenv();
@@ -674,6 +676,13 @@ int job_setup_environment(struct mxq_job_full *job)
         job_id_str = "0";
     }
 
+    res = asprintf(&threads_str_buf, "%d", job->job_threads);
+    if (res != -1) {
+        threads_str = threads_str_buf;
+    } else {
+        threads_str = "0";
+    }
+
     setenv("JOB_ID",   job_id_str, 1);
     setenv("USER",     job->user_name, 1);
     setenv("USERNAME", job->user_name, 1);
@@ -684,6 +693,7 @@ int job_setup_environment(struct mxq_job_full *job)
     setenv("HOSTNAME", mxq_hostname(), 1);
 
     setenv("MXQ_JOBID",   job_id_str, 1);
+    setenv("MXQ_THREADS", threads_str, 1);
 
     res = initgroups(passwd->pw_name, job->user_gid);
     if (res == -1) {
