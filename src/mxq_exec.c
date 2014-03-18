@@ -683,6 +683,8 @@ int job_setup_environment(struct mxq_job_full *job)
     setenv("HOME",     passwd->pw_dir, 1);
     setenv("HOSTNAME", mxq_hostname(), 1);
 
+    setenv("MXQ_JOBID",   job_id_str, 1);
+
     res = initgroups(passwd->pw_name, job->user_gid);
     if (res == -1) {
         log_msg(0, "jobd_id=%d initgroups() failed. (%s)\n", job->job_id, strerror(errno));
