@@ -653,10 +653,8 @@ int job_setup_environment(struct mxq_job_full *job)
 {
     int res;
     struct passwd *passwd;
-    char *job_id_str;
-    char *threads_str;
-    _cleanup_free_ char *job_id_str_buf = NULL;
-    _cleanup_free_ char *threads_str_buf = NULL;
+    _cleanup_free_ char *job_id_str = NULL;
+    _cleanup_free_ char *threads_str = NULL;
     int fh;
 
     res = clearenv();
@@ -669,18 +667,16 @@ int job_setup_environment(struct mxq_job_full *job)
     assert(passwd != NULL);
     assert(streq(passwd->pw_name, job->user_name));
 
-    res = asprintf(&job_id_str_buf, "%d", job->job_id);
-    if (res != -1) {
-        job_id_str = job_id_str_buf;
-    } else {
-        job_id_str = "0";
+    res = asprintf(&job_id_str, "%d", job->job_id);
+    if (res == -1) {
+        log_msg(0, "jobd_id=%d asprintf(job_id) failed. (%s)\n", job->job_id, strerror(errno));
+        return 0;
     }
 
-    res = asprintf(&threads_str_buf, "%d", job->job_threads);
-    if (res != -1) {
-        threads_str = threads_str_buf;
-    } else {
-        threads_str = "0";
+    res = asprintf(&threads_str, "%d", job->job_threads);
+    if (res == -1) {
+        log_msg(0, "jobd_id=%d asprintf(threads) failed. (%s)\n", job->job_id, strerror(errno));
+        return 0;
     }
 
     setenv("JOB_ID",   job_id_str, 1);
