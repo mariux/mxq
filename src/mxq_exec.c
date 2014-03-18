@@ -202,7 +202,7 @@ int mxq_mysql_job_started(MYSQL *mysql, int job_id, int host_pid)
     return mysql_affected_rows(mysql);
 }
 
-int mxq_mysql_reserve_job(MYSQL  *mysql, char *hostname, char *server_id)
+int mxq_mysql_reserve_job(MYSQL  *mysql, char *hostname, char *server_id, u_int16_t threads)
 {
     assert(mysql);
 
@@ -233,9 +233,10 @@ int mxq_mysql_reserve_job(MYSQL  *mysql, char *hostname, char *server_id)
                 "AND host_hostname IS NULL "
                 "AND server_id IS NULL "
                 "AND host_pid IS NULL "
+                "AND job_threads <= %d "
                 "ORDER BY job_id "
                 "LIMIT 1",
-                q_hostname, q_server_id);
+                q_hostname, q_server_id, threads);
     if (res) {
         log_msg(0, "mxq_mysql_reserve_job: Failed to query database: Error: %s\n", mysql_error(mysql));
         sleep(10);
@@ -296,7 +297,7 @@ int mxq_mysql_finish_job(MYSQL *mysql, struct mxq_job_full *job)
     return mysql_affected_rows(mysql);
 }
 
-struct mxq_job_full *mxq_mysql_load_next_job(MYSQL  *mysql, char *hostname, char *server_id)
+struct mxq_job_full *mxq_mysql_load_next_job(MYSQL  *mysql, char *hostname, char *server_id, u_int16_t threads)
 {
     struct mxq_job_full *job = NULL;
     int res;
@@ -308,7 +309,7 @@ struct mxq_job_full *mxq_mysql_load_next_job(MYSQL  *mysql, char *hostname, char
             return job;
         }
 
-        res = mxq_mysql_reserve_job(mysql, hostname, server_id);
+        res = mxq_mysql_reserve_job(mysql, hostname, server_id, threads);
         if (res < 1) {
             return NULL;
         }
@@ -928,7 +929,7 @@ int main(int argc, char *argv[])
         }
 
         if (!job) {
-            if (!(job = mxq_mysql_load_next_job(mysql, mxq_hostname(), arg_server_id))) {
+            if (!(job = mxq_mysql_load_next_job(mysql, mxq_hostname(), arg_server_id, threads_max))) {
                 log_msg(0, "MAIN: action=wait_for_task slots_running=%d slots_available=%d  \n", threads_current, threads_max);
                 sleep(1);
                 continue;
