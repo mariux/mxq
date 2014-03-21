@@ -716,9 +716,11 @@ int job_setup_environment(struct mxq_job_full *job)
     res += mxq_setenv("HOSTNAME", mxq_hostname());
     res += mxq_setenvf("MXQ_JOBID",   "%d",     job->job_id);
     res += mxq_setenvf("MXQ_THREADS", "%d",     job->job_threads);
+    res += mxq_setenvf("MXQ_MEMORY",  "%d",     job->job_memory);
+    res += mxq_setenvf("MXQ_TIME",    "%d",     job->job_time);
     res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", job->host_hostname, job->server_id);
 
-    if (res != 11) {
+    if (res != 13) {
         log_msg(0, "jobd_id=%d setting up environment variables failed!\n", job->job_id);
         return 0;
     }
