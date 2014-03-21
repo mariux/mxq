@@ -650,13 +650,49 @@ int mxq_mysql_finish_reaped_jobs(MYSQL *mysql, struct mxq_job_full_list *job_lis
     return cnt;
 }
 
+
+static int mxq_setenv(const char *name, const char *value)
+{
+    int res;
+
+    res = setenv(name, value, 1);
+    if (res == -1) {
+        log_msg(0, "mxq_setenv(%s, %s) failed! (%s)\n", name, value, strerror(errno));
+        return 0;
+    }
+
+    return 1;
+}
+
+static int mxq_setenvf(const char *name, char *fmt, ...)
+{
+    va_list ap;
+    _cleanup_free_ char *value = NULL;
+    size_t len;
+    int res;
+
+    assert(name);
+    assert(*name);
+    assert(fmt);
+
+    va_start(ap, fmt);
+    len = vasprintf(&value, fmt, ap);
+    va_end(ap);
+
+    if (len == -1) {
+        log_msg(0, "mxq_setenvf(%s, %s, ...) failed! (%s)\n", name, fmt, strerror(errno));
+        return 0;
+    }
+
+    return mxq_setenv(name, value);
+}
+
+
+
 int job_setup_environment(struct mxq_job_full *job)
 {
     int res;
     struct passwd *passwd;
-    _cleanup_free_ char *job_id_str = NULL;
-    _cleanup_free_ char *threads_str = NULL;
-    _cleanup_free_ char *hostid_str = NULL;
     int fh;
 
     res = clearenv();
@@ -669,36 +705,23 @@ int job_setup_environment(struct mxq_job_full *job)
     assert(passwd != NULL);
     assert(streq(passwd->pw_name, job->user_name));
 
-    res = asprintf(&job_id_str, "%d", job->job_id);
-    if (res == -1) {
-        log_msg(0, "jobd_id=%d asprintf(job_id) failed. (%s)\n", job->job_id, strerror(errno));
+    res = 0;
+    res += mxq_setenvf("JOB_ID", "%d", job->job_id);
+    res += mxq_setenv("USER",     job->user_name);
+    res += mxq_setenv("USERNAME", job->user_name);
+    res += mxq_setenv("LOGNAME",  job->user_name);
+    res += mxq_setenv("PATH",     "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/local/package/bin");
+    res += mxq_setenv("PWD",      job->job_workdir);
+    res += mxq_setenv("HOME",     passwd->pw_dir);
+    res += mxq_setenv("HOSTNAME", mxq_hostname());
+    res += mxq_setenvf("MXQ_JOBID",   "%d",     job->job_id);
+    res += mxq_setenvf("MXQ_THREADS", "%d",     job->job_threads);
+    res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", job->host_hostname, job->server_id);
+
+    if (res != 11) {
+        log_msg(0, "jobd_id=%d setting up environment variables failed!\n", job->job_id);
         return 0;
     }
-
-    res = asprintf(&threads_str, "%d", job->job_threads);
-    if (res == -1) {
-        log_msg(0, "jobd_id=%d asprintf(threads) failed. (%s)\n", job->job_id, strerror(errno));
-        return 0;
-    }
-
-    res = asprintf(&hostid_str, "%s::%s", job->host_hostname, job->server_id);
-    if (res == -1) {
-        log_msg(0, "jobd_id=%d asprintf(hostid) failed. (%s)\n", job->job_id, strerror(errno));
-        return 0;
-    }
-
-    setenv("JOB_ID",   job_id_str, 1);
-    setenv("USER",     job->user_name, 1);
-    setenv("USERNAME", job->user_name, 1);
-    setenv("LOGNAME",  job->user_name, 1);
-    setenv("PATH",     "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/local/package/bin", 1);
-    setenv("PWD",      job->job_workdir , 1);
-    setenv("HOME",     passwd->pw_dir, 1);
-    setenv("HOSTNAME", mxq_hostname(), 1);
-
-    setenv("MXQ_JOBID",   job_id_str, 1);
-    setenv("MXQ_THREADS", threads_str, 1);
-    setenv("MXQ_HOSTID",  hostid_str, 1);
 
     res = initgroups(passwd->pw_name, job->user_gid);
     if (res == -1) {
