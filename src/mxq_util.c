@@ -92,14 +92,14 @@ int safe_convert_string_to_ull(char *string, unsigned long long int *integer)
     char *endptr;
 
     assert(integer);
-    
+
     if (!string) {
         *integer = 0;
         return 1;
     }
-        
+
     errno = 0;
-    
+
     ull = strtoull(string, &endptr, 0);
 
     if (errno) {
