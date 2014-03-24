@@ -14,9 +14,9 @@ struct mxq_mysql {
 MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql);
 void mxq_mysql_close(MYSQL *mysql);
 
-int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...);
+int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
 
-MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...);
+MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
 
 char *mxq_mysql_escape_string(MYSQL *mysql, char *s);
 

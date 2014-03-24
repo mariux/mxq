@@ -174,10 +174,10 @@ void print_running(struct mxq_status *s)
     
     printf("\n%s :: %s :: %s\n",
         s->user_name, s->group_id, s->job_command);
-    printf("\tjobs: %d running: %d inq: %d finished: %d (%.2f%%)\n",
+    printf("\tjobs: %lu running: %lu inq: %lu finished: %lu (%.2f%%)\n",
            s->total_jobs, s->total_jobs_runnning, s->total_jobs_in_q, 
            s->total_jobs_done, (double)s->total_jobs_done*100/s->total_jobs);
-    printf("\tmaximum memory used by a single finished job (so far): %d MiB\n",
+    printf("\tmaximum memory used by a single finished job (so far): %lu MiB\n",
            s->max_stats_maxrss_mib);
 
 
@@ -259,7 +259,7 @@ void print_finished(struct mxq_status *s)
     
     printf("\n%s :: %s :: %s\n",
         s->user_name, s->group_id, s->job_command);
-    printf("\t%d jobs\t%d MiB\n",
+    printf("\t%lu jobs\t%lu MiB\n",
            s->total_jobs, s->max_stats_maxrss_mib);
 
     if (WIFEXITED(status)) {

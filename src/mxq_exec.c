@@ -75,13 +75,13 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
     if (streq(job->job_stdout, "/dev/null")) {
         strncpy(job->tmp_stdout, job->job_stdout, sizeof(job->tmp_stdout)-1);
     } else {
-        snprintf(job->tmp_stdout, sizeof(job->tmp_stdout)-1, "%s.%d.mxqtmp", job->job_stdout, job->job_id);
+        snprintf(job->tmp_stdout, sizeof(job->tmp_stdout)-1, "%s.%lu.mxqtmp", job->job_stdout, job->job_id);
     }
 
     if (streq(job->job_stderr, "/dev/null")) {
         strncpy(job->tmp_stderr, job->job_stderr, sizeof(job->job_stderr)-1);
     } else {
-        snprintf(job->tmp_stderr, sizeof(job->tmp_stderr)-1, "%s.%d.mxqtmp", job->job_stderr, job->job_id);
+        snprintf(job->tmp_stderr, sizeof(job->tmp_stderr)-1, "%s.%lu.mxqtmp", job->job_stderr, job->job_id);
     }
 
     safe_convert_string_to_ui32(row[r++],  &job->job_umask);
@@ -91,7 +91,7 @@ void mxq_mysql_row_to_job(struct mxq_job_full *job, MYSQL_ROW row)
     strncpy(job->server_id,      row[r++], sizeof(job->server_id)-1);
     strncpy(job->host_hostname,  row[r++], sizeof(job->host_hostname)-1);
 
-    safe_convert_string_to_ui32(row[r++],  &job->host_pid);
+    safe_convert_string_to_ui32(row[r++],  (u_int32_t *)&((job->host_pid)));
 }
 
 struct mxq_job_full *mxq_mysql_select_next_job(MYSQL *mysql, char *hostname, char *serverid)
@@ -264,17 +264,17 @@ int mxq_mysql_finish_job(MYSQL *mysql, struct mxq_job_full *job)
                     "stats_utime = %f, "
                     "stats_stime = %f, "
                     "stats_real = %f, "
-                    "stats_maxrss = %d, "
-                    "stats_minflt = %d, "
-                    "stats_majflt = %d, "
-                    "stats_nswap = %d, "
-                    "stats_inblock = %d, "
-                    "stats_oublock = %d, "
-                    "stats_nvcsw = %d, "
-                    "stats_nivcsw = %d, "
+                    "stats_maxrss = %ld, "
+                    "stats_minflt = %ld, "
+                    "stats_majflt = %ld, "
+                    "stats_nswap = %ld, "
+                    "stats_inblock = %ld, "
+                    "stats_oublock = %ld, "
+                    "stats_nvcsw = %ld, "
+                    "stats_nivcsw = %ld, "
                     "job_status = %d "
                     "WHERE job_status = 2 "
-                    "AND job_id = %d ",
+                    "AND job_id = %lu ",
                     job->stats_status,
                     MXQ_TOTIME(job->stats_rusage.ru_utime),
                     MXQ_TOTIME(job->stats_rusage.ru_stime),
@@ -550,24 +550,29 @@ void job_add_child_stats(struct mxq_job_full *job, struct mxq_reaped_child *chil
 int job_finish_cleanup_files(struct mxq_job_full *job)
 {
     int res;
+    int ret = 1;
     
     assert(job);
 
     if (!streq(job->job_stdout, "/dev/null")) {
-        log_msg(0, "job_id=%d action=rename-stdout tmp_stdout=%s job_stdout=%s\n", job->job_id, job->tmp_stdout, job->job_stdout);
+        log_msg(0, "job_id=%lu action=rename-stdout tmp_stdout=%s job_stdout=%s\n", job->job_id, job->tmp_stdout, job->job_stdout);
         res = rename(job->tmp_stdout, job->job_stdout);
         if (res == -1) {
-            log_msg(0, "job_id=%d rename(%s, %s) failed: %s\n", job->job_id, job->tmp_stdout, job->job_stdout, strerror(errno));
+            log_msg(0, "job_id=%lu rename(%s, %s) failed: %s\n", job->job_id, job->tmp_stdout, job->job_stdout, strerror(errno));
+            ret = 0;
         }
     }
 
     if (!streq(job->job_stderr, "/dev/null") && !streq(job->job_stderr, job->job_stdout)) {
-        log_msg(0, "job_id=%d action=rename-stderr tmp_stderr=%s job_stderr=%s\n", job->job_id, job->tmp_stderr, job->job_stderr);
+        log_msg(0, "job_id=%lu action=rename-stderr tmp_stderr=%s job_stderr=%s\n", job->job_id, job->tmp_stderr, job->job_stderr);
         res = rename(job->tmp_stderr, job->job_stderr);
         if (res == -1) {
-            log_msg(0, "job_id=%d rename(%s, %s) failed: %s\n", job->job_id, job->tmp_stderr, job->job_stderr, strerror(errno));
+            log_msg(0, "job_id=%lu rename(%s, %s) failed: %s\n", job->job_id, job->tmp_stderr, job->job_stderr, strerror(errno));
+            ret = 0;
         }
     }
+
+    return ret;
 }
 
 
@@ -596,7 +601,7 @@ void job_finish_log(struct mxq_job_full *job)
             exit_status = "continued";
     }
 
-    log_msg(0, "job_id=%d exit_status=%s exit_code=%d threads=%d status=%d maxrss=%d usr=%lf sys=%lf real=%lf\n",
+    log_msg(0, "job_id=%lu exit_status=%s exit_code=%d threads=%d status=%d maxrss=%ld usr=%lf sys=%lf real=%lf\n",
                 job->job_id,
                 exit_status,
                 exit_code,
@@ -697,7 +702,7 @@ int job_setup_environment(struct mxq_job_full *job)
 
     res = clearenv();
     if (res != 0) {
-        log_msg(0, "jobd_id=%d clearenv() failed. (%s)\n", job->job_id, strerror(errno));
+        log_msg(0, "job_id=%lu clearenv() failed. (%s)\n", job->job_id, strerror(errno));
         return 0;
     }
 
@@ -721,19 +726,19 @@ int job_setup_environment(struct mxq_job_full *job)
     res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", job->host_hostname, job->server_id);
 
     if (res != 13) {
-        log_msg(0, "jobd_id=%d setting up environment variables failed!\n", job->job_id);
+        log_msg(0, "job_id=%lu setting up environment variables failed!\n", job->job_id);
         return 0;
     }
 
     res = initgroups(passwd->pw_name, job->user_gid);
     if (res == -1) {
-        log_msg(0, "jobd_id=%d initgroups() failed. (%s)\n", job->job_id, strerror(errno));
+        log_msg(0, "job_id=%lu initgroups() failed. (%s)\n", job->job_id, strerror(errno));
         return 0;
     }
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {
-        log_msg(0, "job_id=%d open(%s) failed (%s)\n", job->job_id, "/proc/self/loginuid", strerror(errno));
+        log_msg(0, "job_id=%lu open(%s) failed (%s)\n", job->job_id, "/proc/self/loginuid", strerror(errno));
         return 0;
     }
     dprintf(fh, "%d", job->user_uid);
@@ -741,19 +746,19 @@ int job_setup_environment(struct mxq_job_full *job)
 
     res = setregid(job->user_gid, job->user_gid);
     if (res == -1) {
-        log_msg(0, "job_id=%d: setregid(%d, %d) failed (%s)\n", job->job_id, job->user_gid, job->user_gid, strerror(errno));
+        log_msg(0, "job_id=%lu: setregid(%d, %d) failed (%s)\n", job->job_id, job->user_gid, job->user_gid, strerror(errno));
         return 0;
     }
 
     res = setreuid(job->user_uid, job->user_uid);
     if (res == -1) {
-        log_msg(0, "job_id=%d: setreuid(%d, %d) failed (%s)\n", job->job_id, job->user_uid, job->user_uid, strerror(errno));
+        log_msg(0, "job_id=%lu: setreuid(%d, %d) failed (%s)\n", job->job_id, job->user_uid, job->user_uid, strerror(errno));
         return 0;
     }
 
     res = chdir(job->job_workdir);
     if (res == -1) {
-        log_msg(0, "job_id=%d: chdir(%s) failed (%s)\n", job->job_id, job->job_workdir, strerror(errno));
+        log_msg(0, "job_id=%lu: chdir(%s) failed (%s)\n", job->job_id, job->job_workdir, strerror(errno));
         return 0;
     }
 
@@ -814,7 +819,7 @@ int setup_cronolog(char *cronolog, char *link, char *format)
         close(pipe_fd[0]);
         close(pipe_fd[1]);
         execl(cronolog, cronolog, "--link", link, format, NULL);
-        log_msg(0, "task %d: execl('%s', ...) failed (%s)\n", cronolog, strerror(errno));
+        log_msg(0, "execl('%s', ...) failed (%s)\n", cronolog, strerror(errno));
         _exit(EX__MAX + 1);
     }
     
@@ -959,11 +964,11 @@ int main(int argc, char *argv[])
                 sleep(1);
                 continue;
             }
-            log_msg(0, "job %d: job loaded..\n", job->job_id);
+            log_msg(0, "job_id=%lu: job loaded..\n", job->job_id);
         }
 
         if (threads_current + job->job_threads > threads_max) {
-            log_msg(0, "job_id=%d action=wait_for_slots slots_running=%d slots_available=%d slots_needed=%d slots_needed_by_task=%d\n",
+            log_msg(0, "job_id=%lu action=wait_for_slots slots_running=%d slots_available=%d slots_needed=%d slots_needed_by_job_id=%d\n",
                         job->job_id,
                         threads_current,
                         threads_max,
@@ -994,74 +999,74 @@ int main(int argc, char *argv[])
                 perror("argv = stringtostringvec()");
                 _exit(EX__MAX + 1);
             }
-            log_msg(0, "job_id=%d action=delayed-execute command=%s threads=%d uid=%d gid=%d umask=%04o workdir=%s\n",
+            log_msg(0, "job_id=%lu action=delayed-execute command=%s threads=%d uid=%d gid=%d umask=%04o workdir=%s\n",
                         job->job_id, argv[0], job->job_threads, job->user_uid, job->user_gid, job->job_umask, job->job_workdir);
 
-            log_msg(0, "job_id=%d action=redirect-stderr tmpstderr=%s\n", job->job_id, job->tmp_stderr);
+            log_msg(0, "job_id=%lu action=redirect-stderr tmpstderr=%s\n", job->job_id, job->tmp_stderr);
             if (!streq(job->tmp_stderr, "/dev/null")) {
                 res = unlink(job->tmp_stderr);
                 if (res == -1 && errno != ENOENT) {
-                    log_msg(0, "task=%d unlink(%s) failed (%s)\n", job->job_id, job->tmp_stderr, strerror(errno));
+                    log_msg(0, "job_id=%lu unlink(%s) failed (%s)\n", job->job_id, job->tmp_stderr, strerror(errno));
                     _exit(EX__MAX + 1);
                 }
             }
             fh = open(job->tmp_stderr, O_WRONLY|O_CREAT|O_NOFOLLOW|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
             if (fh == -1) {
-                log_msg(0, "task=%d open(%s) failed (%s)\n", job->job_id, job->tmp_stderr, strerror(errno));
+                log_msg(0, "job_id=%lu open(%s) failed (%s)\n", job->job_id, job->tmp_stderr, strerror(errno));
                 _exit(EX__MAX + 1);
             }
             if (fh != STDERR_FILENO) {
                 res = dup2(fh, STDERR_FILENO);
                 if (res == -1) {
-                    log_msg(0, "task=%d dup2(fh=%d, %d) failed (%s)\n", job->job_id, fh, STDERR_FILENO, strerror(errno));
+                    log_msg(0, "job_id=%lu dup2(fh=%d, %d) failed (%s)\n", job->job_id, fh, STDERR_FILENO, strerror(errno));
                     _exit(EX__MAX + 1);
                 }
                 res = close(fh);
                 if (res == -1) {
-                    log_msg(0, "task=%d close(fh=%d) failed (%s)\n", job->job_id, fh, strerror(errno));
+                    log_msg(0, "job_id=%lu close(fh=%d) failed (%s)\n", job->job_id, fh, strerror(errno));
                     _exit(EX__MAX + 1);
                 }
             }
 
             if (!streq(job->tmp_stdout, job->tmp_stderr)) {
-                log_msg(0, "task=%d action=redirect-stdout stdout=%s\n", job->job_id, job->tmp_stdout);
+                log_msg(0, "job_id=%lu action=redirect-stdout stdout=%s\n", job->job_id, job->tmp_stdout);
 
                 if (!streq(job->tmp_stdout, "/dev/null")) {
                     res = unlink(job->tmp_stdout);
                     if (res == -1 && errno != ENOENT) {
-                        log_msg(0, "task=%d unlink(%s) failed (%s)\n", job->job_id, job->tmp_stdout, strerror(errno));
+                        log_msg(0, "job_id=%lu unlink(%s) failed (%s)\n", job->job_id, job->tmp_stdout, strerror(errno));
                         _exit(EX__MAX + 1);
                     }
                 }
 
                 fh = open(job->tmp_stdout, O_WRONLY|O_CREAT|O_NOFOLLOW|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
                 if (fh == -1) {
-                    log_msg(0, "task=%d open(%s) failed (%s)\n", job->job_id, job->tmp_stdout, strerror(errno));
+                    log_msg(0, "job_id=%lu open(%s) failed (%s)\n", job->job_id, job->tmp_stdout, strerror(errno));
                     _exit(EX__MAX + 1);
                 }
                 if (fh != STDOUT_FILENO) {
                     res = dup2(fh, STDOUT_FILENO);
                     if (res == -1) {
-                        log_msg(0, "task=%d dup2(fh=%d, %d) failed (%s)\n", job->job_id, fh, STDOUT_FILENO, strerror(errno));
+                        log_msg(0, "job_id=%lu dup2(fh=%d, %d) failed (%s)\n", job->job_id, fh, STDOUT_FILENO, strerror(errno));
                         _exit(EX__MAX + 1);
                     }
                     res = close(fh);
                     if (res == -1) {
-    //                    log_msg(0, "task=%d close(fh=%d) failed (%s)\n", task->id, fh, strerror(errno));
+    //                    log_msg(0, "job_id=%lu close(fh=%d) failed (%s)\n", task->id, fh, strerror(errno));
                         _exit(EX__MAX + 1);
                     }
                 }
             } else {
-                log_msg(0, "task=%d action=redirect-stdout stdout=stderr(%s)\n", job->job_id, job->tmp_stdout);
+                log_msg(0, "job_id=%lu action=redirect-stdout stdout=stderr(%s)\n", job->job_id, job->tmp_stdout);
                 res = dup2(STDERR_FILENO, STDOUT_FILENO);
                 if (res == -1) {
-                    log_msg(0, "task=%d dup2(STDERR_FILENO=%d, STDOUT_FILENO=%d) failed (%s)\n", job->job_id, STDERR_FILENO, STDOUT_FILENO, strerror(errno));
+                    log_msg(0, "job_id=%lu dup2(STDERR_FILENO=%d, STDOUT_FILENO=%d) failed (%s)\n", job->job_id, STDERR_FILENO, STDOUT_FILENO, strerror(errno));
                     _exit(EX__MAX + 1);
                 }
             }
 
             execvp(argv[0], argv);
-            log_msg(0, "task %d: execvp('%s', ...) failed (%s)\n", job->job_id, job->job_command, strerror(errno));
+            log_msg(0, "job_id=%lu: execvp('%s', ...) failed (%s)\n", job->job_id, job->job_command, strerror(errno));
             _exit(EX__MAX + 1);
         }
 

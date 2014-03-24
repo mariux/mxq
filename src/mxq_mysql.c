@@ -7,6 +7,8 @@
 #include <assert.h>
 #include <stdarg.h>
 
+#include <unistd.h>
+
 #include <mysql.h>
 
 #include "mxq_mysql.h"

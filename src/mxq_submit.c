@@ -151,7 +151,7 @@ static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job_full *j)
                 "user_gid = %d, "
                 "user_group = '%s', "
                 "job_threads = %d, "
-                "job_memory = %d, "
+                "job_memory = %lu, "
                 "job_time = %d, "
                 "job_workdir = '%s', "
                 "job_command = '%s', "
@@ -444,7 +444,7 @@ int main(int argc, char *argv[])
     /******************************************************************/
 
     printf("mxq_group_id=%s\n", job.group_id);
-    printf("mxq_job_id=%d\n", job.job_id);
+    printf("mxq_job_id=%lu\n", job.job_id);
 
     return 0;
 }

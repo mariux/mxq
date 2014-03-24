@@ -76,6 +76,8 @@ CFLAGS_MYSQL += $(shell mysql_config --cflags)
 CFLAGS += -DMXQ_MYSQL_DEFAULT_FILE=\"${SYSCONFDIR}/mxq/mysql.cnf\"
 CFLAGS += $(CFLAGS_MYSQL)
 CFLAGS += -g
+CFLAGS += -Wall
+CFLAGS += -Wno-unused-variable
 
 PROGRAMS += mxq_exec
 PROGRAMS += mxq_submit

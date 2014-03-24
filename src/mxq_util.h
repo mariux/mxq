@@ -10,14 +10,13 @@
 
 char *mxq_hostname(void);
 
-int log_msg(int prio, const char *fmt, ...);
+int log_msg(int prio, const char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
 
 void mxq_free_job(struct mxq_job_full *job);
 
 char **stringtostringvec(int argc, char *s);
 char *stringvectostring(int argc, char *argv[]);
 int chrcnt(char *s, char c);
-
 
 int safe_convert_string_to_ull(char *string, unsigned long long int *integer);
 
@@ -42,13 +41,5 @@ static inline void freep(void *p) {
 }
 
 #define _cleanup_free_ _cleanup_(freep)
-
-static inline void free_mxq_taskp(void *p) {
-    mxq_free_task(*(void**) p);
-    free(*(void**) p);
-}
-
-#define _cleanup_free_mxq_task_ _cleanup_(free_mxq_taskp)
-
 
 #endif
