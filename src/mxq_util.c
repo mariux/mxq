@@ -177,6 +177,150 @@ void mxq_free_job(struct mxq_job_full *job)
     free(job);
 }
 
+char **strvec_new(void)
+{
+    char **strvec;
+
+    strvec = calloc(sizeof(*strvec), 1);
+
+    return strvec;
+}
+
+size_t strvec_length(char* const* strvec)
+{
+    size_t len;
+
+    assert(strvec);
+
+    for (len=0; *strvec; strvec++, len++);
+
+    return len;
+}
+
+int strvec_push_str(char*** strvecp, char* str)
+{
+    char **sv;
+
+    size_t len;
+
+    assert(strvecp);
+    assert(*strvecp);
+    assert(str);
+
+    len = strvec_length(*strvecp);
+
+    sv = realloc(*strvecp, sizeof(**strvecp) * (len + 2));
+    if (!sv) {
+       return 0;
+    }
+
+    sv[len]   = str;
+    sv[len+1] = NULL;
+
+    *strvecp = sv;
+
+    return 1;
+}
+
+int strvec_push_strvec(char ***strvecp, char **strvec)
+{
+    char **sv;
+
+    size_t len1;
+    size_t len2;
+
+    assert(strvecp);
+    assert(*strvecp);
+    assert(strvec);
+
+    len1 = strvec_length(*strvecp);
+    len2 = strvec_length(strvec);
+
+    sv = realloc(*strvecp, sizeof(**strvecp) * (len1 + len2 + 1));
+    if (!sv) {
+       return 0;
+    }
+
+    memcpy(sv+len1, strvec, sizeof(*strvec) * (len2 + 1));
+
+    *strvecp = sv;
+
+    return 1;
+}
+
+char *strvec_to_str(char **strvec)
+{
+    char **sv;
+    char*  buf;
+    char*  s;
+    size_t totallen;
+    char*  str;
+
+    assert(strvec);
+
+    totallen = 0;
+    for (sv = strvec; *sv; sv++) {
+        totallen += strlen(*sv);
+    }
+
+    buf = malloc(sizeof(*buf) * (totallen * 2 + 2) + 1);
+    if (!buf)
+        return NULL;
+
+    str  = buf;
+    *str = 0;
+
+    for (sv = strvec; *sv; sv++) {
+        for (s=*sv; *s; s++) {
+            switch (*s) {
+                case '\\':
+                    *(str++) = '\\';
+                    *(str++) = '\\';
+                    break;
+
+                default:
+                    *(str++) = *s;
+            }
+        }
+        *(str++) = '\\';
+        *(str++) = '0';
+    }
+
+    *str = '\0';
+
+    return buf;
+}
+
+char **str_to_strvec(char *str)
+{
+    int res;
+    char* s;
+    char* p;
+    char** strvec;
+
+    strvec = strvec_new();
+    if (!strvec)
+        return NULL;
+
+    for (s=str; *s; s=p+2) {
+       p = strstr(s, "\\0");
+       if (!p) {
+           free(strvec);
+           errno = EINVAL;
+           return NULL;
+       }
+       *p = 0;
+
+       res = strvec_push_str(&strvec, s);
+       if (!res) {
+          free(strvec);
+          return NULL;
+       }
+    }
+
+    return strvec;
+}
+
 char *stringvectostring(int argc, char *argv[])
 {
     int     i,j,k;

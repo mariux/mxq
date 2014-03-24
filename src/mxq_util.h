@@ -26,7 +26,12 @@ int safe_convert_string_to_ui16(char *string, u_int16_t *integer);
 int safe_convert_string_to_ui32(char *string, u_int32_t *integer);
 int safe_convert_string_to_ui64(char *string, u_int64_t *integer);
 
-
+char** strvec_new(void);
+size_t strvec_length(char* const* strvec);
+int    strvec_push_str(char*** strvecp, char* str);
+int    strvec_push_strvec(char*** strvecp, char** strvec);
+char*  strvec_to_str(char **strvec);
+char** str_to_strvec(char *str);
 
 #define streq(a, b) (strcmp((a), (b)) == 0)
 
