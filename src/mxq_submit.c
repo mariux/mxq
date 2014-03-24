@@ -208,6 +208,7 @@ int main(int argc, char *argv[])
     char      *arg_stdout;
     char      *arg_stderr;
     mode_t     arg_umask;
+    char      **arg_env;
     char      *arg_mysql_default_file;
     char      *arg_mysql_default_group;
 
@@ -242,6 +243,8 @@ int main(int argc, char *argv[])
                 BEE_OPTION_REQUIRED_ARG("memory",       'm'),
                 BEE_OPTION_REQUIRED_ARG("time",         't'),
 
+                BEE_OPTION_REQUIRED_ARG("define",       'D'),
+
                 BEE_OPTION_REQUIRED_ARG("mysql-default-file",  'M'),
                 BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
                 BEE_OPTION_END
@@ -266,6 +269,9 @@ int main(int argc, char *argv[])
     arg_stdout         = "/dev/null";
     arg_stderr         = "stdout";
     arg_umask          = getumask();
+    arg_env            = strvec_new();
+
+    assert(arg_env);
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -342,6 +348,11 @@ int main(int argc, char *argv[])
                 arg_stderr = optctl.optarg;
                 break;
 
+            case 'D': {
+                char *arg_env_str;
+                assert(strvec_push_str(&arg_env, optctl.optarg));
+                break;
+            }
             case 'u':
                 if (!safe_convert_string_to_ui32(optctl.optarg, &arg_umask)) {
                     fprintf(stderr, "ignoring umask '%s': %s\n", optctl.optarg, strerror(errno));
