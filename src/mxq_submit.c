@@ -81,7 +81,7 @@ static void print_usage(void)
     "  amount of ressources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
     "\n"
-    "  -N | --group-id <name>            set group id (default: 'default')\n"
+    "  -N | --group-name <name>          set group name (default: 'default')\n"
     "  -P | --group-priority <priority>  set group priority (default: 127)\n"
     "\n"
     );
@@ -228,9 +228,11 @@ int main(int argc, char *argv[])
                 BEE_OPTION_NO_ARG("help",                 'h'),
                 BEE_OPTION_NO_ARG("version",              'V'),
 
-                BEE_OPTION_REQUIRED_ARG("group_id",       'N'),
-                BEE_OPTION_REQUIRED_ARG("group_priority", 'P'),
-                BEE_OPTION_REQUIRED_ARG("group-id",       'N'),
+                BEE_OPTION_REQUIRED_ARG("group_id",       1),
+                BEE_OPTION_REQUIRED_ARG("group_priority", 2),
+                BEE_OPTION_REQUIRED_ARG("group-id",       3),
+
+                BEE_OPTION_REQUIRED_ARG("group-name",     'N'),
                 BEE_OPTION_REQUIRED_ARG("group-priority", 'P'),
 
                 BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
@@ -301,35 +303,44 @@ int main(int argc, char *argv[])
 
             case 'p':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_priority)) {
-                    fprintf(stderr, "ignoring priority '%s': %s\n", optctl.optarg, strerror(errno));
+                    fprintf(stderr, "ignoring --priority '%s': %s\n", optctl.optarg, strerror(errno));
                 }
                 break;
 
+            case 1:
+                fprintf(stderr, "INFO: option --group_id is deprecated. please use --group-name instead.\n");
             case 'N':
                 arg_group_id = optctl.optarg;
                 break;
 
+            case 2:
+                fprintf(stderr, "INFO: option --group_priority is deprecated. please use --group-priority instead.\n");
             case 'P':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_group_priority)) {
-                    fprintf(stderr, "ignoring group_priority '%s': %s\n", optctl.optarg, strerror(errno));
+                    fprintf(stderr, "ignoring --group-priority '%s': %s\n", optctl.optarg, strerror(errno));
                 }
+                break;
+
+            case 3:
+                fprintf(stderr, "WARNING: option --group-id is deprecated (usage will change in next version). please use --group-name instead.\n");
+                arg_group_id = optctl.optarg;
                 break;
 
             case 'j':
                 if (!safe_convert_string_to_ui16(optctl.optarg, &arg_threads)) {
-                    fprintf(stderr, "ignoring threads '%s': %s\n", optctl.optarg, strerror(errno));
+                    fprintf(stderr, "ignoring --threads '%s': %s\n", optctl.optarg, strerror(errno));
                 }
                 break;
 
             case 'm':
                 if (!safe_convert_string_to_ui64(optctl.optarg, &arg_memory)) {
-                    fprintf(stderr, "ignoring time '%s': %s\n", optctl.optarg, strerror(errno));
+                    fprintf(stderr, "ignoring --memory '%s': %s\n", optctl.optarg, strerror(errno));
                 }
                 break;
 
             case 't':
                 if (!safe_convert_string_to_ui32(optctl.optarg, &arg_time)) {
-                    fprintf(stderr, "ignoring time '%s': %s\n", optctl.optarg, strerror(errno));
+                    fprintf(stderr, "ignoring --time '%s': %s\n", optctl.optarg, strerror(errno));
                 }
                 break;
 
@@ -355,7 +366,7 @@ int main(int argc, char *argv[])
             }
             case 'u':
                 if (!safe_convert_string_to_ui32(optctl.optarg, &arg_umask)) {
-                    fprintf(stderr, "ignoring umask '%s': %s\n", optctl.optarg, strerror(errno));
+                    fprintf(stderr, "ignoring --umask '%s': %s\n", optctl.optarg, strerror(errno));
                 }
                 break;
 
