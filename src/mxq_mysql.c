@@ -92,12 +92,18 @@ MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
     //printf("QUERY(%d): %s;\n", (int)len, query);
 
     res = mysql_real_query(mysql, query, len);
-    if (res)
+    if (res) {
+        MXQ_LOG_ERROR("mysql_real_query() failed. Error: %s\n", mysql_error(mysql));
+        MXQ_LOG_INFO("query was: %s\n", query);
         return NULL;
+    }
 
     mres = mysql_store_result(mysql);
-    if (!mres)
+    if (!mres) {
+        MXQ_LOG_ERROR("mysql_store_result() failed. Error: %s\n", mysql_error(mysql));
+        MXQ_LOG_INFO("query was: %s\n", query);
         return NULL;
+    }
 
     return mres;
 }

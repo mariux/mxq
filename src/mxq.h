@@ -4,6 +4,11 @@
 #include <sys/types.h>
 #include <sys/resource.h>
 
+#define MXQ_LOG_ERROR(fmt, ...) log_msg(0, "%s:%d:%s: " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__);
+#define MXQ_LOG_WARNING(fmt, ...) log_msg(1, "%s:%d:%s: " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__);
+#define MXQ_LOG_INFO(fmt, ...) log_msg(2, "%s:%d:%s: " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__);
+
+
 struct mxq_job_full {
     u_int64_t  job_id;
     u_int8_t   job_status;
