@@ -86,6 +86,33 @@ char *mxq_hostname(void)
     return hostname;
 }
 
+void *realloc_or_free(void *ptr, size_t size)
+{
+    void *new_ptr;
+    
+    new_ptr = realloc(ptr, size);
+    if (new_ptr)
+        return new_ptr;
+    
+    free(ptr);
+    return NULL;
+}
+
+void *realloc_forever(void *ptr, size_t size)
+{
+    void *new_ptr;
+
+    assert(size > 0);
+
+    do {
+        new_ptr = realloc(ptr, size);
+        if (new_ptr)
+            return new_ptr;
+
+        sleep(1);
+    } while (1);
+}
+
 int safe_convert_string_to_ull(char *string, unsigned long long int *integer)
 {
     unsigned long long int ull;
@@ -323,6 +350,23 @@ char *strvec_to_str(char **strvec)
     *str = '\0';
 
     return buf;
+}
+
+void strvec_free(char **strvec)
+{
+    char **sv;
+    char*  buf;
+    char*  s;
+    size_t totallen;
+    char*  str;
+
+    if (!strvec)
+        return;
+
+    for (sv = strvec; *sv; sv++) {
+        free(sv);
+    }
+    free(strvec);
 }
 
 char **str_to_strvec(char *str)
