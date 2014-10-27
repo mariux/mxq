@@ -46,93 +46,155 @@ endif
 
 DESTDIR=
 
+MXQ_MYSQL_DEFAULT_FILE = ${SYSCONFDIR}/mxq/mysql.cnf
+
+CFLAGS_MXQ_MYSQL_DEFAULT_FILE = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
+
+MYSQL_CONFIG = mysql_config
+
+CFLAGS_MYSQL += $(shell $(MYSQL_CONFIG) --cflags)
+LDLIBS_MYSQL += $(shell $(MYSQL_CONFIG) --libs)
+
+CFLAGS += -g
+CFLAGS += -Wall
+CFLAGS += -Wno-unused-variable
+
+########################################################################
+
 quiet-command = $(if ${V},${1},$(if ${2},@echo ${2} && ${1}, @${1}))
 quiet-install = $(call quiet-command,install -m ${1} ${2} ${3},"INSTALL [${1}] ${3}")
 quiet-installdir = $(call quiet-command,install -m ${1} -d ${2},"MKDIR [${1}] ${2}")
 quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4} ${5},"INSTALL (${2}:${3}) [${1}] ${5}")
 
-OBJECTS_MXQ_EXEC += mxq_exec.o
-OBJECTS_MXQ_EXEC += bee_getopt.o
-OBJECTS_MXQ_EXEC += mxq_mysql.o
-OBJECTS_MXQ_EXEC += mxq_util.o
-
-OBJECTS_MXQ_SUBMIT += mxq_submit.o
-OBJECTS_MXQ_SUBMIT += bee_getopt.o
-OBJECTS_MXQ_SUBMIT += mxq_mysql.o
-OBJECTS_MXQ_SUBMIT += mxq_util.o
-
-OBJECTS_MXQ_LIST += mxq_list.o
-OBJECTS_MXQ_LIST += bee_getopt.o
-OBJECTS_MXQ_LIST += mxq_mysql.o
-OBJECTS_MXQ_LIST += mxq_util.o
-
-LIBS_MYSQL += $(shell mysql_config --libs)
-
-LIBS_MXQ_EXEC += $(LIBS_MYSQL)
-
-LIBS_MXQ_SUBMIT += $(LIBS_MYSQL)
-
-LIBS_MXQ_LIST += $(LIBS_MYSQL)
-
-CFLAGS_MYSQL += $(shell mysql_config --cflags)
-
-CFLAGS += -DMXQ_MYSQL_DEFAULT_FILE=\"${SYSCONFDIR}/mxq/mysql.cnf\"
-CFLAGS += $(CFLAGS_MYSQL)
-CFLAGS += -g
-CFLAGS += -Wall
-CFLAGS += -Wno-unused-variable
-
-PROGRAMS += mxq_exec
-PROGRAMS += mxq_submit
-PROGRAMS += mxq_list
-
-.PHONY: all
-all: $(PROGRAMS)
-
-.PHONY: clean
-clean:
-	rm -f $(PROGRAMS)
-	rm -f $(OBJECTS_MXQ_EXEC) 
-	rm -f $(OBJECTS_MXQ_SUBMIT)
-	rm -f $(OBJECTS_MXQ_LIST)
-
-.PHONY: install
-install: $(PROGRAMS)
-	$(call quiet-installdir,0755,${DESTDIR}${BINDIR})
-	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
-	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_exec,${DESTDIR}${BINDIR}/mxq_exec)
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_submit,${DESTDIR}${BINDIR}/mxq_submit)
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_LIST),$(GROUP_LIST),mxq_list,${DESTDIR}${BINDIR}/mxq_list)
-
-mxq_exec: $(OBJECTS_MXQ_EXEC)
-	$(call quiet-command,gcc -o $@ $(OBJECTS_MXQ_EXEC) $(LIBS_MXQ_EXEC), "LD    $@")
-
-mxq_submit: $(OBJECTS_MXQ_SUBMIT)
-	$(call quiet-command,gcc -o $@ $(OBJECTS_MXQ_SUBMIT) $(LIBS_MXQ_SUBMIT), "LD    $@")
-
-mxq_list: $(OBJECTS_MXQ_LIST)
-	$(call quiet-command,gcc -o $@ $(OBJECTS_MXQ_LIST) $(LIBS_MXQ_LIST), "LD    $@")
+########################################################################
 
 %.o: %.c Makefile
 	$(call quiet-command,${CC} ${CFLAGS} -o $@ -c $<,"CC    $@")
 
+%:
+	$(call quiet-command,${CC} -o $@ $^ $(LDFLAGS) $(LDLIBS), "LINK  $@")
+
+########################################################################
+
+.PHONY: all
+all: build
+
+.PHONY: build
+
+########################################################################
+
+.PHONY: clean
+clean:
+	@for i in $(CLEAN) ; do \
+	    if [ -e "$$i" ] ; then \
+			if [ "$(V)" = 1 ] ; then \
+				echo "rm -f $$i" ; \
+			else \
+				echo "CLEAN $$i" ; \
+			fi ; \
+			rm -f $$i ; \
+        fi \
+    done
+
+########################################################################
+
+.PHONY: install
+install::
+	$(call quiet-installdir,0755,${DESTDIR}${BINDIR})
+	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
+
+########################################################################
+
+### bee_getopt.o -------------------------------------------------------
+
 bee_getopt.o: bee_getopt.h
 
+clean: CLEAN += bee_getopt.o
+
+### mxq_mysql.o --------------------------------------------------------
+
+mxq_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
 mxq_mysql.o: mxq_mysql.h
 mxq_mysql.o: mxq.h
 
-mxq_util.o: mxq_util.h
-mxq_util.o: mxq.h
+clean: CLEAN += mxq_mysql.o
+
+### mxq_exec.o ---------------------------------------------------------
 
 mxq_exec.o: mxq_mysql.h
 mxq_exec.o: mxq_util.h
 mxq_exec.o: mxq.h
 mxq_exec.o: bee_getopt.h
 
+clean: CLEAN += mxq_exec.o
+
+### mxq_submit.o -------------------------------------------------------
+
 mxq_submit.o: mxq_mysql.h
 mxq_submit.o: mxq_util.h
 mxq_submit.o: mxq.h
 mxq_submit.o: bee_getopt.h
 
+clean: CLEAN += mxq_submit.o
+
+### mxq_list.o ---------------------------------------------------------
+
 mxq_list.o: mxq.h
 
+clean: CLEAN += mxq_list.o
+
+### mxq_util.o ---------------------------------------------------------
+
+mxq_util.o: mxq_util.h
+mxq_util.o: mxq.h
+mxq_util.o: CFLAGS += $(CFLAGS_MYSQL)
+
+clean: CLEAN += mxq_util.o
+
+########################################################################
+
+### mxq_exec -----------------------------------------------------------
+
+mxq_exec: mxq_exec.o
+mxq_exec: bee_getopt.o
+mxq_exec: mxq_mysql.o
+mxq_exec: mxq_util.o
+mxq_exec: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxq_exec
+clean: CLEAN += mxq_exec
+
+install:: mxq_exec
+	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_exec,${DESTDIR}${BINDIR}/mxq_exec)
+
+### mxq_submit ---------------------------------------------------------
+
+mxq_submit: mxq_submit.o
+mxq_submit: bee_getopt.o
+mxq_submit: mxq_mysql.o
+mxq_submit: mxq_util.o
+mxq_submit: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxq_submit
+
+clean: CLEAN += mxq_submit
+
+install:: mxq_submit
+	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_submit,${DESTDIR}${BINDIR}/mxq_submit)
+
+### mxq_list -----------------------------------------------------------
+
+mxq_list: mxq_list.o
+mxq_list: bee_getopt.o
+mxq_list: mxq_mysql.o
+mxq_list: mxq_util.o
+mxq_list: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxq_list
+
+clean: CLEAN += mxq_list
+
+install:: mxq_list
+	$(call quiet-installforuser,$(SUID_MODE),$(USER_LIST),$(GROUP_LIST),mxq_list,${DESTDIR}${BINDIR}/mxq_list)
+
+########################################################################
