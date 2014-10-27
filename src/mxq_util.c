@@ -186,20 +186,50 @@ char **strvec_new(void)
     return strvec;
 }
 
-size_t strvec_length(char* const* strvec)
+static inline size_t strvec_length_cache(char **strvec, int32_t len)
 {
+    static char ** sv = NULL;
+    static size_t l = 0;
+    
+    if (likely(len == -1)) {
+        if (likely(sv == strvec)) {
+            return l;
+        }
+        return -1;
+    }
+
+    if (likely(sv == strvec)) {
+        l = len;
+    } else {
+        sv = strvec;
+        l = len;
+    }
+    return l;
+}
+
+size_t strvec_length(char ** strvec)
+{
+    char ** sv;
     size_t len;
 
     assert(strvec);
+    
+    sv = strvec;
 
-    for (len=0; *strvec; strvec++, len++);
+    len = strvec_length_cache(sv, -1);
+    if (len != -1)
+        return len;
 
+    for (; *sv; sv++);
+
+    len = sv-strvec;
+    strvec_length_cache(sv, len);
     return len;
 }
 
-int strvec_push_str(char*** strvecp, char* str)
+int strvec_push_str(char *** strvecp, char * str)
 {
-    char **sv;
+    char ** sv;
 
     size_t len;
 
@@ -214,8 +244,10 @@ int strvec_push_str(char*** strvecp, char* str)
        return 0;
     }
 
-    sv[len]   = str;
-    sv[len+1] = NULL;
+    sv[len++] = str;
+    sv[len] = NULL;
+
+    strvec_length_cache(sv, len);
 
     *strvecp = sv;
 
@@ -242,6 +274,8 @@ int strvec_push_strvec(char ***strvecp, char **strvec)
     }
 
     memcpy(sv+len1, strvec, sizeof(*strvec) * (len2 + 1));
+
+    strvec_length_cache(sv, len1+len2);
 
     *strvecp = sv;
 

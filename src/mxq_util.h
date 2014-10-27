@@ -26,9 +26,9 @@ int safe_convert_string_to_ui32(char *string, u_int32_t *integer);
 int safe_convert_string_to_ui64(char *string, u_int64_t *integer);
 
 char** strvec_new(void);
-size_t strvec_length(char* const* strvec);
-int    strvec_push_str(char*** strvecp, char* str);
-int    strvec_push_strvec(char*** strvecp, char** strvec);
+size_t strvec_length(char **strvec);
+int    strvec_push_str(char ***strvecp, char *str);
+int    strvec_push_strvec(char*** strvecp, char **strvec);
 char*  strvec_to_str(char **strvec);
 char** str_to_strvec(char *str);
 
@@ -41,5 +41,8 @@ static inline void freep(void *p) {
 }
 
 #define _cleanup_free_ _cleanup_(freep)
+
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
 
 #endif
