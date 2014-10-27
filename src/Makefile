@@ -25,6 +25,9 @@ else
     USER_SUBMIT  = $(shell id --user)
     GROUP_SUBMIT = $(shell id --group)
     
+    USER_LIST    = $(shell id --user)
+    GROUP_LIST   = $(shell id --group)
+
     USER_EXEC    = $(shell id --user)
     GROUP_EXEC   = $(shell id --group)
 
