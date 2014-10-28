@@ -143,6 +143,13 @@ mxq_list.o: mxq.h
 
 clean: CLEAN += mxq_list.o
 
+### mxq_group_dump.o ---------------------------------------------------
+
+mxq_group_dump.o: mxq.h
+mxq_group_dumo.o: mxq_group.h
+
+clean: CLEAN += mxq_group_dump.o
+
 ### mxq_util.o ---------------------------------------------------------
 
 mxq_util.o: mxq_util.h
@@ -150,6 +157,14 @@ mxq_util.o: mxq.h
 mxq_util.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_util.o
+
+### mxq_group.o --------------------------------------------------------
+
+mxq_group.o: mxq_group.h
+mxq_group.o: mxq_mysql.h
+mxq_group.o: CFLAGS += $(CFLAGS_MYSQL)
+
+clean: CLEAN += mxq_group.o
 
 ########################################################################
 
@@ -211,5 +226,17 @@ clean: CLEAN += mxq_list
 
 install:: mxq_list
 	$(call quiet-installforuser,$(SUID_MODE),$(USER_LIST),$(GROUP_LIST),mxq_list,${DESTDIR}${BINDIR}/mxq_list)
+
+### mxq_group_dump -----------------------------------------------------
+
+mxq_group_dump: mxq_group_dump.o
+mxq_group_dump: mxq_group.o
+mxq_group_dump: mxq_mysql.o
+mxq_group_dump: mxq_util.o
+mxq_group_dump: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxq_group_dump
+
+clean: CLEAN += mxq_group_dump
 
 ########################################################################

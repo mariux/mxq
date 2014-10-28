@@ -11,6 +11,8 @@
 
 #include <mysql.h>
 
+#include <errno.h>
+
 #include "mxq_mysql.h"
 #include "mxq_util.h"
 
@@ -107,6 +109,112 @@ MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
 
     return mres;
 }
+
+MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_count, MYSQL_BIND *param, MYSQL_BIND *result)
+{
+    MYSQL_STMT *stmt;
+    int res;
+
+    assert(mysql);
+    assert(stmt_str);
+    assert(field_count > 0);
+    assert(!param); // not implemented yet
+
+    stmt = mysql_stmt_init(mysql);
+    if (!stmt) {
+        print_error("mysql_stmt_init(mysql=%p)\n", mysql);
+        mxq_mysql_print_error(mysql);
+        return NULL;
+    }
+
+    res = mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
+    if (res) {
+        print_error("mysql_stmt_prepare(stmt=%p, stmt_str=\"%s\", length=%ld)\n", stmt, stmt_str, strlen(stmt_str));
+        mxq_mysql_stmt_print_error(stmt);
+        mysql_stmt_close(stmt);
+        return NULL;
+    }
+
+    if (mysql_stmt_field_count(stmt) != field_count) {
+        print_error("mysql_stmt_field_count(stmt=%p) does not match requested field_count (=%d)\n", stmt, field_count);
+        mysql_stmt_close(stmt);
+        return NULL;
+    }
+
+    if (result) {
+        res = mysql_stmt_bind_result(stmt, result);
+        if (res) {
+            print_error("mysql_stmt_bind_result(stmt=%p)\n", stmt);
+            mxq_mysql_stmt_print_error(stmt);
+            mysql_stmt_close(stmt);
+            return NULL;
+        }
+    }
+
+    res = mysql_stmt_execute(stmt);
+    if (res) {
+        print_error("mysql_stmt_execute(stmt=%p)\n", stmt);
+        mxq_mysql_stmt_print_error(stmt);
+        mysql_stmt_close(stmt);
+        return NULL;
+    }
+
+    return stmt;
+}
+
+
+void mxq_mysql_print_error(MYSQL *mysql)
+{
+    MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", mysql_errno(mysql), mysql_sqlstate(mysql), mysql_error(mysql));
+}
+
+void mxq_mysql_stmt_print_error(MYSQL_STMT *stmt)
+{
+    MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", mysql_stmt_errno(stmt), mysql_stmt_sqlstate(stmt), mysql_stmt_error(stmt));
+}
+
+int mxq_mysql_stmt_fetch_string(MYSQL_STMT *stmt, MYSQL_BIND *bind, int col, char **buf, unsigned long len)
+{
+    char *s;
+    int res;
+    
+    if (len > 0) {
+        s = malloc(len+1);
+        if (!s) {
+            errno = ENOMEM;
+            return 0;
+        }
+        bind[col].buffer = *buf = s;
+        bind[col].buffer_length = len;
+
+        res = mysql_stmt_fetch_column(stmt, &bind[col], col, 0);
+        s[len] = 0;
+
+        if (res) {
+            errno = EIO;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int mxq_mysql_stmt_fetch_row(MYSQL_STMT *stmt)
+{
+    int res;
+
+    res = mysql_stmt_fetch(stmt);
+
+    if (res && res != MYSQL_DATA_TRUNCATED) {
+        if (res == MYSQL_NO_DATA) {
+            errno = ENOENT;
+            return 0;
+        }
+        errno = EIO;
+        return 0;
+    }
+    return 1;
+}
+
 
 char *mxq_mysql_escape_str(MYSQL *mysql, char *s)
 {

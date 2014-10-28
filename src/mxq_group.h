@@ -2,6 +2,7 @@
 #define __MXQ_GROUP_H__ 1
 
 #include <stdint.h>
+#include <mysql.h>
 
 struct mxq_group {
    uint64_t  group_id;
@@ -40,5 +41,8 @@ struct mxq_group {
    struct timeval stats_max_stime;
    struct timeval stats_max_real;
 };
+
+int  mxq_group_load_groups(MYSQL *mysql, struct mxq_group **mxq_group);
+void mxq_group_free_content(struct mxq_group *g);
 
 #endif
