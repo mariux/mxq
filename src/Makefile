@@ -182,6 +182,21 @@ clean: CLEAN += mxq_submit
 install:: mxq_submit
 	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_submit,${DESTDIR}${BINDIR}/mxq_submit)
 
+### mxq_sub ------------------------------------------------------------
+
+mxq_sub: mxq_sub.o
+mxq_sub: bee_getopt.o
+mxq_sub: mxq_mysql.o
+mxq_sub: mxq_util.o
+mxq_sub: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxq_sub
+
+clean: CLEAN += mxq_sub
+
+install:: mxq_sub
+	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_sub,${DESTDIR}${BINDIR}/mxq_sub)
+
 ### mxq_list -----------------------------------------------------------
 
 mxq_list: mxq_list.o

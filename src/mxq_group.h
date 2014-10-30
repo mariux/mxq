@@ -1,0 +1,44 @@
+#ifndef __MXQ_GROUP_H__
+#define __MXQ_GROUP_H__ 1
+
+#include <stdint.h>
+
+struct mxq_group {
+   uint64_t  group_id;
+
+   char *    group_name;
+   unsigned long  _group_name_length;
+
+   uint8_t   group_status;
+   uint16_t  group_priority;
+
+   uint32_t  user_uid;
+   char *    user_name;
+   unsigned long  _user_name_length;
+
+   uint32_t  user_gid;
+   char *    user_group;
+   unsigned long  _user_group_length;
+
+   char *    job_command;
+   unsigned long  _job_command_length;
+
+   uint16_t  job_threads;
+   uint64_t  job_memory;
+   uint32_t  job_time;
+
+   uint64_t  group_jobs;
+   uint64_t  group_jobs_running;
+   uint64_t  group_jobs_finished;
+   uint64_t  group_jobs_failed;
+
+   uint64_t  group_slots_running;
+
+   uint32_t  stats_max_maxrss;
+
+   struct timeval stats_max_utime;
+   struct timeval stats_max_stime;
+   struct timeval stats_max_real;
+};
+
+#endif

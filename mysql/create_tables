@@ -1,6 +1,147 @@
 
 
 
+DROP TABLE mxq_group;
+CREATE TABLE IF NOT EXISTS mxq_group (
+   group_id       INT8 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   group_name     VARCHAR(511)  NOT NULL DEFAULT 'default',
+   group_status   INT1 UNSIGNED NOT NULL DEFAULT 0,
+   group_priority INT2 UNSIGNED NOT NULL DEFAULT 127,
+
+   user_uid        INT4 UNSIGNED   NOT NULL,
+   user_name       VARCHAR(255)    NOT NULL,
+   user_gid        INT4 UNSIGNED   NOT NULL,
+   user_group      VARCHAR(255)    NOT NULL,
+
+   job_command    VARCHAR(4095)   NOT NULL,
+
+   job_threads    INT2 UNSIGNED NOT NULL DEFAULT 1,
+   job_memory     INT8 UNSIGNED NOT NULL DEFAULT 1024,
+   job_time       INT4 UNSIGNED NOT NULL DEFAULT 15,
+
+   group_jobs          INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_running  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_finished INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_failed   INT8 UNSIGNED NOT NULL DEFAULT 0,
+
+   group_slots_running INT8 UNSIGNED NOT NULL DEFAULT 0,
+
+   group_mtime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+   stats_max_maxrss   INT4 NOT NULL DEFAULT 0,
+
+   stats_max_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_stime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_real_sec   INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   INDEX(group_id),
+   INDEX(group_name)
+);
+
+DROP TABLE mxq_job;
+CREATE TABLE IF NOT EXISTS mxq_job (
+   job_id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   job_status     INT1 UNSIGNED   NOT NULL DEFAULT 0,
+   job_priority   INT2 UNSIGNED   NOT NULL DEFAULT 127,
+
+   group_id       INT8 UNSIGNED   NOT NULL,
+
+   job_workdir    VARCHAR(4095)   NOT NULL,
+   job_argc       INT2 UNSIGNED   NOT NULL,
+   job_argv       VARCHAR(40959)  NOT NULL,
+
+   job_stdout     VARCHAR(4095)   NOT NULL DEFAULT '/dev/null',
+   job_stderr     VARCHAR(4095)   NOT NULL DEFAULT '/dev/null',
+
+   job_umask      INT4            NOT NULL,
+
+   host_submit    VARCHAR(64)     NOT NULL DEFAULT "localhost",
+
+   server_id      VARCHAR(1023)   NOT NULL DEFAULT "",
+
+   host_hostname  VARCHAR(64)     NOT NULL DEFAULT "",
+   host_pid       INT4 UNSIGNED   NOT NULL DEFAULT 0,
+
+   date_submit  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   date_start   TIMESTAMP NOT NULL DEFAULT 0,
+   date_end     TIMESTAMP NOT NULL DEFAULT 0,
+
+   stats_status   INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   stats_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_utime_usec INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_stime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_stime_usec INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_real_sec   INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_real_usec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   stats_maxrss   INT4 NOT NULL DEFAULT 0,
+   stats_minflt   INT4 NOT NULL DEFAULT 0,
+   stats_majflt   INT4 NOT NULL DEFAULT 0,
+   stats_nswap    INT4 NOT NULL DEFAULT 0,
+   stats_inblock  INT4 NOT NULL DEFAULT 0,
+   stats_oublock  INT4 NOT NULL DEFAULT 0,
+   stats_nvcsw    INT4 NOT NULL DEFAULT 0,
+   stats_nivcsw   INT4 NOT NULL DEFAULT 0,
+
+   INDEX (job_id),
+   INDEX (job_status),
+   INDEX (job_priority),
+   INDEX (host_hostname(64)),
+   INDEX (server_id(767))
+);
+
+DELIMITER |
+DROP TRIGGER mxq_update_job|
+CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
+    FOR EACH ROW BEGIN
+        IF NEW.job_status = 20 AND OLD.job_status IN (0, 10)  THEN
+            UPDATE mxq_group SET 
+               group_jobs_running=group_jobs_running+1, 
+               group_mtime=NULL 
+            WHERE group_id=NEW.group_id;
+        ELSEIF NEW.job_status IN (40, 45) AND OLD.job_status IN (20, 25, 30, 35) THEN
+            UPDATE mxq_group SET
+               group_jobs_running=group_jobs_running-1,
+               group_jobs_failed=group_jobs_failed+1,
+               stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
+               stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
+               stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
+               stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        ELSEIF NEW.job_status = 50 AND OLD.job_status IN (20, 25, 30, 35) THEN
+            UPDATE mxq_group SET
+               group_jobs_running=group_jobs_running-1,
+               group_jobs_finished=group_jobs_finished+1,
+               stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
+               stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
+               stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
+               stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        ELSE
+            UPDATE mxq_group SET
+               stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
+               stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
+               stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
+               stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        END IF;
+    END;
+|
+DROP TRIGGER mxq_add_job|
+CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
+    FOR EACH ROW BEGIN
+        UPDATE mxq_group SET 
+            group_jobs=group_jobs+1,
+            group_mtime=NULL 
+        WHERE group_id=NEW.group_id;
+    END;
+|
+DELIMITER ;
+
 DROP TABLE job;
 
 CREATE TABLE IF NOT EXISTS job (

@@ -6,6 +6,8 @@
 
 #include "mxq_util.h"
 
+#include <mysql.h>
+
 struct mxq_mysql {
     char *default_file;
     char *default_group;
@@ -19,6 +21,8 @@ int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...) __attribute__ ((format(p
 MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
 
 char *mxq_mysql_escape_string(MYSQL *mysql, char *s);
+char *mxq_mysql_escape_str(MYSQL *mysql, char *s);
+char *mxq_mysql_escape_strvec(MYSQL *mysql, char **s);
 
 
 static inline void close_mysqlp(void *p) {

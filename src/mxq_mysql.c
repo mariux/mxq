@@ -108,7 +108,7 @@ MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
     return mres;
 }
 
-char *mxq_mysql_escape_string(MYSQL *mysql, char *s)
+char *mxq_mysql_escape_str(MYSQL *mysql, char *s)
 {
     char *quoted = NULL;
     size_t len;
@@ -121,4 +121,29 @@ char *mxq_mysql_escape_string(MYSQL *mysql, char *s)
     mysql_real_escape_string(mysql, quoted, s,  len);
 
     return quoted;
+}
+
+char *mxq_mysql_escape_strvec(MYSQL *mysql, char **sv)
+{
+    char *quoted = NULL;
+    _cleanup_free_ char *s = NULL;
+    size_t len;
+    
+    s = strvec_to_str(sv);
+    if (!s)
+        return NULL;
+
+    len    = strlen(s);
+    quoted = malloc(len*2 + 1);
+    if (!quoted)
+       return NULL;
+
+    mysql_real_escape_string(mysql, quoted, s,  len);
+
+    return quoted;
+}
+
+char *mxq_mysql_escape_string(MYSQL *mysql, char *s)
+{
+    return mxq_mysql_escape_str(mysql, s);
 }
