@@ -16,15 +16,15 @@ ifeq ($(USER),root)
 
     USER_LIST    = $(shell id --user  nobody)
     GROUP_LIST   = $(shell id --group nobody)
-    
+
     USER_EXEC    = $(shell id --user  root)
     GROUP_EXEC   = $(shell id --group root)
-    
+
     SUID_MODE    = 6755
 else
     USER_SUBMIT  = $(shell id --user)
     GROUP_SUBMIT = $(shell id --group)
-    
+
     USER_LIST    = $(shell id --user)
     GROUP_LIST   = $(shell id --group)
 
@@ -71,7 +71,7 @@ quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4}
 %.o: %.c Makefile
 	$(call quiet-command,${CC} ${CFLAGS} -o $@ -c $<,"CC    $@")
 
-%:
+%: %.o
 	$(call quiet-command,${CC} -o $@ $^ $(LDFLAGS) $(LDLIBS), "LINK  $@")
 
 ########################################################################
@@ -242,7 +242,6 @@ clean: CLEAN += mxq_server.o
 ### mxq_server ---------------------------------------------------------
 
 mxq_server: mx_flock.o
-mxq_server: mxq_server.o
 mxq_server: mxq_group.o
 mxq_server: mxq_job.o
 mxq_server: mxq_util.o
@@ -256,7 +255,6 @@ clean: CLEAN += mxq_server
 
 ### mxq_exec -----------------------------------------------------------
 
-mxq_exec: mxq_exec.o
 mxq_exec: bee_getopt.o
 mxq_exec: mxq_mysql.o
 mxq_exec: mxq_util.o
@@ -270,7 +268,6 @@ install:: mxq_exec
 
 ### mxq_submit ---------------------------------------------------------
 
-mxq_submit: mxq_submit.o
 mxq_submit: bee_getopt.o
 mxq_submit: mxq_mysql.o
 mxq_submit: mxq_util.o
@@ -285,7 +282,6 @@ install:: mxq_submit
 
 ### mxq_sub ------------------------------------------------------------
 
-mxq_sub: mxq_sub.o
 mxq_sub: bee_getopt.o
 mxq_sub: mxq_mysql.o
 mxq_sub: mxq_util.o
@@ -300,7 +296,6 @@ install:: mxq_sub
 
 ### mxq_list -----------------------------------------------------------
 
-mxq_list: mxq_list.o
 mxq_list: bee_getopt.o
 mxq_list: mxq_mysql.o
 mxq_list: mxq_util.o
@@ -315,7 +310,6 @@ install:: mxq_list
 
 ### mxq_group_dump -----------------------------------------------------
 
-mxq_group_dump: mxq_group_dump.o
 mxq_group_dump: mxq_group.o
 mxq_group_dump: mxq_mysql.o
 mxq_group_dump: mxq_util.o
@@ -327,7 +321,6 @@ clean: CLEAN += mxq_group_dump
 
 ### mxq_job_dump -------------------------------------------------------
 
-mxq_job_dump: mxq_job_dump.o
 mxq_job_dump: mxq_mysql.o
 mxq_job_dump: mxq_util.o
 mxq_job_dump: LDLIBS += $(LDLIBS_MYSQL)
@@ -340,7 +333,6 @@ clean: CLEAN += mxq_job_dump
 
 clean: CLEAN += test.o
 
-test: test.o
 test: mxq_util.o
 
 clean: CLEAN += test
