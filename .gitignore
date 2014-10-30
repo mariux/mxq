@@ -4,6 +4,7 @@ mxq_list
 mxq_sub
 mxq_group_dump
 mxq_job_dump
+test
 *.o
 *~
 core

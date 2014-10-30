@@ -286,4 +286,13 @@ build: mxq_job_dump
 
 clean: CLEAN += mxq_job_dump
 
+### stuff --------------------------------------------------------------
+
+clean: CLEAN += test.o
+
+test: test.o
+test: mxq_util.o
+
+clean: CLEAN += test
+
 ########################################################################
