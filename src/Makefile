@@ -98,6 +98,17 @@ clean:
 
 ########################################################################
 
+.PHONY: fix
+fix:
+	@for i in *.c *.h Makefile ; do \
+	    if grep -q -m 1 -E '\s+$$' $$i ; then \
+	        echo "FIX   $$i" ; \
+	        sed -i $$i -e 's/\s*$$//g' ; \
+	    fi \
+	done
+
+########################################################################
+
 .PHONY: install
 install::
 	$(call quiet-installdir,0755,${DESTDIR}${BINDIR})
