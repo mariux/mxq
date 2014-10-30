@@ -105,63 +105,92 @@ install::
 
 ########################################################################
 
+### mxq.h --------------------------------------------------------------
+
+mxq.h += mxq.h
+mxq.h += $(mxq_group.h)
+mxq.h += $(mxq_job.h)
+
+### mxq_mysql.h --------------------------------------------------------
+
+mxq_mysql.h += mxq_mysql.h
+mxq_mysql.h += $(mxq_util.h)
+
+### mxq_util.h ---------------------------------------------------------
+
+mxq_util.h += mxq_util.h
+mxq_util.h += $(mxq.h)
+
+### mxq_group.h --------------------------------------------------------
+
+mxq_group.h += mxq_group.h
+
+### mxq_job.h ---------------------------------------------------------
+
+mxq_job.h += mxq_job.h
+
+### bee_getopt.h -------------------------------------------------------
+
+bee_getopt.h += bee_getopt.h
+
+########################################################################
+
 ### bee_getopt.o -------------------------------------------------------
 
-bee_getopt.o: bee_getopt.h
+bee_getopt.o: $(bee_getopt.h)
 
 clean: CLEAN += bee_getopt.o
 
 ### mxq_mysql.o --------------------------------------------------------
 
+mxq_mysql.o: $(mxq_mysql.h)
+mxq_mysql.o: $(mxq_util.h)
 mxq_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
-mxq_mysql.o: mxq_mysql.h
-mxq_mysql.o: mxq.h
 
 clean: CLEAN += mxq_mysql.o
 
 ### mxq_exec.o ---------------------------------------------------------
 
-mxq_exec.o: mxq_mysql.h
-mxq_exec.o: mxq_util.h
-mxq_exec.o: mxq.h
-mxq_exec.o: bee_getopt.h
+mxq_exec.o: $(mxq_mysql.h)
+mxq_exec.o: $(mxq_util.h)
+mxq_exec.o: $(bee_getopt.h)
 
 clean: CLEAN += mxq_exec.o
 
 ### mxq_submit.o -------------------------------------------------------
 
-mxq_submit.o: mxq_mysql.h
-mxq_submit.o: mxq_util.h
-mxq_submit.o: mxq.h
-mxq_submit.o: bee_getopt.h
+mxq_submit.o: $(mxq_mysql.h)
+mxq_submit.o: $(mxq_util.h)
+mxq_submit.o: $(bee_getopt.h)
 
 clean: CLEAN += mxq_submit.o
 
 ### mxq_list.o ---------------------------------------------------------
 
-mxq_list.o: mxq.h
+mxq_list.o: $(mxq_mysql.h)
+mxq_list.o: $(mxq_util.h)
+mxq_list.o: $(bee_getopt.h)
 
 clean: CLEAN += mxq_list.o
 
 ### mxq_group_dump.o ---------------------------------------------------
 
-mxq_group_dump.o: mxq.h
-mxq_group_dumo.o: mxq_group.h
+mxq_group_dump.o: $(mxq_util.h)
+mxq_group_dumo.o: $(mxq_mysql.h)
 
 clean: CLEAN += mxq_group_dump.o
 
 ### mxq_util.o ---------------------------------------------------------
 
-mxq_util.o: mxq_util.h
-mxq_util.o: mxq.h
+mxq_util.o: $(mxq_util.h)
 mxq_util.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_util.o
 
 ### mxq_group.o --------------------------------------------------------
 
-mxq_group.o: mxq_group.h
-mxq_group.o: mxq_mysql.h
+mxq_group.o: $(mxq_group.h)
+mxq_group.o: $(mxq_mysql.h)
 mxq_group.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_group.o
