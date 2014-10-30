@@ -19,6 +19,8 @@
 #include "mxq_mysql.h"
 #include "mxq_server.h"
 
+/**********************************************************************/
+
 int server_init(struct mxq_server *server)
 {
     int res;
@@ -47,6 +49,8 @@ int server_init(struct mxq_server *server)
 
     return 1;
 }
+
+/**********************************************************************/
 
 void group_init(struct mxq_group_list *group)
 {
@@ -88,6 +92,8 @@ void group_init(struct mxq_group_list *group)
     group->memory_max = group->jobs_max * g->job_memory;
 }
 
+/**********************************************************************/
+
 struct mxq_user_list *user_list_find_uid(struct mxq_user_list *list, uint32_t  uid)
 {
     struct mxq_user_list *u;
@@ -100,6 +106,8 @@ struct mxq_user_list *user_list_find_uid(struct mxq_user_list *list, uint32_t  u
     }
     return NULL;
 }
+
+/**********************************************************************/
 
 struct mxq_group_list *group_list_find_group(struct mxq_group_list *list, struct mxq_group *group)
 {
@@ -114,6 +122,8 @@ struct mxq_group_list *group_list_find_group(struct mxq_group_list *list, struct
     }
     return NULL;
 }
+
+/**********************************************************************/
 
 struct mxq_group_list *user_group_add(struct mxq_user_list *user, struct mxq_group *group)
 {
@@ -143,6 +153,8 @@ struct mxq_group_list *user_group_add(struct mxq_user_list *user, struct mxq_gro
 
     return g;
 }
+
+/**********************************************************************/
 
 struct mxq_group_list *server_user_add(struct mxq_server *server, struct mxq_group *group)
 {
@@ -175,6 +187,8 @@ struct mxq_group_list *server_user_add(struct mxq_server *server, struct mxq_gro
     return glist;
 }
 
+/**********************************************************************/
+
 struct mxq_group_list *user_group_update(struct mxq_user_list *user, struct mxq_group *group)
 {
     struct mxq_group_list *glist;
@@ -191,6 +205,8 @@ struct mxq_group_list *user_group_update(struct mxq_user_list *user, struct mxq_
     return glist;
 }
 
+/**********************************************************************/
+
 struct mxq_group_list *server_group_update(struct mxq_server *server, struct mxq_group *group)
 {
     struct mxq_user_list *user;
@@ -202,6 +218,8 @@ struct mxq_group_list *server_group_update(struct mxq_server *server, struct mxq
 
     return user_group_update(user, group);
 }
+
+/**********************************************************************/
 
 unsigned long start_job(struct mxq_group_list *group)
 {
@@ -219,7 +237,6 @@ unsigned long start_job(struct mxq_group_list *group)
     res = mxq_job_load(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id);
 
     if (res) {
-        mxq_job_free_content(&mxqjob);
 
         mxq_mysql_close(server->mysql);
 
@@ -234,15 +251,22 @@ unsigned long start_job(struct mxq_group_list *group)
         }
         server->mysql = mxq_mysql_connect(&server->mmysql);
 
-        printf("parent forked pid %d\n", pid);
+//        printf("parent forked pid %d\n", pid);
 
+        res = mxq_job_markrunning(server->mysql, mxqjob.job_id, server->hostname, server->server_id, pid);
+        if (res <= 0) {
+            printf("CAN'T MARK JOB RUNNING... pid=%d job_id=%ld\n", pid, mxqjob.job_id);
+        }
 
+        mxq_job_free_content(&mxqjob);
         return 1;
     }
 
 //    printf("No job started in group %ld\n", group->group.group_id);
     return 0;
 }
+
+/**********************************************************************/
 
 unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_to_start)
 {
@@ -279,7 +303,18 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
         assert(group->jobs_running <= mxqgrp->group_jobs);
         assert(group->jobs_running <= group->jobs_max);
 
-        if (group->jobs_running == mxqgrp->group_jobs || group->jobs_running == group->jobs_max) {
+        if (group->jobs_running == mxqgrp->group_jobs) {
+//            printf("    - skipping0 group %lu..\n", mxqgrp->group_id);
+            gnext = group->next;
+            if (!gnext && started) {
+//                printf("   - rewinding0 ..\n");
+                gnext = group->user->groups;
+                started = 0;
+            }
+            continue;
+        }
+
+        if (group->jobs_running == group->jobs_max) {
 //            printf("    - skipping1 group %lu..\n", mxqgrp->group_id);
             gnext = group->next;
             if (!gnext && started) {
@@ -370,6 +405,7 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
     return slots_started;
 }
 
+/**********************************************************************/
 
 void start_users(struct mxq_server *server)
 {
@@ -435,6 +471,8 @@ void start_users(struct mxq_server *server)
     printf("\t%6lu of %6lu slots\tallocated for %lu running threads (%lu jobs)\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
 }
 
+/**********************************************************************/
+
 void server_close(struct mxq_server *server)
 {
     struct mxq_user_list  *user,  *unext;
@@ -458,6 +496,8 @@ void server_close(struct mxq_server *server)
 
     mx_funlock(server->flock);
 }
+
+/**********************************************************************/
 
 int main(int argc, char *argv[])
 {

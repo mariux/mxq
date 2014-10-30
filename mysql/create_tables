@@ -95,7 +95,7 @@ DELIMITER |
 DROP TRIGGER mxq_update_job|
 CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
     FOR EACH ROW BEGIN
-        IF NEW.job_status = 20 AND OLD.job_status IN (0, 10)  THEN
+        IF NEW.job_status = 20 AND OLD.job_status IN (0, 10, 15)  THEN
             UPDATE mxq_group SET 
                group_jobs_running=group_jobs_running+1, 
                group_mtime=NULL 

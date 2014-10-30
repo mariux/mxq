@@ -289,12 +289,56 @@ int mxq_job_markloaded(MYSQL *mysql, uint64_t job_id, char *hostname, char *serv
                 " AND job_status = 10"
                 " AND host_hostname = '%s'"
                 " AND server_id = '%s'"
-                " AND host_pid = 0"
-                " ORDER BY job_priority, job_id"
-                " LIMIT 1",
+                " AND host_pid = 0",
                 job_id, q_hostname, q_server_id);
     if (res) {
-        log_msg(0, "mxq_job_reserve: Failed to query database: Error: %s\n", mysql_error(mysql));
+        log_msg(0, "mxq_job_markloaded: Failed to query database: Error: %s\n", mysql_error(mysql));
+        errno = EIO;
+        return -1;
+    }
+
+    res = mysql_affected_rows(mysql);
+    if (res == 0) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    return res;
+}
+
+int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id, pid_t pid)
+{
+    assert(mysql);
+    assert(hostname);
+    assert(server_id);
+
+    int   len;
+    int   res;
+    int   i;
+
+    MYSQL_RES *mres;
+    MYSQL_ROW  row;
+
+    unsigned int num_fields;
+    unsigned int num_rows;
+
+    _cleanup_free_ char *q_hostname  = NULL;
+    _cleanup_free_ char *q_server_id = NULL;
+
+    if (!(q_hostname  = mxq_mysql_escape_string(mysql, hostname)  )) return -1;
+    if (!(q_server_id = mxq_mysql_escape_string(mysql, server_id) )) return -1;
+
+    res = mxq_mysql_query(mysql, "UPDATE mxq_job SET"
+                " job_status = 20,"
+                " host_pid = %d"
+                " WHERE job_id = %ld"
+                " AND job_status IN (10, 15)"
+                " AND host_hostname = '%s'"
+                " AND server_id = '%s'"
+                " AND host_pid = 0",
+                pid, job_id, q_hostname, q_server_id);
+    if (res) {
+        log_msg(0, "mxq_job_markrunning: Failed to query database: Error: %s\n", mysql_error(mysql));
         errno = EIO;
         return -1;
     }
