@@ -180,6 +180,13 @@ mxq_group_dumo.o: $(mxq_mysql.h)
 
 clean: CLEAN += mxq_group_dump.o
 
+### mxq_job_dump.o -----------------------------------------------------
+
+mxq_job_dump.o: $(mxq_util.h)
+mxq_job_dump.o: $(mxq_mysql.h)
+
+clean: CLEAN += mxq_job_dump.o
+
 ### mxq_util.o ---------------------------------------------------------
 
 mxq_util.o: $(mxq_util.h)
@@ -267,5 +274,16 @@ mxq_group_dump: LDLIBS += $(LDLIBS_MYSQL)
 build: mxq_group_dump
 
 clean: CLEAN += mxq_group_dump
+
+### mxq_job_dump -------------------------------------------------------
+
+mxq_job_dump: mxq_job_dump.o
+mxq_job_dump: mxq_mysql.o
+mxq_job_dump: mxq_util.o
+mxq_job_dump: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxq_job_dump
+
+clean: CLEAN += mxq_job_dump
 
 ########################################################################
