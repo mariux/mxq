@@ -248,6 +248,7 @@ mxq_server: mxq_job.o
 mxq_server: mxq_util.o
 mxq_server: mxq_mysql.o
 mxq_server: LDLIBS += $(LDLIBS_MYSQL)
+mxq_server: CFLAGS += -Wno-unused-but-set-variable
 
 build: mxq_server
 

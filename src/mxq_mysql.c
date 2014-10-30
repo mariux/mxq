@@ -177,7 +177,7 @@ int mxq_mysql_stmt_fetch_string(MYSQL_STMT *stmt, MYSQL_BIND *bind, int col, cha
 {
     char *s;
     int res;
-    
+
     if (len > 0) {
         s = malloc(len+1);
         if (!s) {
@@ -236,7 +236,7 @@ char *mxq_mysql_escape_strvec(MYSQL *mysql, char **sv)
     char *quoted = NULL;
     _cleanup_free_ char *s = NULL;
     size_t len;
-    
+
     s = strvec_to_str(sv);
     if (!s)
         return NULL;

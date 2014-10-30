@@ -90,7 +90,7 @@ static inline int mxq_group_bind_results(MYSQL_BIND *bind, struct mxq_group *g)
 static int mxq_group_fetch_results(MYSQL_STMT *stmt, MYSQL_BIND *bind, struct mxq_group *g)
 {
     int res;
-    
+
     memset(g, 0, sizeof(*g));
 
     res = mxq_mysql_stmt_fetch_row(stmt);

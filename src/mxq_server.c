@@ -228,21 +228,19 @@ unsigned long start_job(struct mxq_group_list *group)
             perror("fork");
             return 0;
         } else if (pid == 0) {
-            printf("child sleeping for 10 sec\n");
+//            printf("child sleeping for 10 sec\n");
             sleep(10);
             exit(0);
         }
-        printf("parent forked pid %d\n", pid);
-
         server->mysql = mxq_mysql_connect(&server->mmysql);
+
+        printf("parent forked pid %d\n", pid);
 
 
         return 1;
-    } else {
-        printf("could not mark job started..\n");
     }
 
-    printf("not reserved\n");
+//    printf("No job started in group %ld\n", group->group.group_id);
     return 0;
 }
 
@@ -270,9 +268,9 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
 
     assert(slots_to_start <= server->slots - server->slots_running);
 
-    printf("starting jobs for user %s\n", mxqgrp->user_name);
-    printf("  - setting initial priority = %d\n", prio);
-    printf("  - setting initial slots to start = %ld\n", slots_to_start);
+//    printf("starting jobs for user %s\n", mxqgrp->user_name);
+//    printf("  - setting initial priority = %d\n", prio);
+//    printf("  - setting initial slots to start = %ld\n", slots_to_start);
 
     for (group=user->groups; group && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); group=gnext) {
 
@@ -282,10 +280,10 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
         assert(group->jobs_running <= group->jobs_max);
 
         if (group->jobs_running == mxqgrp->group_jobs || group->jobs_running == group->jobs_max) {
-            printf("    - skipping1 group %lu..\n", mxqgrp->group_id);
+//            printf("    - skipping1 group %lu..\n", mxqgrp->group_id);
             gnext = group->next;
             if (!gnext && started) {
-                printf("   - rewinding1 ..\n");
+//                printf("   - rewinding1 ..\n");
                 gnext = group->user->groups;
                 started = 0;
             }
@@ -293,10 +291,10 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
         }
 
         if (mxqgrp->group_jobs-mxqgrp->group_jobs_failed-mxqgrp->group_jobs_finished-mxqgrp->group_jobs_running == 0) {
-            printf("    - skipping2 group %lu..\n", mxqgrp->group_id);
+//            printf("    - skipping2 group %lu..\n", mxqgrp->group_id);
             gnext = group->next;
             if (!gnext && started) {
-                printf("   - rewinding1.2 ..\n");
+//                printf("   - rewinding1.2 ..\n");
                 gnext = group->user->groups;
                 started = 0;
             }
@@ -304,10 +302,10 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
         }
 
         if (group->slots_per_job > slots_to_start) {
-            printf("    - skipping5 group %lu..\n", mxqgrp->group_id);
+//            printf("    - skipping5 group %lu..\n", mxqgrp->group_id);
             gnext = group->next;
             if (!gnext && started) {
-                printf("   - rewinding1.3 ..\n");
+//                printf("   - rewinding1.3 ..\n");
                 gnext = group->user->groups;
                 started = 0;
             }
@@ -316,15 +314,15 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
 
         if (mxqgrp->group_priority < prio) {
             if (started) {
-                printf("   - rewinding2 ..\n");
+//                printf("   - rewinding2 ..\n");
                 gnext = group->user->groups;
                 started = 0;
                 continue;
             }
             prio = mxqgrp->group_priority;
-            printf("  - adjusting priority to %d\n", prio);
+//            printf("  - adjusting priority to %d\n", prio);
         }
-        printf("    ? trying to start group %lu (pri=%d, jobs=%lu, slots_per_job=%lu, slots_max=%lu)\n", mxqgrp->group_id, mxqgrp->group_priority, mxqgrp->group_jobs, group->slots_per_job, group->slots_max);
+//        printf("    ? trying to start group %lu (pri=%d, jobs=%lu, slots_per_job=%lu, slots_max=%lu)\n", mxqgrp->group_id, mxqgrp->group_priority, mxqgrp->group_jobs, group->slots_per_job, group->slots_max);
 
         if (start_job(group)) {
 
@@ -351,20 +349,20 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
             jobs_started++;
             slots_started += group->slots_per_job;
 
-            printf("      -> starting 1 job with %lu slots => %lu grp %lu usr %lu srv slots running (slots to start = %ld)\n", group->slots_per_job, group->slots_running, user->slots_running, server->slots_running, slots_to_start);
+            printf("      -> started one job with %lu slots => %lu grp %lu usr %lu srv slots running (slots to start = %ld)\n", group->slots_per_job, group->slots_running, user->slots_running, server->slots_running, slots_to_start);
             started = 1;
         } else {
-            printf("XXXXXXXXXXXXXXXXXXXXX\n");
-            printf("XXX group_jobs          = %5ld\n", mxqgrp->group_jobs);
-            printf("XXX group_jobs_running  = %5ld\n", mxqgrp->group_jobs_running);
-            printf("XXX group_jobs_finished = %5ld\n", mxqgrp->group_jobs_finished);
-            printf("XXX group_jobs_failed   = %5ld\n", mxqgrp->group_jobs_failed);
-            printf("XXX jobs queued         = %5ld\n", mxqgrp->group_jobs-mxqgrp->group_jobs_failed-mxqgrp->group_jobs_finished-mxqgrp->group_jobs_running);
+//            printf("XXXXXXXXXXXXXXXXXXXXX\n");
+//            printf("XXX group_jobs          = %5ld\n", mxqgrp->group_jobs);
+//            printf("XXX group_jobs_running  = %5ld\n", mxqgrp->group_jobs_running);
+//            printf("XXX group_jobs_finished = %5ld\n", mxqgrp->group_jobs_finished);
+//            printf("XXX group_jobs_failed   = %5ld\n", mxqgrp->group_jobs_failed);
+//            printf("XXX jobs queued         = %5ld\n", mxqgrp->group_jobs-mxqgrp->group_jobs_failed-mxqgrp->group_jobs_finished-mxqgrp->group_jobs_running);
         }
 
         gnext = group->next;
         if (!gnext && started) {
-            printf("   - rewinding3 ..\n");
+//            printf("   - rewinding3 ..\n");
             gnext = group->user->groups;
             started = 0;
         }
@@ -384,6 +382,7 @@ void start_users(struct mxq_server *server)
 
     assert(server);
 
+/*
     for (user=server->users; user; user=user->next) {
         printf("user: server(%p)<-user(%p) %s\n", user->server, user, user->groups[0].group.user_name);
         for (group=user->groups; group; group=group->next) {
@@ -399,6 +398,7 @@ void start_users(struct mxq_server *server)
             printf("      jobs_max = %lu\n", group->jobs_max);
         }
     }
+*/
 
     for (user=server->users; user; user=user->next) {
 
@@ -412,7 +412,7 @@ void start_users(struct mxq_server *server)
 
         slots_started = start_user(user, 0, slots_to_start);
 
-        printf("  => %ld of %ld slots started (%ld unused slots)\n", slots_started, slots_to_start, slots_to_start-slots_started);
+//        printf("  => %ld of %ld slots started (%ld unused slots)\n", slots_started, slots_to_start, slots_to_start-slots_started);
     }
 
     for (user=server->users; user && server->slots - server->slots_running; user=unext) {
@@ -421,17 +421,17 @@ void start_users(struct mxq_server *server)
 
         started = (started || slots_started);
 
-        printf("  => %ld of %ld slots started (%ld unused slots)\n", slots_started, slots_to_start, slots_to_start-slots_started);
+//        printf("  => %ld of %ld slots started (%ld unused slots)\n", slots_started, slots_to_start, slots_to_start-slots_started);
 
         unext = user->next;
         if (!unext && started) {
-            printf("  *** user rewind\n\n");
+//            printf("  *** user rewind\n\n");
             unext = server->users;
             started = 0;
         }
     }
 
-    printf("server\n\t%6lu of %6lu MiB\tallocated\n", server->memory_used, server->memory_total);
+    printf("server-stats:\n\t%6lu of %6lu MiB\tallocated\n", server->memory_used, server->memory_total);
     printf("\t%6lu of %6lu slots\tallocated for %lu running threads (%lu jobs)\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
 }
 
@@ -495,7 +495,7 @@ int main(int argc, char *argv[])
 
     for (i=0; i<group_cnt; i++) {
         group = server_group_update(&server, &mxqgroups[group_cnt-i-1]);
-        printf("new group %p user_cnt=%lu group_cnt=%lu job_cnt=%lu\n", group, server.user_cnt, server.group_cnt, server.job_cnt);
+//        printf("new group %p user_cnt=%lu group_cnt=%lu job_cnt=%lu\n", group, server.user_cnt, server.group_cnt, server.job_cnt);
     }
     free(mxqgroups);
 

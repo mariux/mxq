@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     char*  str2;
     char*  str3;
     int i;
-    
+
     assert(strvec1 = strvec_new());
     assert(strvec_push_str(&strvec1, "test1"));
     assert(strvec_push_str(&strvec1, "test2"));
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     assert(strvec_push_str(&strvec2, "test6"));
     assert(strvec_push_str(&strvec2, "test7"));
     assert(strvec_length(strvec2) == 5);
-    
+
     display_mallinfo();
 
     assert(strvec_push_strvec(&strvec1, strvec2));
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 
     display_mallinfo();
     malloc_stats();
-    
+
     free(str1);
     free(str2);
     free(str3);

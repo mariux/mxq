@@ -113,22 +113,22 @@ static inline int prepare_result_bindings(MYSQL_BIND *bind, struct result *g)
     MXQ_MYSQL_BIND_UINT64(bind, COL_JOB_ID,       &g->job.job_id);
     MXQ_MYSQL_BIND_UINT8(bind,  COL_JOB_STATUS,   &g->job.job_status);
     MXQ_MYSQL_BIND_UINT16(bind, COL_JOB_PRIORITY, &g->job.job_priority);
-    
+
     MXQ_MYSQL_BIND_UINT64(bind, COL_GROUP_ID, &g->job.group_id);
-    
+
     MXQ_MYSQL_BIND_VARSTR(bind, COL_JOB_WORKDIR, &g->job_workdir_length);
-    
+
     MXQ_MYSQL_BIND_UINT16(bind, COL_JOB_ARGC, &g->job.job_argc);
     MXQ_MYSQL_BIND_VARSTR(bind, COL_JOB_ARGV, &g->job_argv_length);
 
     MXQ_MYSQL_BIND_VARSTR(bind, COL_JOB_STDOUT, &g->job_stdout_length);
     MXQ_MYSQL_BIND_VARSTR(bind, COL_JOB_STDERR, &g->job_stderr_length);
-    
+
     MXQ_MYSQL_BIND_UINT32(bind, COL_JOB_UMASK, &g->job.job_umask);
-    
+
     MXQ_MYSQL_BIND_VARSTR(bind, COL_HOST_SUBMIT, &g->host_submit_length);
     MXQ_MYSQL_BIND_VARSTR(bind, COL_SERVER_ID,   &g->server_id_length);
-    
+
     MXQ_MYSQL_BIND_VARSTR(bind, COL_HOST_HOSTNAME, &g->host_hostname_length);
     MXQ_MYSQL_BIND_UINT32(bind, COL_HOST_PID,      &g->job.host_pid);
 
@@ -217,11 +217,11 @@ int mxq_group_load_jobs(MYSQL *mysql, struct mxq_job **mxq_job)
     char *query;
     struct mxq_job *job;
     int cnt;
-    
+
     *mxq_job = NULL;
-        
+
     prepare_result_bindings(result, &g);
-    
+
     query = "SELECT " COLUMNS " FROM mxq_job";
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, COL__END, NULL, result);
@@ -229,7 +229,7 @@ int mxq_group_load_jobs(MYSQL *mysql, struct mxq_job **mxq_job)
         print_error("mxq_mysql_stmt_do_query(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, COL__END, NULL, result);
         return 0;
     }
-    
+
     //XXX
     cnt = 0;
     job = NULL;
@@ -238,9 +238,9 @@ int mxq_group_load_jobs(MYSQL *mysql, struct mxq_job **mxq_job)
         memcpy(job+cnt, &g.job, sizeof(*job));
         cnt++;
     }
-    
+
     *mxq_job = job;
-    
+
     mysql_stmt_close(stmt);
     return cnt;
 }
@@ -252,24 +252,24 @@ int main(int argc, char *argv[])
     struct mxq_job *jobs;
     int cnt;
     int i;
-    
+
     mmysql.default_file  = NULL;
     mmysql.default_group = "mxq_submit";
-    
+
     mysql = mxq_mysql_connect(&mmysql);
 
     cnt = mxq_group_load_jobs(mysql, &jobs);
-    
+
 //    printf("cnt=%d\n", cnt);
 
     for (i=0;i<cnt; i++) {
         printf("%ld\t%s\n", jobs[i].job_id, jobs[i].job_argv_str);
     }
-    
+
     free(jobs);
-    
+
     mxq_mysql_close(mysql);
-    
+
     return 1;
 };
 

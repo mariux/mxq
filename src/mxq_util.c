@@ -89,11 +89,11 @@ char *mxq_hostname(void)
 void *realloc_or_free(void *ptr, size_t size)
 {
     void *new_ptr;
-    
+
     new_ptr = realloc(ptr, size);
     if (new_ptr)
         return new_ptr;
-    
+
     free(ptr);
     return NULL;
 }
@@ -217,7 +217,7 @@ static inline size_t strvec_length_cache(char **strvec, int32_t len)
 {
     static char ** sv = NULL;
     static size_t l = 0;
-    
+
     if (likely(len == -1)) {
         if (likely(sv == strvec)) {
             return l;
@@ -240,7 +240,7 @@ size_t strvec_length(char ** strvec)
     size_t len;
 
     assert(strvec);
-    
+
     sv = strvec;
 
     len = strvec_length_cache(sv, -1);

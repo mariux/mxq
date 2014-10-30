@@ -112,7 +112,7 @@ void mxq_mysql_row_to_group(struct mxq_job *j, MYSQL_ROW row)
     r++; /* utime */
     r++; /* stime */
     r++; /* real */
-    
+
     j->group_id = g->group_id;
 }
 
@@ -225,7 +225,7 @@ static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
     int   len;
     int   res;
     int   i;
-    
+
     struct mxq_group *g;
 
     assert(j);
@@ -244,20 +244,20 @@ static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
     q_user        = mxq_mysql_escape_string(mysql, g->user_name);
     q_group       = mxq_mysql_escape_string(mysql, g->user_group);
     q_command     = mxq_mysql_escape_string(mysql, g->job_command);
-    
+
     if (!q_group_name || !q_user || !q_group || !q_command)
         return 0;
 
-    res = mxq_mysql_query(mysql, 
+    res = mxq_mysql_query(mysql,
             "INSERT INTO mxq_group SET "
                 "group_name = '%s',"
                 "group_priority = %" PRIu16 ","
-                
+
                 "user_uid = %" PRIu32 ","
                 "user_name = '%s',"
                 "user_gid = %" PRIu32 ","
                 "user_group = '%s',"
-                
+
                 "job_command = '%s',"
 
                 "job_threads = %" PRIu16 ","
@@ -274,7 +274,7 @@ static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
 
     g->group_id = mysql_insert_id(mysql);
     j->group_id = g->group_id;
-    
+
     return 1;
 }
 
@@ -304,12 +304,12 @@ static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job *j)
     q_stdout      = mxq_mysql_escape_str(mysql, j->job_stdout);
     q_stderr      = mxq_mysql_escape_str(mysql, j->job_stderr);
     q_submit_host = mxq_mysql_escape_str(mysql, j->host_submit);
-    
+
     if (!q_workdir || !q_argv
         || !q_stdout || !q_stderr || !q_submit_host)
         return 0;
 
-    res = mxq_mysql_query(mysql, 
+    res = mxq_mysql_query(mysql,
             "INSERT INTO mxq_job SET "
                 "job_priority = %" PRIu16 ","
 

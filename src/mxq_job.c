@@ -352,7 +352,12 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
         return 0;
     }
 
-    printf("mxq_job_reserve: job reserved\n");
+    if (res == 0) {
+//        printf("mxq_job_reserve: NO job reserved\n");
+        return 0;
+    }
+
+//    printf("mxq_job_reserve: job reserved\n");
 
     res = mxq_job_load_reserved(mysql, mxqjob);
 
@@ -361,7 +366,7 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
         return 0;
     }
 
-    printf("loaded job job_id=%ld %s\n", mxqjob->job_id, mxqjob->job_argv_str);
+//    printf("loaded job job_id=%ld %s\n", mxqjob->job_id, mxqjob->job_argv_str);
 
     res = mxq_job_markloaded(mysql, mxqjob->job_id, hostname, server_id);
     if (res < 0) {

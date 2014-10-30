@@ -171,32 +171,32 @@ void print_running(struct mxq_status *s)
     int minutes;
     int seconds;
     int status;
-    
+
     printf("\n%s :: %s :: %s\n",
         s->user_name, s->group_id, s->job_command);
     printf("\tjobs: %lu running: %lu inq: %lu finished: %lu (%.2f%%)\n",
-           s->total_jobs, s->total_jobs_runnning, s->total_jobs_in_q, 
+           s->total_jobs, s->total_jobs_runnning, s->total_jobs_in_q,
            s->total_jobs_done, (double)s->total_jobs_done*100/s->total_jobs);
     printf("\tmaximum memory used by a single finished job (so far): %lu MiB\n",
            s->max_stats_maxrss_mib);
 
 
     printf("\ttime in cluster: ");
-    
+
     seconds = s->total_real_seconds;
-    
+
     years    = seconds/60/60/24/365;
     seconds -= years*365*24*60*60;
-    
+
     days     = seconds/60/60/24;
     seconds -= days*60*60*24;
-    
+
     hours    = seconds/60/60;
     seconds -= hours*60*60;
 
     minutes  = seconds/60;
     seconds -= minutes*60;
-    
+
     if (years)
        printf("%d year%s ", years, (years != 1)?"s":"");
 
@@ -208,24 +208,24 @@ void print_running(struct mxq_status *s)
 
     if (years || days || hours || minutes)
        printf("%d minute%s ", minutes, (minutes != 1)?"s":"");
-    
+
     printf("%d second%s\n", seconds, (seconds != 1)?"s":"");
     printf("\tcalculation time: ");
-    
+
     seconds = s->total_runtime_seconds;
-    
+
     years    = seconds/60/60/24/365;
     seconds -= years*365*24*60*60;
-    
+
     days     = seconds/60/60/24;
     seconds -= days*60*60*24;
-    
+
     hours    = seconds/60/60;
     seconds -= hours*60*60;
 
     minutes  = seconds/60;
     seconds -= minutes*60;
-    
+
     if (years)
        printf("%d year%s ", years, (years != 1)?"s":"");
 
@@ -237,7 +237,7 @@ void print_running(struct mxq_status *s)
 
     if (years || days || hours || minutes)
        printf("%d minute%s ", minutes, (minutes != 1)?"s":"");
-    
+
     printf("%d second%s ", seconds, (seconds != 1)?"s":"");
 
     printf("(speedup: %.2f)\n", (double)s->total_runtime_seconds/s->total_real_seconds);
@@ -253,10 +253,10 @@ void print_finished(struct mxq_status *s)
     int seconds;
     int status;
 
-    
+
     status = s->exit_status;
-    
-    
+
+
     printf("\n%s :: %s :: %s\n",
         s->user_name, s->group_id, s->job_command);
     printf("\t%lu jobs\t%lu MiB\n",
@@ -271,21 +271,21 @@ void print_finished(struct mxq_status *s)
     }
 
     printf("\ttime in cluster: ");
-    
+
     seconds = s->total_real_seconds;
-    
+
     years    = seconds/60/60/24/365;
     seconds -= years*365*24*60*60;
-    
+
     days     = seconds/60/60/24;
     seconds -= days*60*60*24;
-    
+
     hours    = seconds/60/60;
     seconds -= hours*60*60;
 
     minutes  = seconds/60;
     seconds -= minutes*60;
-    
+
     if (years)
        printf("%d year%s ", years, (years != 1)?"s":"");
 
@@ -297,24 +297,24 @@ void print_finished(struct mxq_status *s)
 
     if (years || days || hours || minutes)
        printf("%d minute%s ", minutes, (minutes != 1)?"s":"");
-    
+
     printf("%d second%s\n", seconds, (seconds != 1)?"s":"");
     printf("\tcalculation time: ");
-    
+
     seconds = s->total_runtime_seconds;
-    
+
     years    = seconds/60/60/24/365;
     seconds -= years*365*24*60*60;
-    
+
     days     = seconds/60/60/24;
     seconds -= days*60*60*24;
-    
+
     hours    = seconds/60/60;
     seconds -= hours*60*60;
 
     minutes  = seconds/60;
     seconds -= minutes*60;
-    
+
     if (years)
        printf("%d year%s ", years, (years != 1)?"s":"");
 
@@ -326,7 +326,7 @@ void print_finished(struct mxq_status *s)
 
     if (years || days || hours || minutes)
        printf("%d minute%s ", minutes, (minutes != 1)?"s":"");
-    
+
     printf("%d second%s ", seconds, (seconds != 1)?"s":"");
 
     printf("(speedup: %.2f)\n", (s->total_real_seconds?((double)s->total_runtime_seconds/s->total_real_seconds):0.0));
@@ -347,7 +347,7 @@ void mxq_list(struct mxq_mysql *mmysql, char *user_name, int flags)
     mysql = mxq_mysql_connect(mmysql);
 
     cnt = mxq_mysql_load_status(mysql, &status);
-    
+
     for (i = 0, s = status, first = 0; i < cnt; i++, s++) {
         if (s->total_jobs_runnning || s->total_jobs_in_q) {
             if (!first++) {
@@ -359,19 +359,19 @@ void mxq_list(struct mxq_mysql *mmysql, char *user_name, int flags)
     last = first;
 
     for (i = 0, s = status, first = 0; i < cnt; i++, s++) {
-        if (!(s->total_jobs_runnning || s->total_jobs_in_q) && 
+        if (!(s->total_jobs_runnning || s->total_jobs_in_q) &&
             (streq(user_name, "root") || (streq(user_name, s->user_name)))) {
-            
+
             if (!first++) {
                 printf("\n === job history ===\n");
             }
             print_finished(s);
         }
     }
-    
+
     if (first || last)
        printf("\n");
-    
+
 }
 
 int main(int argc, char *argv[])

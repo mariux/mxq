@@ -551,7 +551,7 @@ int job_finish_cleanup_files(struct mxq_job_full *job)
 {
     int res;
     int ret = 1;
-    
+
     assert(job);
 
     if (!streq(job->job_stdout, "/dev/null")) {
@@ -805,11 +805,11 @@ int setup_cronolog(char *cronolog, char *link, char *format)
         log_msg(0, "can't create pipe for cronolog: (%s)\n", strerror(errno));
         return 0;
     }
-    
+
     pid = fork();
     if (pid < 0) {
         perror("fork");
-        return 1; 
+        return 1;
     } else if(pid == 0) {
         res = dup2(pipe_fd[0], STDIN_FILENO);
         if (res == -1) {
@@ -822,7 +822,7 @@ int setup_cronolog(char *cronolog, char *link, char *format)
         log_msg(0, "execl('%s', ...) failed (%s)\n", cronolog, strerror(errno));
         _exit(EX__MAX + 1);
     }
-    
+
     res = dup2(pipe_fd[1], STDOUT_FILENO);
     if (res == -1) {
         log_msg(0, "dup2(fh=%d, %d) for cronolog stdout failed (%s)\n", pipe_fd[0], STDOUT_FILENO, strerror(errno));
@@ -930,7 +930,7 @@ int main(int argc, char *argv[])
 
     mxq_setup_reaper(threads_max);
     mxq_setup_exit();
-    
+
     res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxq.log", "/var/log/%Y/mxq_log-%Y-%m");
     if (!res) {
         log_msg(0, "MAIN: cronolog setup failed. exiting.\n");

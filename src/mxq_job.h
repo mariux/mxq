@@ -39,7 +39,7 @@ struct mxq_job {
 
     char *     host_hostname;
     unsigned long _host_hostname_length;
-    
+
     uint32_t   host_pid;
 
     int64_t    date_submit;
