@@ -2,8 +2,11 @@ mxq_submit
 mxq_exec
 mxq_list
 mxq_sub
+gmon.out
+*.gch
 mxq_group_dump
 mxq_job_dump
+mxq_server
 test
 *.o
 *~

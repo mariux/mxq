@@ -129,6 +129,10 @@ mxq_group.h += mxq_group.h
 
 mxq_job.h += mxq_job.h
 
+### mxq_server.h -------------------------------------------------------
+
+mxq_server.h += mxq_server.h
+
 ### bee_getopt.h -------------------------------------------------------
 
 bee_getopt.h += bee_getopt.h
@@ -202,7 +206,40 @@ mxq_group.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_group.o
 
+### mxq_job.o ----------------------------------------------------------
+
+mxq_job.o: $(mxq_job.h)
+mxq_job.o: $(mxq_group.h)
+mxq_job.o: $(mxq_mysql.h)
+mxq_job.o: CFLAGS += $(CFLAGS_MYSQL)
+
+clean: CLEAN += mxq_job.o
+
+### mxq_server.o -------------------------------------------------------
+
+mxq_server.o: $(mxq_server.h)
+mxq_server.o: $(mxq_group.h)
+mxq_server.o: $(mxq_job.h)
+mxq_server.o: $(mxq_mysql.h)
+mxq_server.o: CFLAGS += $(CFLAGS_MYSQL)
+mxq_server.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+
+clean: CLEAN += mxq_server.o
+
 ########################################################################
+
+### mxq_server ---------------------------------------------------------
+
+mxq_server: mxq_server.o
+mxq_server: mxq_group.o
+mxq_server: mxq_job.o
+mxq_server: mxq_util.o
+mxq_server: mxq_mysql.o
+mxq_server: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxq_server
+
+clean: CLEAN += mxq_server
 
 ### mxq_exec -----------------------------------------------------------
 

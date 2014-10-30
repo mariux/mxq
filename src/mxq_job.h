@@ -2,6 +2,7 @@
 #define __MXQ_JOB_H__ 1
 
 #include <stdint.h>
+#include <mysql.h>
 
 struct mxq_job {
     uint64_t  job_id;
@@ -51,5 +52,11 @@ struct mxq_job {
     struct timeval stats_realtime;
     struct rusage  stats_rusage;
 };
+
+int mxq_job_reserve(MYSQL *mysql, uint64_t group_id, char *hostname, char *server_id);
+int mxq_job_markloaded(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id);
+int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *mxq_job);
+void mxq_job_free_content(struct mxq_job *j);
+int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
 
 #endif
