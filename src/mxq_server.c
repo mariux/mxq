@@ -11,12 +11,13 @@
 
 #include <sys/file.h>
 
+#include "mx_flock.h"
+
 #include "mxq.h"
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mxq_mysql.h"
 #include "mxq_server.h"
-
 
 int server_init(struct mxq_server *server)
 {
@@ -26,6 +27,15 @@ int server_init(struct mxq_server *server)
 
     server->hostname = "localhost";
     server->server_id = "default";
+
+    server->flock = mx_flock(LOCK_EX, "/dev/shm/mxq_server.%s.%s.lck", server->hostname, server->server_id);
+    if (!server->flock) {
+        return -1;
+    }
+
+    if (!server->flock->locked) {
+        return -2;
+    }
 
     server->slots = 48;
     server->memory_total = 128*1024;
@@ -445,6 +455,8 @@ void server_close(struct mxq_server *server)
         unext = user->next;
         free(user);
     }
+
+    mx_funlock(server->flock);
 }
 
 int main(int argc, char *argv[])
@@ -464,10 +476,10 @@ int main(int argc, char *argv[])
     res = server_init(&server);
     if (res < 0) {
         if (res == -2) {
-            printf("Server '%s' on host '%s' is already running. Exiting.\n", server.hostname, server.server_id);
+            printf("MXQ Server '%s' on host '%s' is already running. Exiting.\n", server.hostname, server.server_id);
             exit(2);
         }
-        fprintf(stderr, "Can't initialize server handle. Exiting.\n");
+        fprintf(stderr, "MXQ Server: Can't initialize server handle. Exiting.\n");
         exit(1);
     }
 
