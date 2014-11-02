@@ -125,7 +125,7 @@ struct mxq_group_list *group_list_find_group(struct mxq_group_list *list, struct
 
 /**********************************************************************/
 
-struct mxq_group_list *user_group_add(struct mxq_user_list *user, struct mxq_group *group)
+struct mxq_group_list *user_add_group(struct mxq_user_list *user, struct mxq_group *group)
 {
     struct mxq_group_list *g;
     struct mxq_group_list *glist;
@@ -156,7 +156,7 @@ struct mxq_group_list *user_group_add(struct mxq_user_list *user, struct mxq_gro
 
 /**********************************************************************/
 
-struct mxq_group_list *server_user_add(struct mxq_server *server, struct mxq_group *group)
+struct mxq_group_list *server_add_user(struct mxq_server *server, struct mxq_group *group)
 {
     struct mxq_user_list  *user;
     struct mxq_user_list  *ulist;
@@ -171,7 +171,7 @@ struct mxq_group_list *server_user_add(struct mxq_server *server, struct mxq_gro
 
     user->server = server;
 
-    glist = user_group_add(user, group);
+    glist = user_add_group(user, group);
     if (!glist) {
         free(user);
         return NULL;
@@ -189,13 +189,13 @@ struct mxq_group_list *server_user_add(struct mxq_server *server, struct mxq_gro
 
 /**********************************************************************/
 
-struct mxq_group_list *user_group_update(struct mxq_user_list *user, struct mxq_group *group)
+struct mxq_group_list *user_update_groupdata(struct mxq_user_list *user, struct mxq_group *group)
 {
     struct mxq_group_list *glist;
 
     glist = group_list_find_group(user->groups, group);
     if (!glist) {
-        return user_group_add(user, group);
+        return user_add_group(user, group);
     }
 
     memcpy(&glist->group, group, sizeof(*group));
@@ -207,16 +207,16 @@ struct mxq_group_list *user_group_update(struct mxq_user_list *user, struct mxq_
 
 /**********************************************************************/
 
-struct mxq_group_list *server_group_update(struct mxq_server *server, struct mxq_group *group)
+static struct mxq_group_list *server_update_groupdata(struct mxq_server *server, struct mxq_group *group)
 {
     struct mxq_user_list *user;
 
     user = user_list_find_uid(server->users, group->user_uid);
     if (!user) {
-        return server_user_add(server, group);
+        return server_add_user(server, group);
     }
 
-    return user_group_update(user, group);
+    return user_update_groupdata(user, group);
 }
 
 /**********************************************************************/
@@ -536,7 +536,7 @@ int main(int argc, char *argv[])
     group_cnt = mxq_group_load_groups(server.mysql, &mxqgroups);
 
     for (i=0; i<group_cnt; i++) {
-        group = server_group_update(&server, &mxqgroups[group_cnt-i-1]);
+        group = server_update_groupdata(&server, &mxqgroups[group_cnt-i-1]);
 //        printf("new group %p user_cnt=%lu group_cnt=%lu job_cnt=%lu\n", group, server.user_cnt, server.group_cnt, server.job_cnt);
     }
     free(mxqgroups);
