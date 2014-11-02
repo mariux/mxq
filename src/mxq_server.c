@@ -10,6 +10,10 @@
 #include <errno.h>
 
 #include <sys/file.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
 
 #include "mx_flock.h"
 
@@ -94,6 +98,53 @@ void group_init(struct mxq_group_list *group)
 
 /**********************************************************************/
 
+struct mxq_job_list *server_remove_job_by_pid(struct mxq_server *server, pid_t pid)
+{
+    struct mxq_user_list  *user;
+    struct mxq_group_list *group;
+    struct mxq_job_list   *job, *prev;
+
+    for (user=server->users; user; user=user->next) {
+        for (group=user->groups; group; group=group->next) {
+            for (job=group->jobs, prev=NULL; job; prev=job,job=job->next) {
+                if (job->job.host_pid == pid) {
+                    if (prev) {
+                        prev->next = job->next;
+                    } else {
+                        assert(group->jobs);
+                        assert(group->jobs == job);
+
+                        group->jobs = job->next;
+                    }
+
+                    group->slots_running  -= job->job.host_slots;
+                    user->slots_running   -= job->job.host_slots;
+                    server->slots_running -= job->job.host_slots;
+
+                    group->threads_running  -= group->group.job_threads;
+                    user->threads_running   -= group->group.job_threads;
+                    server->threads_running -= group->group.job_threads;
+
+                    group->group.group_jobs_running--;
+
+                    group->jobs_running--;
+                    user->jobs_running--;
+                    server->jobs_running--;
+
+                    group->memory_used  -= group->group.job_memory;
+                    user->memory_used   -= group->group.job_memory;
+                    server->memory_used -= group->group.job_memory;
+
+                    return job;
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+/**********************************************************************/
+
 struct mxq_user_list *user_list_find_uid(struct mxq_user_list *list, uint32_t  uid)
 {
     struct mxq_user_list *u;
@@ -123,6 +174,36 @@ struct mxq_group_list *group_list_find_group(struct mxq_group_list *list, struct
     return NULL;
 }
 
+/**********************************************************************/
+
+struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job *job)
+{
+    struct mxq_job_list *j;
+    struct mxq_job_list *jlist;
+
+    assert(group);
+    assert(group->user);
+    assert(group->user->server);
+
+    j = calloc(1, sizeof(*j));
+    if (!j) {
+        return NULL;
+    }
+    jlist = group->jobs;
+
+    memcpy(&j->job, job, sizeof(*job));
+
+    j->group = group;
+    j->next  = jlist;
+
+    group->jobs = j;
+
+    group->job_cnt++;
+    group->user->job_cnt++;
+    group->user->server->job_cnt++;
+
+    return j;
+}
 /**********************************************************************/
 
 struct mxq_group_list *user_add_group(struct mxq_user_list *user, struct mxq_group *group)
@@ -225,6 +306,7 @@ unsigned long start_job(struct mxq_group_list *group)
 {
     struct mxq_server *server;
     struct mxq_job mxqjob;
+    struct mxq_job_list *job;
     pid_t pid;
     int res;
 
@@ -258,8 +340,12 @@ unsigned long start_job(struct mxq_group_list *group)
             printf("CAN'T MARK JOB RUNNING... pid=%d job_id=%ld\n", pid, mxqjob.job_id);
         }
 
-        mxq_job_free_content(&mxqjob);
+        mxqjob.host_pid = pid;
         mxqjob.host_slots = group->slots_per_job;
+
+        do {
+            job = group_add_job(group, &mxqjob);
+        } while (!job);
 
         return 1;
     }
@@ -509,6 +595,7 @@ int main(int argc, char *argv[])
 
     struct mxq_server server;
     struct mxq_group_list *group;
+    struct mxq_job_list *job;
 
     int i;
     int res;
@@ -542,6 +629,33 @@ int main(int argc, char *argv[])
     free(mxqgroups);
 
     start_users(&server);
+
+    while (server.jobs_running) {
+        struct rusage rusage;
+        int status;
+        pid_t pid;
+
+        printf("waiting for %ld jobs to finish ... ", server.jobs_running);
+        fflush(stdout);
+        pid = wait3(&status, 0, &rusage);
+        if (pid < 0) {
+            if (errno == ECHILD) {
+                printf("No child processes left. Exiting.\n");
+                break;
+            }
+            perror("wait3");
+            continue;
+        }
+
+        job = server_remove_job_by_pid(&server, pid);
+        if (!job) {
+            printf("unknown pid returned.. pid=%d\n", pid);
+            continue;
+        }
+        printf("pid=%d returned => job_id=%ld\n", pid, job->job.job_id);
+        mxq_job_free_content(&job->job);
+        free(job);
+    }
 
     /*** clean up ***/
 
