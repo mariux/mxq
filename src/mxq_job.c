@@ -25,6 +25,7 @@
                 "server_id, " \
                 "host_hostname, " \
                 "host_pid, " \
+                "host_slots, " \
                 "UNIX_TIMESTAMP(date_submit) as date_submit, " \
                 "UNIX_TIMESTAMP(date_start) as date_start, " \
                 "UNIX_TIMESTAMP(date_end) as date_end, " \
@@ -59,6 +60,7 @@ enum mxq_job_columns {
     MXQ_JOB_COL_SERVER_ID,
     MXQ_JOB_COL_HOST_HOSTNAME,
     MXQ_JOB_COL_HOST_PID,
+    MXQ_JOB_COL_HOST_SLOTS,
     MXQ_JOB_COL_DATE_SUBMIT,
     MXQ_JOB_COL_DATE_START,
     MXQ_JOB_COL_DATE_END,
@@ -105,6 +107,7 @@ static inline int mxq_job_bind_results(MYSQL_BIND *bind, struct mxq_job *j)
 
     MXQ_MYSQL_BIND_VARSTR(bind, MXQ_JOB_COL_HOST_HOSTNAME, &j->_host_hostname_length);
     MXQ_MYSQL_BIND_UINT32(bind, MXQ_JOB_COL_HOST_PID,      &j->host_pid);
+    MXQ_MYSQL_BIND_UINT32(bind, MXQ_JOB_COL_HOST_SLOTS,    &j->host_slots);
 
     MXQ_MYSQL_BIND_INT32(bind, MXQ_JOB_COL_DATE_SUBMIT, &j->date_submit);
     MXQ_MYSQL_BIND_INT32(bind, MXQ_JOB_COL_DATE_START,  &j->date_start);
@@ -306,7 +309,7 @@ int mxq_job_markloaded(MYSQL *mysql, uint64_t job_id, char *hostname, char *serv
     return res;
 }
 
-int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id, pid_t pid)
+int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id, pid_t pid, uint32_t slots)
 {
     assert(mysql);
     assert(hostname);
@@ -330,13 +333,14 @@ int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *ser
 
     res = mxq_mysql_query(mysql, "UPDATE mxq_job SET"
                 " job_status = 20,"
-                " host_pid = %d"
+                " host_pid = %d,"
+                " host_slots = %d"
                 " WHERE job_id = %ld"
                 " AND job_status IN (10, 15)"
                 " AND host_hostname = '%s'"
                 " AND server_id = '%s'"
                 " AND host_pid = 0",
-                pid, job_id, q_hostname, q_server_id);
+                pid, slots, job_id, q_hostname, q_server_id);
     if (res) {
         log_msg(0, "mxq_job_markrunning: Failed to query database: Error: %s\n", mysql_error(mysql));
         errno = EIO;

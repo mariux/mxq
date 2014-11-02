@@ -253,12 +253,14 @@ unsigned long start_job(struct mxq_group_list *group)
 
 //        printf("parent forked pid %d\n", pid);
 
-        res = mxq_job_markrunning(server->mysql, mxqjob.job_id, server->hostname, server->server_id, pid);
+        res = mxq_job_markrunning(server->mysql, mxqjob.job_id, server->hostname, server->server_id, pid, group->slots_per_job);
         if (res <= 0) {
             printf("CAN'T MARK JOB RUNNING... pid=%d job_id=%ld\n", pid, mxqjob.job_id);
         }
 
         mxq_job_free_content(&mxqjob);
+        mxqjob.host_slots = group->slots_per_job;
+
         return 1;
     }
 

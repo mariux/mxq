@@ -41,6 +41,7 @@ struct mxq_job {
     unsigned long _host_hostname_length;
 
     uint32_t   host_pid;
+    uint32_t   host_slots;
 
     int64_t    date_submit;
     int64_t    date_start;
@@ -58,6 +59,6 @@ int mxq_job_markloaded(MYSQL *mysql, uint64_t job_id, char *hostname, char *serv
 int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *mxq_job);
 void mxq_job_free_content(struct mxq_job *j);
 int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
-int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id, pid_t pid);
+int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id, pid_t pid, uint32_t slots);
 
 #endif
