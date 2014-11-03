@@ -57,6 +57,15 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
         (b)[(c)].length = (v); \
     } while (0)
 
+#define MXQ_MYSQL_BIND_STRING(b, c, v) \
+    do { \
+        (b)[(c)].buffer_type = MYSQL_TYPE_STRING; \
+        (b)[(c)].buffer = (v); \
+        (b)[(c)].buffer_length = strlen((v)); \
+        (b)[(c)].length = &((b)[(c)].buffer_length); \
+    } while (0)
+
+
 #define mxq_mysql_print_error(mysql) \
     MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", \
     mysql_errno(mysql), \

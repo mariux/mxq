@@ -118,7 +118,6 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
     assert(mysql);
     assert(stmt_str);
     assert(field_count > 0);
-    assert(!param); // not implemented yet
 
     stmt = mysql_stmt_init(mysql);
     if (!stmt) {
@@ -145,6 +144,16 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
         res = mysql_stmt_bind_result(stmt, result);
         if (res) {
             print_error("mysql_stmt_bind_result(stmt=%p)\n", stmt);
+            mxq_mysql_stmt_print_error(stmt);
+            mysql_stmt_close(stmt);
+            return NULL;
+        }
+    }
+
+    if (param) {
+        res = mysql_stmt_bind_param(stmt, param);
+        if (res) {
+            print_error("mysql_stmt_bind_param(stmt=%p)\n", stmt);
             mxq_mysql_stmt_print_error(stmt);
             mysql_stmt_close(stmt);
             return NULL;
@@ -198,6 +207,7 @@ int mxq_mysql_stmt_fetch_row(MYSQL_STMT *stmt)
             errno = ENOENT;
             return 0;
         }
+        mxq_mysql_stmt_print_error(stmt);
         errno = EIO;
         return 0;
     }

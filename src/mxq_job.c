@@ -357,27 +357,36 @@ int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *ser
 }
 
 
-int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *mxq_job)
+int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job)
 {
     MYSQL_STMT *stmt;
     MYSQL_BIND result[MXQ_JOB_COL__END];
     char *query;
     int cnt;
+    MYSQL_BIND param[3];
 
-    mxq_job_bind_results(result, mxq_job);
+    assert(job->host_hostname);
+    assert(job->server_id);
+
+    memset(param, 0, sizeof(param));
+    MXQ_MYSQL_BIND_UINT8(param,  0, &job->job_status);
+    MXQ_MYSQL_BIND_STRING(param, 1, job->host_hostname);
+    MXQ_MYSQL_BIND_STRING(param, 2, job->server_id);
+
+    mxq_job_bind_results(result, job);
 
     query = "SELECT " MXQ_JOB_FIELDS " FROM mxq_job"
-            " WHERE job_status = 10"
-            " AND host_hostname = 'localhost'"
-            " AND server_id  = 'default'";
+            " WHERE job_status = ?"
+            " AND host_hostname = ?"
+            " AND server_id  = ?";
 
-    stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_JOB_COL__END, NULL, result);
+    stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_JOB_COL__END, param, result);
     if (!stmt) {
-        print_error("mxq_group_load_reserved_job(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_JOB_COL__END, NULL, result);
+        print_error("mxq_job_load_reserved(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_JOB_COL__END, param, result);
         return -1;
     }
 
-    if (!mxq_job_fetch_results(stmt, result, mxq_job)) {
+    if (!mxq_job_fetch_results(stmt, result, job)) {
         printf("mxq_job_fetch_results FAILED..\n");
         mysql_stmt_close(stmt);
         return -1;
@@ -407,6 +416,10 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
 
 //    printf("mxq_job_reserve: job reserved\n");
 
+    mxqjob->host_hostname = hostname;
+    mxqjob->server_id = server_id;
+    mxqjob->job_status = MXQ_JOB_STATUS_ASSIGNED;
+
     res = mxq_job_load_reserved(mysql, mxqjob);
 
     if(res <= 0) {
@@ -421,5 +434,7 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
         perror("mxq_job_markloaded");
         return 0;
     }
+
+    mxqjob->job_status = MXQ_JOB_STATUS_LOADED;
     return 1;
 }

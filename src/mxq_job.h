@@ -54,6 +54,12 @@ struct mxq_job {
     struct rusage  stats_rusage;
 };
 
+
+#define MXQ_JOB_STATUS_INQ            0
+#define MXQ_JOB_STATUS_ASSIGNED      10
+#define MXQ_JOB_STATUS_LOADED        15
+#define MXQ_JOB_STATUS_RUNNING       20
+
 int mxq_job_reserve(MYSQL *mysql, uint64_t group_id, char *hostname, char *server_id);
 int mxq_job_markloaded(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id);
 int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *mxq_job);
