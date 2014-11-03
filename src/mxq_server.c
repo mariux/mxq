@@ -327,8 +327,11 @@ unsigned long start_job(struct mxq_group_list *group)
             perror("fork");
             return 0;
         } else if (pid == 0) {
-//            printf("child sleeping for 10 sec\n");
-            sleep(10);
+            int x;
+            srandom(getpid());
+            x = random() % 10;
+//            printf("child sleeping for %d sec\n", x);
+            sleep(x);
             exit(0);
         }
         server->mysql = mxq_mysql_connect(&server->mmysql);
@@ -660,8 +663,6 @@ int main(int argc, char *argv[])
     /*** clean up ***/
 
     mxq_mysql_close(server.mysql);
-
-    sleep(10);
 
     server_close(&server);
 
