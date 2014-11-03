@@ -10,6 +10,7 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mxq_mysql.h"
+#include "mxq.h"
 
 #define MXQ_JOB_FIELDS "job_id, " \
                 "job_status, " \
@@ -214,159 +215,111 @@ void mxq_job_free_content(struct mxq_job *j)
         j->job_argv = NULL;
 }
 
-int mxq_job_reserve(MYSQL *mysql, uint64_t group_id, char *hostname, char *server_id)
+int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, int newstatus)
 {
-    assert(mysql);
-    assert(hostname);
-    assert(server_id);
+    MYSQL_STMT *stmt;
 
-    int   len;
     int   res;
-    int   i;
+    char *query;
 
-    MYSQL_RES *mres;
-    MYSQL_ROW  row;
+    MYSQL_BIND param[5];
 
-    unsigned int num_fields;
-    unsigned int num_rows;
+    assert(mysql);
+    assert(job);
+    assert(job->host_hostname);
+    assert(job->server_id);
+    assert(newstatus);
 
-    _cleanup_free_ char *q_hostname  = NULL;
-    _cleanup_free_ char *q_server_id = NULL;
+    memset(param, 0, sizeof(param));
 
-    if (!(q_hostname  = mxq_mysql_escape_string(mysql, hostname)  )) return -1;
-    if (!(q_server_id = mxq_mysql_escape_string(mysql, server_id) )) return -1;
-
-    // update v_tasks set task_status=1,host_hostname='localhost',host_server_id='localhost-1'
-    // where task_status = 0 AND host_hostname='localhost' AND host_pid IS NULL order by job_id limit 1;
-
-    res = mxq_mysql_query(mysql, "UPDATE mxq_job SET"
-                " job_status = 10,"
-                " host_hostname = '%s',"
-                " server_id = '%s'"
-                " WHERE group_id = %ld"
-                " AND job_status = 0"
-                " AND host_hostname=''"
+    if (newstatus == MXQ_JOB_STATUS_ASSIGNED) {
+        query = "UPDATE mxq_job SET"
+                " job_status = " status_str(MXQ_JOB_STATUS_ASSIGNED) ","
+                " host_hostname = ?,"
+                " server_id = ?"
+                " WHERE group_id = ?"
+                " AND job_status = " status_str(MXQ_JOB_STATUS_INQ)
+                " AND host_hostname = ''"
                 " AND server_id = ''"
                 " AND host_pid = 0"
                 " ORDER BY job_priority, job_id"
-                " LIMIT 1",
-                q_hostname, q_server_id, group_id);
-    if (res) {
-        log_msg(0, "mxq_job_reserve: Failed to query database: Error: %s\n", mysql_error(mysql));
-        sleep(10);
+                " LIMIT 1";
+
+        MXQ_MYSQL_BIND_STRING(param, 0, job->host_hostname);
+        MXQ_MYSQL_BIND_STRING(param, 1, job->server_id);
+        MXQ_MYSQL_BIND_UINT64(param, 2, &job->group_id);
+    } else if (newstatus == MXQ_JOB_STATUS_LOADED) {
+        query = "UPDATE mxq_job SET"
+                " job_status = " status_str(MXQ_JOB_STATUS_LOADED)
+                " WHERE job_id = ?"
+                " AND job_status = " status_str(MXQ_JOB_STATUS_ASSIGNED)
+                " AND host_hostname = ?"
+                " AND server_id = ?"
+                " AND host_pid = 0";
+
+        MXQ_MYSQL_BIND_UINT64(param, 0, &job->job_id);
+        MXQ_MYSQL_BIND_STRING(param, 1, job->host_hostname);
+        MXQ_MYSQL_BIND_STRING(param, 2, job->server_id);
+    } else if (newstatus == MXQ_JOB_STATUS_RUNNING) {
+        if (job->job_status != MXQ_JOB_STATUS_LOADED) {
+            printf("WARNING: new status==runnning but old status(=%d) is != loaded ", job->job_status);
+            if (job->job_status != MXQ_JOB_STATUS_ASSIGNED) {
+                printf("ERROR: new status==runnning but old status(=%d) is != (loaded || assigned). Aborting Status change.", job->job_status);
+                errno = EINVAL;
+                return -1;
+            }
+        }
+        query = "UPDATE mxq_job SET"
+                " job_status = " status_str(MXQ_JOB_STATUS_RUNNING) ","
+                " date_start = NULL,"
+                " host_pid = ?,"
+                " host_slots = ?"
+                " WHERE job_id = ?"
+                " AND job_status IN (" status_str(MXQ_JOB_STATUS_ASSIGNED) ", " status_str(MXQ_JOB_STATUS_LOADED) ")"
+                " AND host_hostname = ?"
+                " AND server_id = ?"
+                " AND host_pid = 0";
+
+        MXQ_MYSQL_BIND_UINT32(param, 0, &job->host_pid);
+        MXQ_MYSQL_BIND_UINT32(param, 1, &job->host_slots);
+        MXQ_MYSQL_BIND_UINT64(param, 2, &job->job_id);
+        MXQ_MYSQL_BIND_STRING(param, 3, job->host_hostname);
+        MXQ_MYSQL_BIND_STRING(param, 4, job->server_id);
+    } else {
+        assert(newstatus != newstatus);
+    }
+
+    stmt = mxq_mysql_stmt_do_query(mysql, query, 0, param, NULL);
+
+    if (!stmt) {
+        log_msg(0, "mxq_job_update_status: Failed to query database.\n");
         errno = EIO;
         return -1;
     }
 
-    return mysql_affected_rows(mysql);
-}
-
-int mxq_job_markloaded(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id)
-{
-    assert(mysql);
-    assert(hostname);
-    assert(server_id);
-
-    int   len;
-    int   res;
-    int   i;
-
-    MYSQL_RES *mres;
-    MYSQL_ROW  row;
-
-    unsigned int num_fields;
-    unsigned int num_rows;
-
-    _cleanup_free_ char *q_hostname  = NULL;
-    _cleanup_free_ char *q_server_id = NULL;
-
-    if (!(q_hostname  = mxq_mysql_escape_string(mysql, hostname)  )) return -1;
-    if (!(q_server_id = mxq_mysql_escape_string(mysql, server_id) )) return -1;
-
-    // update v_tasks set task_status=1,host_hostname='localhost',host_server_id='localhost-1'
-    // where task_status = 0 AND host_hostname='localhost' AND host_pid IS NULL order by job_id limit 1;
-
-    res = mxq_mysql_query(mysql, "UPDATE mxq_job SET"
-                " job_status = 15"
-                " WHERE job_id = %ld"
-                " AND job_status = 10"
-                " AND host_hostname = '%s'"
-                " AND server_id = '%s'"
-                " AND host_pid = 0",
-                job_id, q_hostname, q_server_id);
-    if (res) {
-        log_msg(0, "mxq_job_markloaded: Failed to query database: Error: %s\n", mysql_error(mysql));
-        errno = EIO;
-        return -1;
-    }
-
-    res = mysql_affected_rows(mysql);
+    res = mysql_stmt_affected_rows(stmt);
     if (res == 0) {
+        mysql_stmt_close(stmt);
         errno = ENOENT;
         return -1;
     }
 
-    return res;
-}
-
-int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id, pid_t pid, uint32_t slots)
-{
-    assert(mysql);
-    assert(hostname);
-    assert(server_id);
-
-    int   len;
-    int   res;
-    int   i;
-
-    MYSQL_RES *mres;
-    MYSQL_ROW  row;
-
-    unsigned int num_fields;
-    unsigned int num_rows;
-
-    _cleanup_free_ char *q_hostname  = NULL;
-    _cleanup_free_ char *q_server_id = NULL;
-
-    if (!(q_hostname  = mxq_mysql_escape_string(mysql, hostname)  )) return -1;
-    if (!(q_server_id = mxq_mysql_escape_string(mysql, server_id) )) return -1;
-
-    res = mxq_mysql_query(mysql, "UPDATE mxq_job SET"
-                " job_status = 20,"
-                " host_pid = %d,"
-                " host_slots = %d"
-                " WHERE job_id = %ld"
-                " AND job_status IN (10, 15)"
-                " AND host_hostname = '%s'"
-                " AND server_id = '%s'"
-                " AND host_pid = 0",
-                pid, slots, job_id, q_hostname, q_server_id);
-    if (res) {
-        log_msg(0, "mxq_job_markrunning: Failed to query database: Error: %s\n", mysql_error(mysql));
-        errno = EIO;
-        return -1;
-    }
-
-    res = mysql_affected_rows(mysql);
-    if (res == 0) {
-        errno = ENOENT;
-        return -1;
-    }
+    mysql_stmt_close(stmt);
+    job->job_status = newstatus;
 
     return res;
 }
-
 
 int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job)
 {
     MYSQL_STMT *stmt;
     MYSQL_BIND result[MXQ_JOB_COL__END];
     char *query;
-    int cnt;
     MYSQL_BIND param[3];
 
     assert(job->host_hostname);
     assert(job->server_id);
+
 
     memset(param, 0, sizeof(param));
     MXQ_MYSQL_BIND_UINT8(param,  0, &job->job_status);
@@ -387,6 +340,8 @@ int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job)
     }
 
     if (!mxq_job_fetch_results(stmt, result, job)) {
+        mxq_mysql_print_error(mysql);
+        mxq_mysql_stmt_print_error(stmt);
         printf("mxq_job_fetch_results FAILED..\n");
         mysql_stmt_close(stmt);
         return -1;
@@ -396,45 +351,32 @@ int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job)
     return 1;
 }
 
-
-// TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id)
 {
     int res;
 
-    res = mxq_job_reserve(mysql, group_id, hostname, server_id);
-
-    if (res < 0) {
-        perror("mxq_job_reserve");
-        return 0;
-    }
-
-    if (res == 0) {
-//        printf("mxq_job_reserve: NO job reserved\n");
-        return 0;
-    }
-
-//    printf("mxq_job_reserve: job reserved\n");
-
     mxqjob->host_hostname = hostname;
-    mxqjob->server_id = server_id;
-    mxqjob->job_status = MXQ_JOB_STATUS_ASSIGNED;
+    mxqjob->server_id     = server_id;
+    mxqjob->group_id      = group_id;
+    mxqjob->job_status    = MXQ_JOB_STATUS_INQ;
+
+    res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_ASSIGNED);
+    if (res < 0) {
+        perror("mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED)");
+        return 0;
+    }
 
     res = mxq_job_load_reserved(mysql, mxqjob);
-
     if(res <= 0) {
         printf("*** COULD NOT LOAD RESERVED JOB\n");
         return 0;
     }
 
-//    printf("loaded job job_id=%ld %s\n", mxqjob->job_id, mxqjob->job_argv_str);
-
-    res = mxq_job_markloaded(mysql, mxqjob->job_id, hostname, server_id);
+    res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_LOADED);
     if (res < 0) {
-        perror("mxq_job_markloaded");
+        perror("mxq_job_update_status(MXQ_JOB_STATUS_LOADED)");
         return 0;
     }
 
-    mxqjob->job_status = MXQ_JOB_STATUS_LOADED;
     return 1;
 }

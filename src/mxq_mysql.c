@@ -117,7 +117,7 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
 
     assert(mysql);
     assert(stmt_str);
-    assert(field_count > 0);
+    assert(field_count >= 0);
 
     stmt = mysql_stmt_init(mysql);
     if (!stmt) {

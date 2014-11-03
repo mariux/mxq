@@ -364,16 +364,12 @@ unsigned long start_job(struct mxq_group_list *group)
         }
         server->mysql = mxq_mysql_connect(&server->mmysql);
 
-//        printf("parent forked pid %d\n", pid);
-
-        res = mxq_job_markrunning(server->mysql, mxqjob.job_id, server->hostname, server->server_id, pid, group->slots_per_job);
-        if (res <= 0) {
-            printf("CAN'T MARK JOB RUNNING... pid=%d job_id=%ld\n", pid, mxqjob.job_id);
-        }
-
-        mxqjob.job_status = MXQ_JOB_STATUS_RUNNING;
         mxqjob.host_pid = pid;
         mxqjob.host_slots = group->slots_per_job;
+        res = mxq_job_update_status(server->mysql, &mxqjob, MXQ_JOB_STATUS_RUNNING);
+        if (res <= 0) {
+            perror("mxq_job_update_status(MXQ_JOB_STATUS_RUNNING)\n");
+        }
 
         do {
             job = group_add_job(group, &mxqjob);
@@ -648,7 +644,7 @@ int main(int argc, char *argv[])
         int status;
         pid_t pid;
 
-        printf("waiting for %ld jobs to finish ... ", server.jobs_running);
+        printf("waiting for %2ld jobs (%2ld slots) to finish ... ", server.jobs_running, server.slots_running);
         fflush(stdout);
         pid = wait3(&status, 0, &rusage);
         if (pid < 0) {

@@ -60,11 +60,13 @@ struct mxq_job {
 #define MXQ_JOB_STATUS_LOADED        15
 #define MXQ_JOB_STATUS_RUNNING       20
 
-int mxq_job_reserve(MYSQL *mysql, uint64_t group_id, char *hostname, char *server_id);
-int mxq_job_markloaded(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id);
+#define _to_string(s) #s
+#define status_str(x) _to_string(x)
+
+
 int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *mxq_job);
 void mxq_job_free_content(struct mxq_job *j);
 int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
-int mxq_job_markrunning(MYSQL *mysql, uint64_t job_id, char *hostname, char *server_id, pid_t pid, uint32_t slots);
+int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, int status);
 
 #endif

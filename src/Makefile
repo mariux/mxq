@@ -229,6 +229,7 @@ clean: CLEAN += mxq_group.o
 
 ### mxq_job.o ----------------------------------------------------------
 
+mxq_job.o: $(mxq.h)
 mxq_job.o: $(mxq_job.h)
 mxq_job.o: $(mxq_group.h)
 mxq_job.o: $(mxq_mysql.h)
