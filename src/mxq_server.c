@@ -181,9 +181,19 @@ struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job 
     struct mxq_job_list *j;
     struct mxq_job_list *jlist;
 
+    struct mxq_server *server;
+    struct mxq_user_list *user;
+
+    struct mxq_group *mxqgrp;
+
     assert(group);
     assert(group->user);
     assert(group->user->server);
+    assert(job->job_status == MXQ_JOB_STATUS_RUNNING);
+
+    mxqgrp = &group->group;
+    user   = group->user;
+    server = user->server;
 
     j = calloc(1, sizeof(*j));
     if (!j) {
@@ -199,8 +209,26 @@ struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job 
     group->jobs = j;
 
     group->job_cnt++;
-    group->user->job_cnt++;
-    group->user->server->job_cnt++;
+    user->job_cnt++;
+    server->job_cnt++;
+
+    group->slots_running  += group->slots_per_job;
+    user->slots_running   += group->slots_per_job;
+    server->slots_running += group->slots_per_job;
+
+    group->threads_running  += mxqgrp->job_threads;
+    user->threads_running   += mxqgrp->job_threads;
+    server->threads_running += mxqgrp->job_threads;
+
+    mxqgrp->group_jobs_running++;
+
+    group->jobs_running++;
+    user->jobs_running++;
+    server->jobs_running++;
+
+    group->memory_used += mxqgrp->job_memory;
+    user->memory_used += mxqgrp->job_memory;
+    server->memory_used += mxqgrp->job_memory;
 
     return j;
 }
@@ -343,6 +371,7 @@ unsigned long start_job(struct mxq_group_list *group)
             printf("CAN'T MARK JOB RUNNING... pid=%d job_id=%ld\n", pid, mxqjob.job_id);
         }
 
+        mxqjob.job_status = MXQ_JOB_STATUS_RUNNING;
         mxqjob.host_pid = pid;
         mxqjob.host_slots = group->slots_per_job;
 
@@ -453,25 +482,6 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
         if (start_job(group)) {
 
             slots_to_start -= group->slots_per_job;
-
-            group->slots_running += group->slots_per_job;
-            user->slots_running  += group->slots_per_job;
-            server->slots_running += group->slots_per_job;
-
-            group->threads_running += mxqgrp->job_threads;
-            user->threads_running += mxqgrp->job_threads;
-            server->threads_running += mxqgrp->job_threads;
-
-            mxqgrp->group_jobs_running++;
-
-            group->jobs_running++;
-            user->jobs_running++;
-            server->jobs_running++;
-
-            group->memory_used += mxqgrp->job_memory;
-            user->memory_used += mxqgrp->job_memory;
-            server->memory_used += mxqgrp->job_memory;
-
             jobs_started++;
             slots_started += group->slots_per_job;
 
