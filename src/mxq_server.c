@@ -595,6 +595,7 @@ void server_close(struct mxq_server *server)
 }
 
 /**********************************************************************/
+static void chld_handler(int sig) {}
 
 int main(int argc, char *argv[])
 {
@@ -610,6 +611,8 @@ int main(int argc, char *argv[])
     int res;
 
     /*** server init ***/
+
+    signal(SIGCHLD, chld_handler);
 
     res = server_init(&server);
     if (res < 0) {
@@ -646,13 +649,19 @@ int main(int argc, char *argv[])
 
         printf("waiting for %2ld jobs (%2ld slots) to finish ... ", server.jobs_running, server.slots_running);
         fflush(stdout);
-        pid = wait3(&status, 0, &rusage);
+        pid = wait3(&status, WNOHANG, &rusage);
         if (pid < 0) {
             if (errno == ECHILD) {
                 printf("No child processes left. Exiting.\n");
                 break;
             }
             perror("wait3");
+            continue;
+        }
+        if (pid == 0) {
+            unsigned int left;
+            left = sleep(20);
+            printf("slept %d seconds\n", 20-left);
             continue;
         }
 
