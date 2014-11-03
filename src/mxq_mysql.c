@@ -162,17 +162,6 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
     return stmt;
 }
 
-
-void mxq_mysql_print_error(MYSQL *mysql)
-{
-    MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", mysql_errno(mysql), mysql_sqlstate(mysql), mysql_error(mysql));
-}
-
-void mxq_mysql_stmt_print_error(MYSQL_STMT *stmt)
-{
-    MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", mysql_stmt_errno(stmt), mysql_stmt_sqlstate(stmt), mysql_stmt_error(stmt));
-}
-
 int mxq_mysql_stmt_fetch_string(MYSQL_STMT *stmt, MYSQL_BIND *bind, int col, char **buf, unsigned long len)
 {
     char *s;

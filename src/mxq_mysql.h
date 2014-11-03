@@ -24,9 +24,6 @@ char *mxq_mysql_escape_string(MYSQL *mysql, char *s);
 char *mxq_mysql_escape_str(MYSQL *mysql, char *s);
 char *mxq_mysql_escape_strvec(MYSQL *mysql, char **s);
 
-void mxq_mysql_print_error(MYSQL *mysql);
-
-void mxq_mysql_stmt_print_error(MYSQL_STMT *stmt);
 int mxq_mysql_stmt_fetch_string(MYSQL_STMT *stmt, MYSQL_BIND *bind, int col, char **buf, unsigned long len);
 int mxq_mysql_stmt_fetch_row(MYSQL_STMT *stmt);
 
@@ -60,7 +57,17 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
         (b)[(c)].length = (v); \
     } while (0)
 
+#define mxq_mysql_print_error(mysql) \
+    MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", \
+    mysql_errno(mysql), \
+    mysql_sqlstate(mysql), \
+    mysql_error(mysql))
 
+#define mxq_mysql_stmt_print_error(stmt) \
+        MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", \
+            mysql_stmt_errno(stmt), \
+            mysql_stmt_sqlstate(stmt), \
+            mysql_stmt_error(stmt))
 
 static inline void close_mysqlp(void *p) {
     if (!p)
