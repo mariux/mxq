@@ -362,6 +362,9 @@ unsigned long start_job(struct mxq_group_list *group)
             sleep(x);
             exit(0);
         }
+
+        gettimeofday(&mxqjob.stats_starttime, NULL);
+
         server->mysql = mxq_mysql_connect(&server->mmysql);
 
         mxqjob.host_pid = pid;
@@ -644,6 +647,7 @@ int main(int argc, char *argv[])
 
     while (server.jobs_running) {
         struct rusage rusage;
+        struct timeval now;
         int status;
         pid_t pid;
 
@@ -670,6 +674,14 @@ int main(int argc, char *argv[])
             printf("unknown pid returned.. pid=%d\n", pid);
             continue;
         }
+
+        gettimeofday(&now, NULL);
+
+        timersub(&now, &job->job.stats_starttime, &job->job.stats_realtime);
+
+        job->job.stats_status   = status;
+        job->job.stats_rusage   = rusage;
+
         printf("pid=%d returned => job_id=%ld\n", pid, job->job.job_id);
         mxq_job_free_content(&job->job);
         free(job);
