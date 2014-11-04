@@ -221,8 +221,8 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
 
     int   res;
     char *query;
-
-    MYSQL_BIND param[5];
+#define _PARAM_MAX 20
+    MYSQL_BIND param[_PARAM_MAX];
 
     assert(mysql);
     assert(job);
@@ -245,6 +245,7 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
                 " ORDER BY job_priority, job_id"
                 " LIMIT 1";
 
+        assert(_PARAM_MAX > 2);
         MXQ_MYSQL_BIND_STRING(param, 0, job->host_hostname);
         MXQ_MYSQL_BIND_STRING(param, 1, job->server_id);
         MXQ_MYSQL_BIND_UINT64(param, 2, &job->group_id);
@@ -257,6 +258,7 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
                 " AND server_id = ?"
                 " AND host_pid = 0";
 
+        assert(_PARAM_MAX > 2);
         MXQ_MYSQL_BIND_UINT64(param, 0, &job->job_id);
         MXQ_MYSQL_BIND_STRING(param, 1, job->host_hostname);
         MXQ_MYSQL_BIND_STRING(param, 2, job->server_id);
@@ -280,11 +282,78 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
                 " AND server_id = ?"
                 " AND host_pid = 0";
 
+        assert(_PARAM_MAX > 4);
         MXQ_MYSQL_BIND_UINT32(param, 0, &job->host_pid);
         MXQ_MYSQL_BIND_UINT32(param, 1, &job->host_slots);
         MXQ_MYSQL_BIND_UINT64(param, 2, &job->job_id);
         MXQ_MYSQL_BIND_STRING(param, 3, job->host_hostname);
         MXQ_MYSQL_BIND_STRING(param, 4, job->server_id);
+    } else if(newstatus == MXQ_JOB_STATUS_EXIT) {
+        if (WIFEXITED(job->stats_status)) {
+            if (WEXITSTATUS(job->stats_status)) {
+                newstatus = MXQ_JOB_STATUS_FAILED;
+            } else {
+                newstatus = MXQ_JOB_STATUS_FINISHED;
+            }
+        } else if(WIFSIGNALED(job->stats_status)) {
+            newstatus = MXQ_JOB_STATUS_KILLED;
+        } else {
+            printf("ERROR: Status change to status_exit called with unknown stats_status (%d). Aborting Status change.", job->stats_status);
+            errno = EINVAL;
+            return -1;
+        }
+        query = "UPDATE mxq_job SET"
+                " job_status = ?,"
+                " date_end = NULL,"
+                " stats_status = ?, "
+                " stats_utime_sec = ?, "
+                " stats_utime_usec = ?, "
+                " stats_stime_sec = ?, "
+                " stats_stime_usec = ?, "
+                " stats_real_sec = ?, "
+                " stats_real_usec = ?, "
+                " stats_maxrss = ?, "
+                " stats_minflt = ?, "
+                " stats_majflt = ?, "
+                " stats_nswap = ?, "
+                " stats_inblock = ?, "
+                " stats_oublock = ?, "
+                " stats_nvcsw = ?, "
+                " stats_nivcsw = ?"
+                " WHERE job_id = ?"
+                " AND job_status = " status_str(MXQ_JOB_STATUS_RUNNING)
+                " AND host_hostname = ?"
+                " AND server_id = ?"
+                " AND host_pid = ?";
+
+        assert(_PARAM_MAX > 19);
+        MXQ_MYSQL_BIND_UINT16(param, 0, &newstatus);
+
+        MXQ_MYSQL_BIND_INT32(param,  1, &job->stats_status);
+
+        MXQ_MYSQL_BIND_UINT32(param, 2, &job->stats_rusage.ru_utime.tv_sec);
+        MXQ_MYSQL_BIND_UINT32(param, 3, &job->stats_rusage.ru_utime.tv_usec);
+
+        MXQ_MYSQL_BIND_UINT32(param, 4, &job->stats_rusage.ru_stime.tv_sec);
+        MXQ_MYSQL_BIND_UINT32(param, 5, &job->stats_rusage.ru_stime.tv_usec);
+
+        MXQ_MYSQL_BIND_UINT32(param, 6, &job->stats_realtime.tv_sec);
+        MXQ_MYSQL_BIND_UINT32(param, 7, &job->stats_realtime.tv_usec);
+
+        MXQ_MYSQL_BIND_INT32(param,  8, &job->stats_rusage.ru_maxrss);
+        MXQ_MYSQL_BIND_INT32(param,  9, &job->stats_rusage.ru_minflt);
+        MXQ_MYSQL_BIND_INT32(param, 10, &job->stats_rusage.ru_majflt);
+        MXQ_MYSQL_BIND_INT32(param, 11, &job->stats_rusage.ru_nswap);
+        MXQ_MYSQL_BIND_INT32(param, 12, &job->stats_rusage.ru_inblock);
+        MXQ_MYSQL_BIND_INT32(param, 13, &job->stats_rusage.ru_oublock);
+        MXQ_MYSQL_BIND_INT32(param, 14, &job->stats_rusage.ru_nvcsw);
+        MXQ_MYSQL_BIND_INT32(param, 15, &job->stats_rusage.ru_nivcsw);
+
+        MXQ_MYSQL_BIND_UINT64(param, 16, &job->job_id);
+        MXQ_MYSQL_BIND_STRING(param, 17,  job->host_hostname);
+        MXQ_MYSQL_BIND_STRING(param, 18,  job->server_id);
+        MXQ_MYSQL_BIND_UINT32(param, 19, &job->host_pid);
+    } else if(0) {
     } else {
         assert(newstatus != newstatus);
     }

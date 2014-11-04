@@ -683,6 +683,9 @@ int main(int argc, char *argv[])
         job->job.stats_rusage   = rusage;
 
         printf("pid=%d returned => job_id=%ld\n", pid, job->job.job_id);
+
+        res = mxq_job_update_status(server.mysql, &job->job, MXQ_JOB_STATUS_EXIT);
+
         mxq_job_free_content(&job->job);
         free(job);
     }
