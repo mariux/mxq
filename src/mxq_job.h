@@ -6,7 +6,7 @@
 
 struct mxq_job {
     uint64_t  job_id;
-    uint8_t   job_status;
+    uint16_t   job_status;
     uint16_t  job_priority;
 
     uint64_t  group_id;
@@ -56,9 +56,19 @@ struct mxq_job {
 
 
 #define MXQ_JOB_STATUS_INQ            0
-#define MXQ_JOB_STATUS_ASSIGNED      10
-#define MXQ_JOB_STATUS_LOADED        15
-#define MXQ_JOB_STATUS_RUNNING       20
+#define MXQ_JOB_STATUS_ASSIGNED     100
+#define MXQ_JOB_STATUS_LOADED       150
+#define MXQ_JOB_STATUS_RUNNING      200
+
+#define MXQ_JOB_STATUS_UNKNOWN      250
+#define MXQ_JOB_STATUS_EXTRUNNING   300
+#define MXQ_JOB_STATUS_STOPPED      350
+
+#define MXQ_JOB_STATUS_EXIT        1024
+#define MXQ_JOB_STATUS_KILLED       400
+#define MXQ_JOB_STATUS_FAILED       750
+#define MXQ_JOB_STATUS_CANCELLED    990
+#define MXQ_JOB_STATUS_FINISHED    1000
 
 #define _to_string(s) #s
 #define status_str(x) _to_string(x)
@@ -67,6 +77,6 @@ struct mxq_job {
 int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *mxq_job);
 void mxq_job_free_content(struct mxq_job *j);
 int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
-int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, int status);
+int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t status);
 
 #endif

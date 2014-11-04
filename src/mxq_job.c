@@ -88,7 +88,7 @@ static inline int mxq_job_bind_results(MYSQL_BIND *bind, struct mxq_job *j)
     memset(bind, 0, sizeof(*bind)*MXQ_JOB_COL__END);
 
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_JOB_COL_JOB_ID,       &j->job_id);
-    MXQ_MYSQL_BIND_UINT8(bind,  MXQ_JOB_COL_JOB_STATUS,   &j->job_status);
+    MXQ_MYSQL_BIND_UINT16(bind, MXQ_JOB_COL_JOB_STATUS,   &j->job_status);
     MXQ_MYSQL_BIND_UINT16(bind, MXQ_JOB_COL_JOB_PRIORITY, &j->job_priority);
 
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_JOB_COL_GROUP_ID, &j->group_id);
@@ -215,7 +215,7 @@ void mxq_job_free_content(struct mxq_job *j)
         j->job_argv = NULL;
 }
 
-int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, int newstatus)
+int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
 {
     MYSQL_STMT *stmt;
 
@@ -320,9 +320,8 @@ int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job)
     assert(job->host_hostname);
     assert(job->server_id);
 
-
     memset(param, 0, sizeof(param));
-    MXQ_MYSQL_BIND_UINT8(param,  0, &job->job_status);
+    MXQ_MYSQL_BIND_UINT16(param, 0, &job->job_status);
     MXQ_MYSQL_BIND_STRING(param, 1, job->host_hostname);
     MXQ_MYSQL_BIND_STRING(param, 2, job->server_id);
 

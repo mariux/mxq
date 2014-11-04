@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS mxq_group (
 DROP TABLE mxq_job;
 CREATE TABLE IF NOT EXISTS mxq_job (
    job_id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   job_status     INT1 UNSIGNED   NOT NULL DEFAULT 0,
+   job_status     INT2 UNSIGNED   NOT NULL DEFAULT 0,
    job_priority   INT2 UNSIGNED   NOT NULL DEFAULT 127,
 
    group_id       INT8 UNSIGNED   NOT NULL,
@@ -105,12 +105,12 @@ CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
 DROP TRIGGER mxq_update_job|
 CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
     FOR EACH ROW BEGIN
-        IF NEW.job_status = 20 AND OLD.job_status IN (0, 10, 15)  THEN
+        IF NEW.job_status = 200 AND OLD.job_status IN (0, 100, 150)  THEN
             UPDATE mxq_group SET
                group_jobs_running=group_jobs_running+1,
                group_mtime=NULL
             WHERE group_id=NEW.group_id;
-        ELSEIF NEW.job_status IN (40, 45) AND OLD.job_status IN (20, 25, 30, 35) THEN
+        ELSEIF NEW.job_status IN (400, 750) AND OLD.job_status IN (200, 250, 300, 350) THEN
             UPDATE mxq_group SET
                group_jobs_running=group_jobs_running-1,
                group_jobs_failed=group_jobs_failed+1,
@@ -120,7 +120,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
                group_mtime=NULL
             WHERE group_id=NEW.group_id;
-        ELSEIF NEW.job_status = 50 AND OLD.job_status IN (20, 25, 30, 35) THEN
+        ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (200, 250, 300, 350) THEN
             UPDATE mxq_group SET
                group_jobs_running=group_jobs_running-1,
                group_jobs_finished=group_jobs_finished+1,

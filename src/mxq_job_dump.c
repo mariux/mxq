@@ -111,7 +111,7 @@ static inline int prepare_result_bindings(MYSQL_BIND *bind, struct result *g)
     memset(bind, 0, sizeof(*bind)*COL__END);
 
     MXQ_MYSQL_BIND_UINT64(bind, COL_JOB_ID,       &g->job.job_id);
-    MXQ_MYSQL_BIND_UINT8(bind,  COL_JOB_STATUS,   &g->job.job_status);
+    MXQ_MYSQL_BIND_UINT16(bind, COL_JOB_STATUS,   &g->job.job_status);
     MXQ_MYSQL_BIND_UINT16(bind, COL_JOB_PRIORITY, &g->job.job_priority);
 
     MXQ_MYSQL_BIND_UINT64(bind, COL_GROUP_ID, &g->job.group_id);
