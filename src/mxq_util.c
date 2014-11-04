@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <time.h>
 #include "mxq_util.h"
 
 
@@ -23,6 +24,27 @@ mode_t getumask(void)
     return mask;
 }
 
+size_t timetag(char *buf, size_t max)
+{
+    time_t t;
+    struct tm *ltime;
+
+    *buf = 0;
+
+    t = time(NULL);
+    if (t == ((time_t) -1)) {
+        perror("timetag::time");
+        return 0;
+    }
+
+    ltime = localtime(&t);
+    if (ltime == NULL) {
+        perror("timetag::localtime");
+        return 0;
+    }
+
+    return strftime(buf, max, "%F %T %z", ltime);
+}
 
 int log_msg(int prio, const char *fmt, ...)
 {
@@ -32,6 +54,7 @@ int log_msg(int prio, const char *fmt, ...)
     static int cnt = 0;
     int res;
     size_t len;
+    char timebuf[1024];
 
     if (!fmt) {
         free(lastmsg);
@@ -54,16 +77,24 @@ int log_msg(int prio, const char *fmt, ...)
             free(msg);
             return 2;
         }
+    }
+
+    timetag(timebuf, sizeof(timebuf));
+
+    if (cnt > 1)
+        printf("%s %s[%d]: last message repeated %d times\n", timebuf, program_invocation_short_name, getpid(), cnt);
+    else if (cnt == 1)
+        printf("%s %s[%d]: %s", timebuf, program_invocation_short_name, getpid(), lastmsg);
+    cnt = 0;
+    fflush(stdout);
+
+    if (lastmsg) {
         free(lastmsg);
     }
+
     lastmsg = msg;
 
-
-    if (cnt) {
-        printf("%s[%d]: last message repeated %d times\n",program_invocation_short_name, getpid(), cnt);
-        cnt = 0;
-    }
-    printf("%s[%d]: %s",program_invocation_short_name, getpid(), msg);
+    printf("%s %s[%d]: %s", timebuf, program_invocation_short_name, getpid(), msg);
     fflush(stdout);
     return 1;
 }
