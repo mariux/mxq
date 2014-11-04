@@ -42,6 +42,8 @@ struct mxq_group {
    struct timeval stats_max_real;
 };
 
+#define MXQ_GROUP_STATUS_CANCELLED    99
+
 int  mxq_group_load_groups(MYSQL *mysql, struct mxq_group **mxq_group);
 void mxq_group_free_content(struct mxq_group *g);
 

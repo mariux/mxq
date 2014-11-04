@@ -93,6 +93,16 @@ CREATE TABLE IF NOT EXISTS mxq_job (
 );
 
 DELIMITER |
+DROP TRIGGER mxq_update_group|
+CREATE TRIGGER mxq_update_group BEFORE UPDATE ON mxq_group
+    FOR EACH ROW BEGIN
+        IF NEW.group_status = 99 THEN
+            UPDATE mxq_job SET
+                job_status = 990
+            WHERE group_id=NEW.group_id AND job_status = 0;
+        END IF;
+    END;
+|
 DROP TRIGGER mxq_add_job|
 CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
     FOR EACH ROW BEGIN
