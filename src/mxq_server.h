@@ -32,6 +32,8 @@ struct mxq_group_list {
     unsigned long threads_running;
     unsigned long slots_running;
     unsigned long memory_used;
+
+    short orphaned;
 };
 
 struct mxq_user_list {

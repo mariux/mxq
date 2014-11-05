@@ -71,6 +71,8 @@ void group_init(struct mxq_group_list *group)
     s = group->user->server;
     g = &group->group;
 
+    group->orphaned = 0;
+
     group->memory_per_thread = (long double)g->job_memory / (long double) g->job_threads;
     group->memory_max_available = s->memory_total * s->memory_max_per_slot / group->memory_per_thread;
 
@@ -680,6 +682,61 @@ unsigned long start_users(struct mxq_server *server)
 
 /**********************************************************************/
 
+
+int remove_orphaned_groups(struct mxq_server *server)
+{
+    struct mxq_user_list  *user,  *unext, *uprev;
+    struct mxq_group_list *group, *gnext, *gprev;
+    struct mxq_job_list   *job;
+    int cnt=0;
+
+    for (user=server->users, uprev=NULL; user; uprev=user, user=unext) {
+        unext = user->next;
+        for (group=user->groups, gprev=NULL; group; gprev=group, group=gnext) {
+            gnext = group->next;
+
+            if (group->job_cnt)
+                continue;
+
+            assert(!group->jobs);
+
+            if (!group->orphaned && group->group.group_jobs-group->group.group_jobs_failed-group->group.group_jobs_finished) {
+                group->orphaned = 1;
+                continue;
+            }
+
+            if (gprev) {
+                gprev->next = gnext;
+            } else {
+                assert(group == user->groups);
+                user->groups = gnext;
+            }
+
+            MXQ_LOG_INFO("group=%s(%d):%lu : Removing orphaned group.\n", group->group.user_name, group->group.user_uid, group->group.group_id);
+
+            user->group_cnt--;
+            server->group_cnt--;
+            cnt++;
+            mxq_group_free_content(&group->group);
+            free(group);
+        }
+        if(user->groups)
+            continue;
+
+        if (uprev) {
+            uprev->next = unext;
+        } else {
+            assert(user == server->users);
+            server->users = unext;
+        }
+        server->user_cnt--;
+        free(user);
+
+        MXQ_LOG_INFO("Removed orphaned user. %lu users left.\n", server->user_cnt);
+    }
+    return cnt;
+}
+
 void server_dump(struct mxq_server *server)
 {
     struct mxq_user_list  *user;
@@ -798,6 +855,8 @@ int load_groups(struct mxq_server *server) {
         }
     }
     free(mxqgroups);
+
+    remove_orphaned_groups(server);
 
     return total;
 }
