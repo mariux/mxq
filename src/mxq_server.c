@@ -597,8 +597,54 @@ void server_close(struct mxq_server *server)
     mx_funlock(server->flock);
 }
 
+int catchall(struct mxq_server *server) {
+
+    struct rusage rusage;
+    struct timeval now;
+    int status;
+    pid_t pid;
+    int cnt = 0;
+    struct mxq_job_list *job;
+
+    while (server->jobs_running) {
+        pid = wait3(&status, WNOHANG, &rusage);
+
+        if (pid < 0) {
+            MXQ_LOG_ERROR("wait3: %m\n");
+            return -1;
+        }
+
+        if (pid == 0)
+            return 0;
+
+        job = server_remove_job_by_pid(server, pid);
+        if (!job) {
+            MXQ_LOG_ERROR("unknown pid returned.. pid=%d\n", pid);
+            continue;
+        }
+
+        gettimeofday(&now, NULL);
+
+        timersub(&now, &job->job.stats_starttime, &job->job.stats_realtime);
+
+        job->job.stats_status   = status;
+        job->job.stats_rusage   = rusage;
+
+        MXQ_LOG_INFO("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.\n",
+                job->group->group.user_name, job->group->group.user_uid, job->group->group.group_id, job->job.job_id, pid, status);
+
+        mxq_job_update_status(server->mysql, &job->job, MXQ_JOB_STATUS_EXIT);
+
+        mxq_job_free_content(&job->job);
+        free(job);
+        cnt++;
+    }
+
+    return cnt;
+}
+
 /**********************************************************************/
-static void chld_handler(int sig) {}
+static void no_handler(int sig) {}
 
 int main(int argc, char *argv[])
 {
@@ -615,7 +661,7 @@ int main(int argc, char *argv[])
 
     /*** server init ***/
 
-    signal(SIGCHLD, chld_handler);
+    signal(SIGCHLD, no_handler);
 
     res = server_init(&server);
     if (res < 0) {
@@ -646,48 +692,14 @@ int main(int argc, char *argv[])
     start_users(&server);
 
     while (server.jobs_running) {
-        struct rusage rusage;
-        struct timeval now;
-        int status;
-        pid_t pid;
+        int cnt;
 
-        printf("waiting for %2ld jobs (%2ld slots) to finish ... ", server.jobs_running, server.slots_running);
-        fflush(stdout);
-        pid = wait3(&status, WNOHANG, &rusage);
-        if (pid < 0) {
-            if (errno == ECHILD) {
-                printf("No child processes left. Exiting.\n");
-                break;
-            }
-            perror("wait3");
-            continue;
+        cnt = catchall(&server);
+
+        if (!cnt) {
+            MXQ_LOG_INFO("waiting for %ld jobs (%ld slots) to finish ...\n", server.jobs_running, server.slots_running);
+            sleep(20);
         }
-        if (pid == 0) {
-            unsigned int left;
-            left = sleep(20);
-            printf("slept %d seconds\n", 20-left);
-            continue;
-        }
-
-        job = server_remove_job_by_pid(&server, pid);
-        if (!job) {
-            printf("unknown pid returned.. pid=%d\n", pid);
-            continue;
-        }
-
-        gettimeofday(&now, NULL);
-
-        timersub(&now, &job->job.stats_starttime, &job->job.stats_realtime);
-
-        job->job.stats_status   = status;
-        job->job.stats_rusage   = rusage;
-
-        printf("pid=%d returned => job_id=%ld\n", pid, job->job.job_id);
-
-        res = mxq_job_update_status(server.mysql, &job->job, MXQ_JOB_STATUS_EXIT);
-
-        mxq_job_free_content(&job->job);
-        free(job);
     }
 
     /*** clean up ***/
