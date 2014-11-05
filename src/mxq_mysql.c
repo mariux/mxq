@@ -40,7 +40,7 @@ MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql)
         if (mres == mysql)
             return mysql;
 
-        log_msg(0, "MAIN: Failed to connect to database (try=%d): Error: %s\n", try++, mysql_error(mysql));
+        MXQ_LOG_ERROR("MAIN: Failed to connect to database (try=%d): Error: %s\n", try++, mysql_error(mysql));
         sleep(1);
     }
     return NULL;
@@ -121,21 +121,21 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
 
     stmt = mysql_stmt_init(mysql);
     if (!stmt) {
-        print_error("mysql_stmt_init(mysql=%p)\n", mysql);
+        MXQ_LOG_ERROR("mysql_stmt_init(mysql=%p)\n", mysql);
         mxq_mysql_print_error(mysql);
         return NULL;
     }
 
     res = mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
     if (res) {
-        print_error("mysql_stmt_prepare(stmt=%p, stmt_str=\"%s\", length=%ld)\n", stmt, stmt_str, strlen(stmt_str));
+        MXQ_LOG_ERROR("mysql_stmt_prepare(stmt=%p, stmt_str=\"%s\", length=%ld)\n", stmt, stmt_str, strlen(stmt_str));
         mxq_mysql_stmt_print_error(stmt);
         mysql_stmt_close(stmt);
         return NULL;
     }
 
     if (mysql_stmt_field_count(stmt) != field_count) {
-        print_error("mysql_stmt_field_count(stmt=%p) does not match requested field_count (=%d)\n", stmt, field_count);
+        MXQ_LOG_ERROR("mysql_stmt_field_count(stmt=%p) does not match requested field_count (=%d)\n", stmt, field_count);
         mysql_stmt_close(stmt);
         return NULL;
     }
@@ -143,7 +143,7 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
     if (result) {
         res = mysql_stmt_bind_result(stmt, result);
         if (res) {
-            print_error("mysql_stmt_bind_result(stmt=%p)\n", stmt);
+            MXQ_LOG_ERROR("mysql_stmt_bind_result(stmt=%p)\n", stmt);
             mxq_mysql_stmt_print_error(stmt);
             mysql_stmt_close(stmt);
             return NULL;
@@ -153,7 +153,7 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
     if (param) {
         res = mysql_stmt_bind_param(stmt, param);
         if (res) {
-            print_error("mysql_stmt_bind_param(stmt=%p)\n", stmt);
+            MXQ_LOG_ERROR("mysql_stmt_bind_param(stmt=%p)\n", stmt);
             mxq_mysql_stmt_print_error(stmt);
             mysql_stmt_close(stmt);
             return NULL;
@@ -162,7 +162,7 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
 
     res = mysql_stmt_execute(stmt);
     if (res) {
-        print_error("mysql_stmt_execute(stmt=%p)\n", stmt);
+        MXQ_LOG_ERROR("mysql_stmt_execute(stmt=%p)\n", stmt);
         mxq_mysql_stmt_print_error(stmt);
         mysql_stmt_close(stmt);
         return NULL;
