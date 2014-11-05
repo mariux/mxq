@@ -606,11 +606,12 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
 
 /**********************************************************************/
 
-void start_users(struct mxq_server *server)
+unsigned long start_users(struct mxq_server *server)
 {
     long slots_to_start;
     unsigned long slots_started;
     int started = 0;
+    unsigned long slots_started_total = 0;
 
     struct mxq_user_list  *user, *unext=NULL;
     struct mxq_group_list *group, *gnext;
@@ -618,7 +619,7 @@ void start_users(struct mxq_server *server)
     assert(server);
 
     if (!server->user_cnt)
-        return;
+        return 0;
 
 /*
     for (user=server->users; user; user=user->next) {
@@ -651,14 +652,14 @@ void start_users(struct mxq_server *server)
             slots_to_start = server->slots - server->slots_running;
 
         slots_started = start_user(user, 0, slots_to_start);
-
+        slots_started_total += slots_started;
 //        printf("  => %ld of %ld slots started (%ld unused slots)\n", slots_started, slots_to_start, slots_to_start-slots_started);
     }
 
     for (user=server->users; user && server->slots - server->slots_running; user=unext) {
         slots_to_start = server->slots - server->slots_running;
         slots_started  = start_user(user, 1, slots_to_start);
-
+        slots_started_total += slots_started;
         started = (started || slots_started);
 
 //        printf("  => %ld of %ld slots started (%ld unused slots)\n", slots_started, slots_to_start, slots_to_start-slots_started);
@@ -673,6 +674,8 @@ void start_users(struct mxq_server *server)
 
     printf("server-stats:\n\t%6lu of %6lu MiB\tallocated\n", server->memory_used, server->memory_total);
     printf("\t%6lu of %6lu slots\tallocated for %lu running threads (%lu jobs)\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
+
+    return slots_started_total;
 }
 
 /**********************************************************************/
@@ -755,6 +758,28 @@ int catchall(struct mxq_server *server) {
     return cnt;
 }
 
+int load_groups(struct mxq_server *server) {
+    struct mxq_group *mxqgroups;
+    struct mxq_group_list *group;
+    int group_cnt;
+    int total;
+    int i;
+
+    group_cnt = mxq_group_load_groups(server->mysql, &mxqgroups);
+
+    for (i=0, total=0; i<group_cnt; i++) {
+        group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
+        if (!group) {
+            MXQ_LOG_ERROR("Could not add Group to control structures.\n");
+        } else {
+            total++;
+        }
+    }
+    free(mxqgroups);
+
+    return total;
+}
+
 /**********************************************************************/
 static void no_handler(int sig) {}
 
@@ -766,6 +791,9 @@ int main(int argc, char *argv[])
 
     struct mxq_server server;
     struct mxq_group_list *group;
+
+    unsigned long slots_started;
+    unsigned long slots_returned;
 
     int i;
     int res;
@@ -802,28 +830,40 @@ int main(int argc, char *argv[])
 
     /*** main loop ***/
 
-    group_cnt = mxq_group_load_groups(server.mysql, &mxqgroups);
 
-    //MXQ_LOG_INFO("group_cnt=%d :: groups loaded.\n", group_cnt);
+    do {
+        slots_returned = catchall(&server);
+        MXQ_LOG_INFO("slots_returned=%lu :: Main Loop freed %lu slots.\n", slots_returned, slots_returned);
 
-    for (i=0; i<group_cnt; i++) {
-        group = server_update_groupdata(&server, &mxqgroups[group_cnt-i-1]);
-//        printf("new group %p user_cnt=%lu group_cnt=%lu job_cnt=%lu\n", group, server.user_cnt, server.group_cnt, server.job_cnt);
-    }
-    free(mxqgroups);
+        group_cnt = load_groups(&server);
+        if (group_cnt)
+            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n",group_cnt, group_cnt);
 
-    start_users(&server);
-
-    while (server.jobs_running) {
-        int cnt;
-
-        cnt = catchall(&server);
-
-        if (!cnt) {
-            MXQ_LOG_INFO("waiting for %ld jobs (%ld slots) to finish ...\n", server.jobs_running, server.slots_running);
-            sleep(20);
+        if (!server.group_cnt) {
+            assert(!server.jobs_running);
+            assert(!group_cnt);
+            MXQ_LOG_INFO("Nothing to do. Sleeping for a short while. (7 seconds)\n");
+            sleep(7);
+            continue;
         }
-    }
+
+
+        if (server.slots_running == server.slots) {
+            MXQ_LOG_INFO("All slots running. Sleeping for a short while.\n");
+            sleep(20);
+            continue;
+        }
+
+        slots_started = start_users(&server);
+        MXQ_LOG_INFO("slots_started=%lu :: Main Loop started %lu slots.\n", slots_started, slots_started);
+
+        if (!slots_started && !slots_returned) {
+            MXQ_LOG_INFO("Tried Hard. But have done nothing. Sleeping for a short while.\n");
+            sleep(7);
+            continue;
+        }
+
+    } while (1);
 
     /*** clean up ***/
 
