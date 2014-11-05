@@ -147,42 +147,42 @@ int mxq_job_fetch_results(MYSQL_STMT *stmt, MYSQL_BIND *bind, struct mxq_job *j)
         if (errno == ENOENT)
             return 0;
         perror("xxxx0");
-        return 0;
+        return -1;
     }
 
     res = mxq_mysql_stmt_fetch_string(stmt, bind, MXQ_JOB_COL_JOB_WORKDIR, &(j->job_workdir), j->_job_workdir_length);
     if (!res) {
-        return 0;
+        return -1;
     }
 
     res = mxq_mysql_stmt_fetch_string(stmt, bind, MXQ_JOB_COL_JOB_ARGV, &(j->job_argv_str), j->_job_argv_str_length);
     if (!res) {
-        return 0;
+        return -1;
     }
 
     res = mxq_mysql_stmt_fetch_string(stmt, bind, MXQ_JOB_COL_JOB_STDOUT, &(j->job_stdout), j->_job_stdout_length);
     if (!res) {
-        return 0;
+        return -1;
     }
 
     res = mxq_mysql_stmt_fetch_string(stmt, bind, MXQ_JOB_COL_JOB_STDERR, &(j->job_stderr), j->_job_stderr_length);
     if (!res) {
-        return 0;
+        return -1;
     }
 
     res = mxq_mysql_stmt_fetch_string(stmt, bind, MXQ_JOB_COL_HOST_SUBMIT, &(j->host_submit), j->_host_submit_length);
     if (!res) {
-        return 0;
+        return -1;
     }
 
     res = mxq_mysql_stmt_fetch_string(stmt, bind, MXQ_JOB_COL_SERVER_ID, &(j->server_id), j->_server_id_length);
     if (!res) {
-        return 0;
+        return -1;
     }
 
     res = mxq_mysql_stmt_fetch_string(stmt, bind, MXQ_JOB_COL_HOST_HOSTNAME, &(j->host_hostname), j->_host_hostname_length);
     if (!res) {
-        return 0;
+        return -1;
     }
 
     return 1;
@@ -379,70 +379,85 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
     return res;
 }
 
-int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job)
+int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id)
 {
     MYSQL_STMT *stmt;
     MYSQL_BIND result[MXQ_JOB_COL__END];
     char *query;
-    MYSQL_BIND param[3];
+    MYSQL_BIND param[2];
+    int res;
 
-    assert(job->host_hostname);
-    assert(job->server_id);
+    assert(hostname);
+    assert(server_id);
 
     memset(param, 0, sizeof(param));
-    MXQ_MYSQL_BIND_UINT16(param, 0, &job->job_status);
-    MXQ_MYSQL_BIND_STRING(param, 1, job->host_hostname);
-    MXQ_MYSQL_BIND_STRING(param, 2, job->server_id);
+    MXQ_MYSQL_BIND_STRING(param, 0, hostname);
+    MXQ_MYSQL_BIND_STRING(param, 1, server_id);
 
     mxq_job_bind_results(result, job);
 
     query = "SELECT " MXQ_JOB_FIELDS " FROM mxq_job"
-            " WHERE job_status = ?"
+            " WHERE job_status = " status_str(MXQ_JOB_STATUS_ASSIGNED)
             " AND host_hostname = ?"
-            " AND server_id  = ?";
+            " AND server_id  = ?"
+            " LIMIT 1";
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_JOB_COL__END, param, result);
     if (!stmt) {
-        print_error("mxq_job_load_reserved(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_JOB_COL__END, param, result);
+        MXQ_LOG_ERROR("mxq_job_load_reserved(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_JOB_COL__END, param, result);
         return -1;
     }
 
-    if (!mxq_job_fetch_results(stmt, result, job)) {
+    res = mxq_job_fetch_results(stmt, result, job);
+    if (res < 0) {
         mxq_mysql_print_error(mysql);
         mxq_mysql_stmt_print_error(stmt);
-        printf("mxq_job_fetch_results FAILED..\n");
+        MXQ_LOG_ERROR("mxq_job_fetch_results..\n");
         mysql_stmt_close(stmt);
         return -1;
     }
 
     mysql_stmt_close(stmt);
-    return 1;
+    return res;
 }
 
 int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id)
 {
     int res;
 
-    mxqjob->host_hostname = hostname;
-    mxqjob->server_id     = server_id;
-    mxqjob->group_id      = group_id;
-    mxqjob->job_status    = MXQ_JOB_STATUS_INQ;
+    memset(mxqjob, 0, sizeof(*mxqjob));
 
-    res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_ASSIGNED);
-    if (res < 0) {
-        perror("mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED)");
-        return 0;
-    }
+    do {
+        res = mxq_job_load_reserved(mysql, mxqjob, hostname, server_id);
+        if(res < 0) {
+            MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_load_reserved: %m\n", group_id, mxqjob->job_id);
+            return 0;
+        }
+        if(res == 1) {
+            break;
+        }
 
-    res = mxq_job_load_reserved(mysql, mxqjob);
-    if(res <= 0) {
-        printf("*** COULD NOT LOAD RESERVED JOB\n");
-        return 0;
-    }
+        mxqjob->host_hostname = hostname;
+        mxqjob->server_id     = server_id;
+        mxqjob->group_id      = group_id;
+        mxqjob->job_status    = MXQ_JOB_STATUS_INQ;
+
+        res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_ASSIGNED);
+        if (res < 0) {
+            MXQ_LOG_WARNING("  group_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED): %m\n", group_id);
+            return 0;
+        }
+    } while (1);
+
+//    res = mxq_job_load_reserved(mysql, mxqjob, hostname, server_id);
+//    if(res < 0) {
+//        MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_load_reserved: %m\n", group_id, mxqjob->job_id);
+//        return 0;
+//    }
 
     res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_LOADED);
     if (res < 0) {
-        perror("mxq_job_update_status(MXQ_JOB_STATUS_LOADED)");
+        MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_LOADED): %m\n", group_id, mxqjob->job_id);
         return 0;
     }
 
