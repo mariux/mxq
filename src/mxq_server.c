@@ -676,8 +676,8 @@ unsigned long start_users(struct mxq_server *server)
         }
     }
 
-    printf("server-stats:\n\t%6lu of %6lu MiB\tallocated\n", server->memory_used, server->memory_total);
-    printf("\t%6lu of %6lu slots\tallocated for %lu running threads (%lu jobs)\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
+    MXQ_LOG_INFO("server-stats:\t%6lu of %6lu MiB\tallocated\n", server->memory_used, server->memory_total);
+    MXQ_LOG_INFO("\t%6lu of %6lu slots\tallocated for %lu running threads (%lu jobs)\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
 
     return slots_started_total;
 }
@@ -750,11 +750,16 @@ void server_dump(struct mxq_server *server)
 
     MXQ_LOG_INFO("====================== SERVER DUMP START ======================\n");
     for (user=server->users; user; user=user->next) {
-        MXQ_LOG_INFO("    user=%s(%d)\n", user->groups->group.user_name, user->groups->group.user_uid);
+        MXQ_LOG_INFO("    user=%s(%d)\n",
+            user->groups->group.user_name, user->groups->group.user_uid);
         for (group=user->groups; group; group=group->next) {
-            MXQ_LOG_INFO("        group=%s(%d):%lu\n", group->group.user_name, group->group.user_uid, group->group.group_id);
+            MXQ_LOG_INFO("        group=%s(%d):%lu %s\n",
+                group->group.user_name, group->group.user_uid, group->group.group_id,
+                group->group.group_name);
             for (job=group->jobs; job; job=job->next) {
-                MXQ_LOG_INFO("            job=%s(%d):%lu:%lu\n", group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id);
+                MXQ_LOG_INFO("            job=%s(%d):%lu:%lu %s\n",
+                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    job->job.job_argv_str);
             }
         }
     }
@@ -924,13 +929,14 @@ int main(int argc, char *argv[])
 
     do {
         slots_returned = catchall(&server);
-        MXQ_LOG_INFO("slots_returned=%lu :: Main Loop freed %lu slots.\n", slots_returned, slots_returned);
+        if (slots_returned)
+            MXQ_LOG_INFO("slots_returned=%lu :: Main Loop freed %lu slots.\n", slots_returned, slots_returned);
 
         server_dump(&server);
 
         group_cnt = load_groups(&server);
         if (group_cnt)
-            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n",group_cnt, group_cnt);
+            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n", group_cnt, group_cnt);
 
         if (!server.group_cnt) {
             assert(!server.jobs_running);
@@ -948,11 +954,12 @@ int main(int argc, char *argv[])
         }
 
         slots_started = start_users(&server);
-        MXQ_LOG_INFO("slots_started=%lu :: Main Loop started %lu slots.\n", slots_started, slots_started);
+        if (slots_started)
+            MXQ_LOG_INFO("slots_started=%lu :: Main Loop started %lu slots.\n", slots_started, slots_started);
 
         if (!slots_started && !slots_returned) {
             MXQ_LOG_INFO("Tried Hard. But have done nothing. Sleeping for a short while.\n");
-            sleep(7);
+            sleep(1);
             continue;
         }
     } while (!global_sigint_cnt);
@@ -976,6 +983,8 @@ int main(int argc, char *argv[])
     mxq_mysql_close(server.mysql);
 
     server_close(&server);
+
+    MXQ_LOG_INFO("cu, mx.\n");
 
     log_msg(0, NULL);
 
