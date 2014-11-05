@@ -656,44 +656,6 @@ int mxq_mysql_finish_reaped_jobs(MYSQL *mysql, struct mxq_job_full_list *job_lis
 }
 
 
-static int mxq_setenv(const char *name, const char *value)
-{
-    int res;
-
-    res = setenv(name, value, 1);
-    if (res == -1) {
-        log_msg(0, "mxq_setenv(%s, %s) failed! (%s)\n", name, value, strerror(errno));
-        return 0;
-    }
-
-    return 1;
-}
-
-static int mxq_setenvf(const char *name, char *fmt, ...)
-{
-    va_list ap;
-    _cleanup_free_ char *value = NULL;
-    size_t len;
-    int res;
-
-    assert(name);
-    assert(*name);
-    assert(fmt);
-
-    va_start(ap, fmt);
-    len = vasprintf(&value, fmt, ap);
-    va_end(ap);
-
-    if (len == -1) {
-        log_msg(0, "mxq_setenvf(%s, %s, ...) failed! (%s)\n", name, fmt, strerror(errno));
-        return 0;
-    }
-
-    return mxq_setenv(name, value);
-}
-
-
-
 int job_setup_environment(struct mxq_job_full *job)
 {
     int res;

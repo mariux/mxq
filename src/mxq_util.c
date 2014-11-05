@@ -488,6 +488,43 @@ char **stringtostringvec(int argc, char *s)
     return argv;
 }
 
+int mxq_setenv(const char *name, const char *value)
+{
+    int res;
+
+    res = setenv(name, value, 1);
+    if (res == -1) {
+        MXQ_LOG_ERROR("mxq_setenv(%s, %s) failed! (%s)\n", name, value, strerror(errno));
+        return 0;
+    }
+
+    return 1;
+}
+
+
+int mxq_setenvf(const char *name, char *fmt, ...)
+{
+    va_list ap;
+    _cleanup_free_ char *value = NULL;
+    size_t len;
+    int res;
+
+    assert(name);
+    assert(*name);
+    assert(fmt);
+
+    va_start(ap, fmt);
+    len = vasprintf(&value, fmt, ap);
+    va_end(ap);
+
+    if (len == -1) {
+        MXQ_LOG_ERROR("mxq_setenvf(%s, %s, ...) failed! (%s)\n", name, fmt, strerror(errno));
+        return 0;
+    }
+
+    return mxq_setenv(name, value);
+}
+
 int chrcnt(char *s, char c)
 {
     int i = 0;

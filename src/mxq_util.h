@@ -53,4 +53,7 @@ static inline void freep(void *p) {
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
 
+int mxq_setenv(const char *name, const char *value);
+int mxq_setenvf(const char *name, char *fmt, ...);
+
 #endif
