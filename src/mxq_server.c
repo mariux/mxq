@@ -680,6 +680,28 @@ unsigned long start_users(struct mxq_server *server)
 
 /**********************************************************************/
 
+void server_dump(struct mxq_server *server)
+{
+    struct mxq_user_list  *user;
+    struct mxq_group_list *group;
+    struct mxq_job_list   *job;
+
+    if (!server->user_cnt)
+        return;
+
+    MXQ_LOG_INFO("====================== SERVER DUMP START ======================\n");
+    for (user=server->users; user; user=user->next) {
+        MXQ_LOG_INFO("    user=%s(%d)\n", user->groups->group.user_name, user->groups->group.user_uid);
+        for (group=user->groups; group; group=group->next) {
+            MXQ_LOG_INFO("        group=%s(%d):%lu\n", group->group.user_name, group->group.user_uid, group->group.group_id);
+            for (job=group->jobs; job; job=job->next) {
+                MXQ_LOG_INFO("            job=%s(%d):%lu:%lu\n", group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id);
+            }
+        }
+    }
+    MXQ_LOG_INFO("====================== SERVER DUMP END ======================\n");
+}
+
 void server_close(struct mxq_server *server)
 {
     struct mxq_user_list  *user,  *unext;
@@ -834,6 +856,8 @@ int main(int argc, char *argv[])
     do {
         slots_returned = catchall(&server);
         MXQ_LOG_INFO("slots_returned=%lu :: Main Loop freed %lu slots.\n", slots_returned, slots_returned);
+
+        server_dump(&server);
 
         group_cnt = load_groups(&server);
         if (group_cnt)
