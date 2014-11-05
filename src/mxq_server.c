@@ -24,6 +24,8 @@
 #include "mxq_mysql.h"
 #include "mxq_server.h"
 
+volatile sig_atomic_t global_sigint_cnt=0;
+
 /**********************************************************************/
 
 int server_init(struct mxq_server *server)
@@ -864,6 +866,14 @@ int load_groups(struct mxq_server *server) {
 /**********************************************************************/
 static void no_handler(int sig) {}
 
+static void sig_handler(int sig)
+{
+    if (sig == SIGINT) {
+      global_sigint_cnt++;
+      return;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     struct mxq_group *mxqgroups;
@@ -881,7 +891,7 @@ int main(int argc, char *argv[])
 
     /*** server init ***/
 
-    signal(SIGINT,  SIG_IGN);
+    signal(SIGINT,  sig_handler);
     signal(SIGTERM, SIG_IGN);
     signal(SIGQUIT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
@@ -945,10 +955,23 @@ int main(int argc, char *argv[])
             sleep(7);
             continue;
         }
-
-    } while (1);
+    } while (!global_sigint_cnt);
 
     /*** clean up ***/
+
+    MXQ_LOG_INFO("global_sigint_cnt=%d : Exiting.\n", global_sigint_cnt);
+
+    while (server.jobs_running) {
+       slots_returned = catchall(&server);
+       if (slots_returned) {
+           MXQ_LOG_INFO("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d : \n",
+                   server.jobs_running, slots_returned, global_sigint_cnt);
+           continue;
+       }
+       MXQ_LOG_INFO("jobs_running=%lu global_sigint_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.\n",
+              server.jobs_running, global_sigint_cnt);
+       sleep(1);
+    }
 
     mxq_mysql_close(server.mysql);
 
