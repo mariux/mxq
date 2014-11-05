@@ -47,8 +47,10 @@ endif
 DESTDIR=
 
 MXQ_MYSQL_DEFAULT_FILE = ${SYSCONFDIR}/mxq/mysql.cnf
+MXQ_INITIAL_PATH = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 
 CFLAGS_MXQ_MYSQL_DEFAULT_FILE = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
+CFLAGS_MXQ_INITIAL_PATH = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 
 MYSQL_CONFIG = mysql_config
 
@@ -246,6 +248,7 @@ mxq_server.o: $(mxq_job.h)
 mxq_server.o: $(mxq_mysql.h)
 mxq_server.o: CFLAGS += $(CFLAGS_MYSQL)
 mxq_server.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+mxq_server.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
 
 clean: CLEAN += mxq_server.o
 

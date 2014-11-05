@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <pwd.h>
 
 #include "mx_flock.h"
 
@@ -331,6 +332,70 @@ static struct mxq_group_list *server_update_groupdata(struct mxq_server *server,
     return user_update_groupdata(user, group);
 }
 
+static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
+{
+        struct mxq_group *g;
+        struct mxq_server *s;
+        struct passwd *passwd;
+        pid_t pid;
+        int res;
+
+        assert(j);
+        assert(group);
+        assert(group->user);
+        assert(group->user->server);
+
+        s = group->user->server;
+        g = &group->group;
+
+        /** restore signal handler **/
+        signal(SIGINT,  SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+        signal(SIGQUIT, SIG_DFL);
+        signal(SIGTSTP, SIG_DFL);
+        signal(SIGTTIN, SIG_DFL);
+        signal(SIGTTOU, SIG_DFL);
+        signal(SIGCHLD, SIG_DFL);
+
+        /** set sessionid and pgrp leader **/
+        pid = setsid();
+        if (pid == -1) {
+            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setsid(): %m\n",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+        }
+
+        /** prepare environment **/
+        res = clearenv();
+        if (res != 0) {
+            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu clearenv(): %m\n",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
+
+        passwd = getpwuid(g->user_uid);
+        if (!passwd) {
+            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu getpwuid(): %m\n",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
+
+        res += mxq_setenv("USER",     g->user_name);
+        res += mxq_setenv("USERNAME", g->user_name);
+        res += mxq_setenv("LOGNAME",  g->user_name);
+        res += mxq_setenv("PATH",     MXQ_INITIAL_PATH);
+        res += mxq_setenv("PWD",      j->job_workdir);
+        res += mxq_setenv("HOME",     passwd->pw_dir);
+        res += mxq_setenv("HOSTNAME", mxq_hostname());
+        res += mxq_setenvf("JOB_ID",      "%d",     j->job_id);
+        res += mxq_setenvf("MXQ_JOBID",   "%d",     j->job_id);
+        res += mxq_setenvf("MXQ_THREADS", "%d",     g->job_threads);
+        res += mxq_setenvf("MXQ_SLOTS",   "%d",     group->slots_per_job);
+        res += mxq_setenvf("MXQ_MEMORY",  "%d",     g->job_memory);
+        res += mxq_setenvf("MXQ_TIME",    "%d",     g->job_time);
+        res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
+        return 1;
+}
+
 /**********************************************************************/
 
 unsigned long start_job(struct mxq_group_list *group)
@@ -349,43 +414,65 @@ unsigned long start_job(struct mxq_group_list *group)
 
     res = mxq_job_load(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id);
 
-    if (res) {
+    if (!res) {
+        return 0;
+    }
+    MXQ_LOG_INFO("   job=%s(%d):%lu:%lu :: new job loaded.\n",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
-        mxq_mysql_close(server->mysql);
+    mxq_mysql_close(server->mysql);
 
-        pid = fork();
-        if (pid < 0) {
-            perror("fork");
-            return 0;
-        } else if (pid == 0) {
-            int x;
-            srandom(getpid());
-            x = random() % 10;
-//            printf("child sleeping for %d sec\n", x);
-            sleep(x);
-            exit(0);
-        }
+    pid = fork();
+    if (pid < 0) {
+        MXQ_LOG_ERROR("fork: %m");
+        return 0;
+    } else if (pid == 0) {
 
-        gettimeofday(&mxqjob.stats_starttime, NULL);
+        MXQ_LOG_INFO("   job=%s(%d):%lu:%lu host_pid=%d pgrp=%d :: new child process forked.\n",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
+            getpid(), getpgrp());
 
-        server->mysql = mxq_mysql_connect(&server->mmysql);
+        res = init_child_process(group, &mxqjob);
+        if (!res)
+            exit(1);
 
-        mxqjob.host_pid = pid;
-        mxqjob.host_slots = group->slots_per_job;
-        res = mxq_job_update_status(server->mysql, &mxqjob, MXQ_JOB_STATUS_RUNNING);
-        if (res <= 0) {
-            perror("mxq_job_update_status(MXQ_JOB_STATUS_RUNNING)\n");
-        }
 
-        do {
-            job = group_add_job(group, &mxqjob);
-        } while (!job);
+        int x;
+        srandom(getpid());
+        x = random() % 10;
 
-        return 1;
+        MXQ_LOG_INFO("   job=%s(%d):%lu:%lu pgrp=%d sid=%d cmd='sleep\\0%d\\0' :: running command.\n",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
+            getpgrp(), pid, x);
+        sleep(x);
+
+        char *argv[] = { "sleep", "5", NULL };
+
+        execvp(argv[0], argv);
+        MXQ_LOG_ERROR("execvp: %m");
+        exit(1);
     }
 
-//    printf("No job started in group %ld\n", group->group.group_id);
-    return 0;
+    gettimeofday(&mxqjob.stats_starttime, NULL);
+
+    server->mysql = mxq_mysql_connect(&server->mmysql);
+
+    mxqjob.host_pid = pid;
+    mxqjob.host_slots = group->slots_per_job;
+    res = mxq_job_update_status(server->mysql, &mxqjob, MXQ_JOB_STATUS_RUNNING);
+    if (res <= 0) {
+        perror("mxq_job_update_status(MXQ_JOB_STATUS_RUNNING)\n");
+    }
+
+    do {
+        job = group_add_job(group, &mxqjob);
+    } while (!job);
+
+    MXQ_LOG_INFO("   job=%s(%d):%lu:%lu :: added running job to watch queue.\n",
+        group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+
+
+    return 1;
 }
 
 /**********************************************************************/
@@ -525,6 +612,9 @@ void start_users(struct mxq_server *server)
 
     assert(server);
 
+    if (!server->user_cnt)
+        return;
+
 /*
     for (user=server->users; user; user=user->next) {
         printf("user: server(%p)<-user(%p) %s\n", user->server, user, user->groups[0].group.user_name);
@@ -644,9 +734,17 @@ int catchall(struct mxq_server *server) {
 
         mxq_job_update_status(server->mysql, &job->job, MXQ_JOB_STATUS_EXIT);
 
+        if (job->job.job_status == MXQ_JOB_STATUS_FINISHED) {
+            job->group->group.group_jobs_finished++;
+        } else if(job->job.job_status == MXQ_JOB_STATUS_FAILED) {
+            job->group->group.group_jobs_failed++;
+        } else if(job->job.job_status == MXQ_JOB_STATUS_KILLED) {
+            job->group->group.group_jobs_failed++;
+        }
+
+        cnt += job->group->slots_per_job;
         mxq_job_free_content(&job->job);
         free(job);
-        cnt++;
     }
 
     return cnt;
@@ -669,6 +767,12 @@ int main(int argc, char *argv[])
 
     /*** server init ***/
 
+    signal(SIGINT,  SIG_IGN);
+    signal(SIGTERM, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
     signal(SIGCHLD, no_handler);
 
     res = server_init(&server);
