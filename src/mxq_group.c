@@ -141,11 +141,14 @@ int mxq_group_load_groups(MYSQL *mysql, struct mxq_group **mxq_group)
 
     mxq_group_bind_results(result, &g);
 
-    query = "SELECT " MXQ_GROUP_FIELDS " FROM mxq_group ORDER BY user_uid, group_priority DESC";
+    query = "SELECT " MXQ_GROUP_FIELDS
+            " FROM mxq_group"
+            " WHERE group_jobs-group_jobs_finished-group_jobs_failed > 0"
+            " ORDER BY user_uid, group_priority DESC";
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_GROUP_COL__END, NULL, result);
     if (!stmt) {
-        print_error("mxq_mysql_stmt_do_query(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_GROUP_COL__END, NULL, result);
+        MXQ_LOG_ERROR("mxq_mysql_stmt_do_query(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_GROUP_COL__END, NULL, result);
         return 0;
     }
 
