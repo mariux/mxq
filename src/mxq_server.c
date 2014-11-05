@@ -94,6 +94,9 @@ void group_init(struct mxq_group_list *group)
     group->jobs_max /= g->job_threads;
     group->slots_max = group->jobs_max * group->slots_per_job;
     group->memory_max = group->jobs_max * g->job_memory;
+
+    MXQ_LOG_INFO("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group initialized.\n",
+                    g->user_name, g->user_uid, g->group_id, group->jobs_max, group->slots_max, group->memory_max, group->slots_per_job);
 }
 
 /**********************************************************************/
@@ -415,6 +418,9 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
 //    printf("  - setting initial priority = %d\n", prio);
 //    printf("  - setting initial slots to start = %ld\n", slots_to_start);
 
+    MXQ_LOG_INFO(" user=%s(%d) slots_to_start=%ld job_limit=%d :: trying to start jobs for user.\n",
+            mxqgrp->user_name, mxqgrp->user_uid, slots_to_start, job_limit);
+
     for (group=user->groups; group && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); group=gnext) {
 
         mxqgrp  = &group->group;
@@ -476,7 +482,8 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
             prio = mxqgrp->group_priority;
 //            printf("  - adjusting priority to %d\n", prio);
         }
-//        printf("    ? trying to start group %lu (pri=%d, jobs=%lu, slots_per_job=%lu, slots_max=%lu)\n", mxqgrp->group_id, mxqgrp->group_priority, mxqgrp->group_jobs, group->slots_per_job, group->slots_max);
+        MXQ_LOG_INFO("  group=%s(%d):%lu slots_to_start=%ld slots_per_job=%lu :: trying to start job for group.\n",
+                mxqgrp->user_name, mxqgrp->user_uid, mxqgrp->group_id, slots_to_start, group->slots_per_job);
 
         if (start_job(group)) {
 
@@ -484,7 +491,7 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
             jobs_started++;
             slots_started += group->slots_per_job;
 
-            printf("      -> started one job with %lu slots => %lu grp %lu usr %lu srv slots running (slots to start = %ld)\n", group->slots_per_job, group->slots_running, user->slots_running, server->slots_running, slots_to_start);
+            //MXQ_LOG_INFO("      -> started one job with %lu slots => %lu grp %lu usr %lu srv slots running (slots to start = %ld)\n", group->slots_per_job, group->slots_running, user->slots_running, server->slots_running, slots_to_start);
             started = 1;
         } else {
 //            printf("XXXXXXXXXXXXXXXXXXXXX\n");
@@ -535,6 +542,8 @@ void start_users(struct mxq_server *server)
         }
     }
 */
+
+    MXQ_LOG_INFO("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users\n", server->slots - server->slots_running, server->user_cnt);
 
     for (user=server->users; user; user=user->next) {
 
@@ -654,7 +663,6 @@ int main(int argc, char *argv[])
 
     struct mxq_server server;
     struct mxq_group_list *group;
-    struct mxq_job_list *job;
 
     int i;
     int res;
@@ -666,12 +674,16 @@ int main(int argc, char *argv[])
     res = server_init(&server);
     if (res < 0) {
         if (res == -2) {
-            printf("MXQ Server '%s' on host '%s' is already running. Exiting.\n", server.hostname, server.server_id);
+            MXQ_LOG_ERROR("MXQ Server '%s' on host '%s' is already running. Exiting.\n", server.hostname, server.server_id);
             exit(2);
         }
-        fprintf(stderr, "MXQ Server: Can't initialize server handle. Exiting.\n");
+        MXQ_LOG_ERROR("MXQ Server: Can't initialize server handle. Exiting.\n");
         exit(1);
     }
+
+    MXQ_LOG_INFO("hostname=%s server_id=%s :: MXQ server started.\n", server.hostname, server.server_id);
+    MXQ_LOG_INFO("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.\n",
+                  server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);
 
     /*** database connect ***/
 
@@ -682,6 +694,8 @@ int main(int argc, char *argv[])
     /*** main loop ***/
 
     group_cnt = mxq_group_load_groups(server.mysql, &mxqgroups);
+
+    //MXQ_LOG_INFO("group_cnt=%d :: groups loaded.\n", group_cnt);
 
     for (i=0; i<group_cnt; i++) {
         group = server_update_groupdata(&server, &mxqgroups[group_cnt-i-1]);

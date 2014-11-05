@@ -264,9 +264,9 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
         MXQ_MYSQL_BIND_STRING(param, 2, job->server_id);
     } else if (newstatus == MXQ_JOB_STATUS_RUNNING) {
         if (job->job_status != MXQ_JOB_STATUS_LOADED) {
-            printf("WARNING: new status==runnning but old status(=%d) is != loaded ", job->job_status);
+            MXQ_LOG_WARNING("new status==runnning but old status(=%d) is != loaded ", job->job_status);
             if (job->job_status != MXQ_JOB_STATUS_ASSIGNED) {
-                printf("ERROR: new status==runnning but old status(=%d) is != (loaded || assigned). Aborting Status change.", job->job_status);
+                MXQ_LOG_ERROR("new status==runnning but old status(=%d) is != (loaded || assigned). Aborting Status change.", job->job_status);
                 errno = EINVAL;
                 return -1;
             }
@@ -298,7 +298,7 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
         } else if(WIFSIGNALED(job->stats_status)) {
             newstatus = MXQ_JOB_STATUS_KILLED;
         } else {
-            printf("ERROR: Status change to status_exit called with unknown stats_status (%d). Aborting Status change.", job->stats_status);
+            MXQ_LOG_ERROR("Status change to status_exit called with unknown stats_status (%d). Aborting Status change.", job->stats_status);
             errno = EINVAL;
             return -1;
         }
@@ -361,7 +361,7 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
     stmt = mxq_mysql_stmt_do_query(mysql, query, 0, param, NULL);
 
     if (!stmt) {
-        log_msg(0, "mxq_job_update_status: Failed to query database.\n");
+        MXQ_LOG_ERROR("mxq_job_update_status: Failed to query database.\n");
         errno = EIO;
         return -1;
     }
