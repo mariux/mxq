@@ -121,6 +121,10 @@ struct mxq_job_list *server_remove_job_by_pid(struct mxq_server *server, pid_t p
                         group->jobs = job->next;
                     }
 
+                    group->job_cnt--;
+                    user->job_cnt--;
+                    server->job_cnt--;
+
                     group->slots_running  -= job->job.host_slots;
                     user->slots_running   -= job->job.host_slots;
                     server->slots_running -= job->job.host_slots;
@@ -311,6 +315,7 @@ struct mxq_group_list *user_update_groupdata(struct mxq_user_list *user, struct 
         return user_add_group(user, group);
     }
 
+    mxq_group_free_content(&glist->group);
     memcpy(&glist->group, group, sizeof(*group));
 
     group_init(glist);
@@ -825,6 +830,8 @@ int main(int argc, char *argv[])
     mxq_mysql_close(server.mysql);
 
     server_close(&server);
+
+    log_msg(0, NULL);
 
     return 0;
 }

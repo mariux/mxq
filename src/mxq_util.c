@@ -57,7 +57,7 @@ int log_msg(int prio, const char *fmt, ...)
     char timebuf[1024];
 
     if (!fmt) {
-        free(lastmsg);
+        free_null(lastmsg);
         return 0;
     }
 
