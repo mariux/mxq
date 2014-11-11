@@ -118,10 +118,12 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
         IF NEW.job_status = 200 AND OLD.job_status IN (0, 100, 150)  THEN
             UPDATE mxq_group SET
                group_jobs_running=group_jobs_running+1,
+               group_slots_running=group_slots_running+NEW.host_slots,
                group_mtime=NULL
             WHERE group_id=NEW.group_id;
         ELSEIF NEW.job_status IN (400, 750) AND OLD.job_status IN (200, 250, 300, 350) THEN
             UPDATE mxq_group SET
+               group_slots_running=group_slots_running-NEW.host_slots,
                group_jobs_running=group_jobs_running-1,
                group_jobs_failed=group_jobs_failed+1,
                stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
@@ -132,6 +134,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
             WHERE group_id=NEW.group_id;
         ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (200, 250, 300, 350) THEN
             UPDATE mxq_group SET
+               group_slots_running=group_slots_running-NEW.host_slots,
                group_jobs_running=group_jobs_running-1,
                group_jobs_finished=group_jobs_finished+1,
                stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),

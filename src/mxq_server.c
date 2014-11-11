@@ -750,12 +750,13 @@ void server_dump(struct mxq_server *server)
 
     MXQ_LOG_INFO("====================== SERVER DUMP START ======================\n");
     for (user=server->users; user; user=user->next) {
-        MXQ_LOG_INFO("    user=%s(%d)\n",
-            user->groups->group.user_name, user->groups->group.user_uid);
+        MXQ_LOG_INFO("    user=%s(%d) slots_running=%lu\n",
+            user->groups->group.user_name, user->groups->group.user_uid,
+            user->slots_running);
         for (group=user->groups; group; group=group->next) {
-            MXQ_LOG_INFO("        group=%s(%d):%lu %s\n",
+            MXQ_LOG_INFO("        group=%s(%d):%lu %s jobs_in_q=%lu\n",
                 group->group.user_name, group->group.user_uid, group->group.group_id,
-                group->group.group_name);
+                group->group.group_name, group->group.group_jobs-group->group.group_jobs_failed-group->group.group_jobs_finished-group->group.group_jobs_running);
             for (job=group->jobs; job; job=job->next) {
                 MXQ_LOG_INFO("            job=%s(%d):%lu:%lu %s\n",
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
