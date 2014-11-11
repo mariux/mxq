@@ -34,8 +34,8 @@ int server_init(struct mxq_server *server)
 
     memset(server, 0, sizeof(*server));
 
-    server->hostname = "localhost";
-    server->server_id = "default";
+    server->hostname = mxq_hostname();
+    server->server_id = "main";
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxq_server.%s.%s.lck", server->hostname, server->server_id);
     if (!server->flock) {
@@ -907,7 +907,7 @@ int main(int argc, char *argv[])
     res = server_init(&server);
     if (res < 0) {
         if (res == -2) {
-            MXQ_LOG_ERROR("MXQ Server '%s' on host '%s' is already running. Exiting.\n", server.hostname, server.server_id);
+            MXQ_LOG_ERROR("MXQ Server '%s' on host '%s' is already running. Exiting.\n", server.server_id, server.hostname);
             exit(2);
         }
         MXQ_LOG_ERROR("MXQ Server: Can't initialize server handle. Exiting.\n");

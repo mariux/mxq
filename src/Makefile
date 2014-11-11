@@ -249,6 +249,7 @@ mxq_server.o: $(mxq_mysql.h)
 mxq_server.o: CFLAGS += $(CFLAGS_MYSQL)
 mxq_server.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 mxq_server.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
+mxq_server.o: CFLAGS += -Wno-unused-but-set-variable
 
 clean: CLEAN += mxq_server.o
 
@@ -262,7 +263,6 @@ mxq_server: mxq_job.o
 mxq_server: mxq_util.o
 mxq_server: mxq_mysql.o
 mxq_server: LDLIBS += $(LDLIBS_MYSQL)
-mxq_server: CFLAGS += -Wno-unused-but-set-variable
 
 build: mxq_server
 
