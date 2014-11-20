@@ -799,6 +799,8 @@ int catchall(struct mxq_server *server) {
     pid_t pid;
     int cnt = 0;
     struct mxq_job_list *job;
+    struct mxq_job *j;
+    struct mxq_group *g;
 
     while (server->jobs_running) {
         pid = wait3(&status, WNOHANG, &rusage);
@@ -819,26 +821,30 @@ int catchall(struct mxq_server *server) {
 
         gettimeofday(&now, NULL);
 
-        timersub(&now, &job->job.stats_starttime, &job->job.stats_realtime);
+        j = &job->job;
+        assert(job->group);
+        g = &job->group->group;
 
-        job->job.stats_status   = status;
-        job->job.stats_rusage   = rusage;
+        timersub(&now, &j->stats_starttime, &j->stats_realtime);
+
+        j->stats_status = status;
+        j->stats_rusage = rusage;
 
         MXQ_LOG_INFO("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.\n",
-                job->group->group.user_name, job->group->group.user_uid, job->group->group.group_id, job->job.job_id, pid, status);
+                g->user_name, g->user_uid, g->group_id, j->job_id, pid, status);
 
-        mxq_job_update_status(server->mysql, &job->job, MXQ_JOB_STATUS_EXIT);
+        mxq_job_update_status(server->mysql, j, MXQ_JOB_STATUS_EXIT);
 
-        if (job->job.job_status == MXQ_JOB_STATUS_FINISHED) {
-            job->group->group.group_jobs_finished++;
-        } else if(job->job.job_status == MXQ_JOB_STATUS_FAILED) {
-            job->group->group.group_jobs_failed++;
-        } else if(job->job.job_status == MXQ_JOB_STATUS_KILLED) {
-            job->group->group.group_jobs_failed++;
+        if (j->job_status == MXQ_JOB_STATUS_FINISHED) {
+            g->group_jobs_finished++;
+        } else if(j->job_status == MXQ_JOB_STATUS_FAILED) {
+            g->group_jobs_failed++;
+        } else if(j->job_status == MXQ_JOB_STATUS_KILLED) {
+            g->group_jobs_failed++;
         }
 
         cnt += job->group->slots_per_job;
-        mxq_job_free_content(&job->job);
+        mxq_job_free_content(j);
         free(job);
     }
 
