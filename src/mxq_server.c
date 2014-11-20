@@ -965,8 +965,13 @@ int main(int argc, char *argv[])
             MXQ_LOG_INFO("slots_started=%lu :: Main Loop started %lu slots.\n", slots_started, slots_started);
 
         if (!slots_started && !slots_returned) {
-            MXQ_LOG_INFO("Tried Hard. But have done nothing. Sleeping for a short while.\n");
-            sleep(1);
+            if (!server.jobs_running) {
+                MXQ_LOG_INFO("Tried Hard and nobody is doing anything. Sleeping for a long while (30 seconds).\n");
+                sleep(30);
+            } else {
+                MXQ_LOG_INFO("Tried Hard. But have done nothing. Sleeping for a very short while.\n");
+                sleep(3);
+            }
             continue;
         }
     } while (!global_sigint_cnt);
