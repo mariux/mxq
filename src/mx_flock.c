@@ -27,7 +27,7 @@ static inline int _flock_open(struct mx_flock *lock, mode_t mode)
     assert(lock);
     assert(lock->fname);
 
-    fd = open(lock->fname, O_RDONLY|O_CREAT|O_NOCTTY, mode);
+    fd = open(lock->fname, O_RDONLY|O_CREAT|O_NOCTTY|O_CLOEXEC, mode);
     if (fd < 0) {
         perror("open");
         return -1;
