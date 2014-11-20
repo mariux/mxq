@@ -73,6 +73,8 @@ quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4}
 %.o: %.c Makefile
 	$(call quiet-command,${CC} ${CFLAGS} -o $@ -c $<,"CC    $@")
 
+%: %.c
+
 %: %.o
 	$(call quiet-command,${CC} -o $@ $^ $(LDFLAGS) $(LDLIBS), "LINK  $@")
 
