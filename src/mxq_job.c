@@ -444,7 +444,11 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
 
         res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_ASSIGNED);
         if (res < 0) {
-            MXQ_LOG_WARNING("  group_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED): %m\n", group_id);
+            if (errno == ENOENT) {
+                MXQ_LOG_WARNING("group_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED): No matching job found - maybe another server was a bit faster. ;)\n", group_id);
+            } else {
+                MXQ_LOG_ERROR("  group_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED): %m\n", group_id);
+            }
             return 0;
         }
     } while (1);
