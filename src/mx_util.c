@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
+
 
 #include "mx_util.h"
 
@@ -325,3 +327,14 @@ int mx_strtoi64(char *str, int64_t *to)
     return 0;
 }
 
+char *mx_strdup_forever(char *str)
+{
+    char *dup;
+
+    do {
+        dup = strdup(str);
+        assert(dup || (!dup && errno == ENOMEM));
+    } while(!dup);
+
+    return dup;
+}

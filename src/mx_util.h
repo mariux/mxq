@@ -21,4 +21,6 @@ int mx_strtoi16(char *str, int16_t *to);
 int mx_strtoi32(char *str, int32_t *to);
 int mx_strtoi64(char *str, int64_t *to);
 
+char *mx_strdup_forever(char *str);
+
 #endif
