@@ -20,7 +20,10 @@
 
 #include <pwd.h>
 
+#include "bee_getopt.h"
+
 #include "mx_flock.h"
+#include "mx_util.h"
 
 #include "mxq.h"
 #include "mxq_group.h"
@@ -32,14 +35,96 @@ volatile sig_atomic_t global_sigint_cnt=0;
 
 /**********************************************************************/
 
-int server_init(struct mxq_server *server)
+int server_init(struct mxq_server *server, int argc, char *argv[])
 {
     int res;
+    char *arg_server_id = "main";
+    char *arg_mysql_default_group;
+    char *arg_mysql_default_file;
+    int opt;
+    unsigned long threads_total = 1;
+    unsigned long memory_total = 1024;
+    int i;
+
+    struct bee_getopt_ctl optctl;
+    struct bee_option opts[] = {
+                BEE_OPTION_NO_ARG("help",               'h'),
+                BEE_OPTION_NO_ARG("version",            'V'),
+                BEE_OPTION_REQUIRED_ARG("slots",        'j'),
+                BEE_OPTION_REQUIRED_ARG("memory",       'm'),
+                BEE_OPTION_REQUIRED_ARG("server_id",    'N'),
+                BEE_OPTION_REQUIRED_ARG("mysql-default-file", 'M'),
+                BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
+                BEE_OPTION_END
+    };
+
+    arg_server_id = "main";
+    arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
+    if (!arg_mysql_default_group)
+        arg_mysql_default_group = "mxq_submit";
+
+    arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
+    if (!arg_mysql_default_file)
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
+
+    bee_getopt_init(&optctl, argc-1, &argv[1], opts);
+
+    optctl.flags = BEE_FLAG_STOPONUNKNOWN|BEE_FLAG_STOPONNOOPT;
+//    optctl.flags = BEE_FLAG_STOPONUNKNOWN;
+
+    while ((opt=bee_getopt(&optctl, &i)) != BEE_GETOPT_END) {
+        if (opt == BEE_GETOPT_ERROR) {
+            exit(EX_USAGE);
+        }
+
+        switch (opt) {
+            case 'h':
+            case 'V':
+                printf("help/version\n");
+                printf("mxq_server [mxq-options]\n");
+                exit(EX_USAGE);
+
+            case 'j':
+                if (mx_strtoul(optctl.optarg, &threads_total) < 0) {
+                    fprintf(stderr, "Error in --slots '%s': %m\n", optctl.optarg);
+                    exit(1);
+                }
+                if (!threads_total)
+                    threads_total = 1;
+                break;
+
+            case 'm':
+                if (mx_strtoul(optctl.optarg, &memory_total) < 0) {
+                    fprintf(stderr, "Error in --memory '%s': %m\n", optctl.optarg);
+                    exit(1);
+                }
+                if (!memory_total)
+                    memory_total = 1024;
+                break;
+
+            case 'N':
+                arg_server_id = optctl.optarg;
+                break;
+
+            case 'M':
+                arg_mysql_default_file = optctl.optarg;
+                break;
+
+            case 'S':
+                arg_mysql_default_group = optctl.optarg;
+                break;
+        }
+    }
+
+    BEE_GETOPT_FINISH(optctl, argc, argv);
+
+    server->mmysql.default_file  = arg_mysql_default_file;
+    server->mmysql.default_group = arg_mysql_default_group;
 
     memset(server, 0, sizeof(*server));
 
     server->hostname = mxq_hostname();
-    server->server_id = "main";
+    server->server_id = arg_server_id;
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxq_server.%s.%s.lck", server->hostname, server->server_id);
     if (!server->flock) {
@@ -50,9 +135,9 @@ int server_init(struct mxq_server *server)
         return -2;
     }
 
-    server->slots = 48;
-    server->memory_total = 128*1024;
-    server->memory_max_per_slot = 4*1024;
+    server->slots = threads_total;;
+    server->memory_total = memory_total;
+    server->memory_max_per_slot = 0;
     server->memory_avg_per_slot = server->memory_total / server->slots;
 
     if (server->memory_max_per_slot < server->memory_avg_per_slot)
@@ -1110,7 +1195,7 @@ int main(int argc, char *argv[])
     signal(SIGTTOU, SIG_IGN);
     signal(SIGCHLD, no_handler);
 
-    res = server_init(&server);
+    res = server_init(&server, argc, argv);
     if (res < 0) {
         if (res == -2) {
             MXQ_LOG_ERROR("MXQ Server '%s' on host '%s' is already running. Exiting.\n", server.server_id, server.hostname);

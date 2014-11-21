@@ -120,6 +120,10 @@ install::
 
 ########################################################################
 
+### mx_util.h ----------------------------------------------------------
+
+mx_util.h += mx_util.h
+
 ### mx_flock.h ---------------------------------------------------------
 
 mx_flock.h += mx_flock.h
@@ -163,6 +167,10 @@ bee_getopt.h += bee_getopt.h
 bee_getopt.o: $(bee_getopt.h)
 
 clean: CLEAN += bee_getopt.o
+
+### mx_util.o ----------------------------------------------------------
+
+clean: CLEAN += mx_util.o
 
 ### mx_flock.o -------------------------------------------------------
 
@@ -243,7 +251,9 @@ clean: CLEAN += mxq_job.o
 
 ### mxq_server.o -------------------------------------------------------
 
+mxq_server.o: $(bee_getopt.h)
 mxq_server.o: $(mx_flock.h)
+mxq_server.o: $(mx_util.h)
 mxq_server.o: $(mxq_server.h)
 mxq_server.o: $(mxq_group.h)
 mxq_server.o: $(mxq_job.h)
@@ -260,6 +270,8 @@ clean: CLEAN += mxq_server.o
 ### mxq_server ---------------------------------------------------------
 
 mxq_server: mx_flock.o
+mxq_server: mx_util.o
+mxq_server: bee_getopt.o
 mxq_server: mxq_group.o
 mxq_server: mxq_job.o
 mxq_server: mxq_util.o
