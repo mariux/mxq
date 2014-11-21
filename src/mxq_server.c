@@ -348,6 +348,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     struct passwd *passwd;
     pid_t pid;
     int res;
+    int fh;
 
     assert(j);
     assert(group);
@@ -411,6 +412,25 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
             g->user_name, g->user_uid, g->group_id, j->job_id);
         return 0;
     }
+
+    fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
+    if (fh == -1) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu open(%s) failed: %m\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id, "/proc/self/loginuid");
+        return 0;
+    }
+    dprintf(fh, "%d", g->user_uid);
+    close(fh);
+
+    res = chdir(j->job_workdir);
+    if (res == -1) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu chdir(%s) failed: %m\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id,
+            j->job_workdir);
+        return 0;
+    }
+
+    umask(j->job_umask);
 
     return 1;
 }
