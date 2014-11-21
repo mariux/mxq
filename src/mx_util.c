@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <stdio.h>
+#include <libgen.h>
 
 #include "mx_util.h"
 
@@ -361,4 +362,37 @@ int mx_asprintf_forever(char **strp, const char *fmt, ...)
     va_end(ap);
 
     return len;
+}
+
+char *mx_dirname(char *path)
+{
+    char *tmp;
+    char *dname;
+    char *result;
+
+    assert(path);
+    tmp = strdup(path);
+    if (!tmp)
+        return NULL;
+
+    dname = dirname(tmp);
+
+    assert(dname);
+
+    result = strdup(dname);
+
+    free(tmp);
+
+    return result;
+}
+
+char *mx_dirname_forever(char *path)
+{
+    char *dname;
+
+    do {
+        dname = mx_dirname(path);
+    } while (!dname);
+
+    return dname;
 }

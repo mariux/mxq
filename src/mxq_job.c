@@ -395,13 +395,11 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
 {
     int res;
-    char *dir;
 
     if (!streq(j->job_stdout, "/dev/null")) {
-        _cleanup_free_ char *tmp = NULL;
+        _cleanup_free_ char *dir = NULL;
 
-        tmp = mx_strdup_forever(j->job_stdout);
-        dir = dirname(tmp);
+        dir = mx_dirname_forever(j->job_stdout);
 
         mx_asprintf_forever(&j->tmp_stdout, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stdout.tmp",
             dir, g->user_uid, g->group_id, j->job_id, j->host_hostname,
@@ -409,15 +407,13 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
     }
 
     if (!streq(j->job_stderr, "/dev/null")) {
-        _cleanup_free_ char *tmp = NULL;
+        _cleanup_free_ char *dir = NULL;
 
         if (streq(j->job_stderr, j->job_stdout)) {
             j->tmp_stderr = j->tmp_stdout;
             return 1;
         }
-
-        tmp = mx_strdup_forever(j->job_stderr);
-        dir = dirname(tmp);
+        dir = mx_dirname_forever(j->job_stderr);
 
         mx_asprintf_forever(&j->tmp_stderr, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stderr.tmp",
             dir, g->user_uid, g->group_id, j->job_id, j->host_hostname,

@@ -26,4 +26,7 @@ char *mx_strdup_forever(char *str);
 int mx_vasprintf_forever(char **strp, const char *fmt, va_list ap);
 int mx_asprintf_forever(char **strp, const char *fmt, ...);
 
+char *mx_dirname(char *path);
+char *mx_dirname_forever(char *path);
+
 #endif
