@@ -373,7 +373,15 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
             g->user_name, g->user_uid, g->group_id, j->job_id);
     }
 
+    passwd = getpwuid(g->user_uid);
+    if (!passwd) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu getpwuid(): %m\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id);
+        return 0;
+    }
+
     /** prepare environment **/
+
     res = clearenv();
     if (res != 0) {
         MXQ_LOG_ERROR("job=%s(%d):%lu:%lu clearenv(): %m\n",
@@ -381,12 +389,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
         return 0;
     }
 
-    passwd = getpwuid(g->user_uid);
-    if (!passwd) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu getpwuid(): %m\n",
-            g->user_name, g->user_uid, g->group_id, j->job_id);
-        return 0;
-    }
+    assert(res == 0);
 
     res += mxq_setenv("USER",     g->user_name);
     res += mxq_setenv("USERNAME", g->user_name);
@@ -402,6 +405,13 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     res += mxq_setenvf("MXQ_MEMORY",  "%d",     g->job_memory);
     res += mxq_setenvf("MXQ_TIME",    "%d",     g->job_time);
     res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
+
+    if (res < 14) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setenv(): failed. %m\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id);
+        return 0;
+    }
+
     return 1;
 }
 
