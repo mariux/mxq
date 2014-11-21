@@ -466,10 +466,11 @@ unsigned long start_job(struct mxq_group_list *group)
         MXQ_LOG_ERROR("fork: %m");
         return 0;
     } else if (pid == 0) {
+        mxqjob.host_pid = getpid();
 
         MXQ_LOG_INFO("   job=%s(%d):%lu:%lu host_pid=%d pgrp=%d :: new child process forked.\n",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-            getpid(), getpgrp());
+            mxqjob.host_pid, getpgrp());
 
         res = init_child_process(group, &mxqjob);
         if (!res)
