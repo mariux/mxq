@@ -21,6 +21,9 @@ inline int mx_strtoul(char *str, unsigned long int *to)
     if (errno)
         return -errno;
 
+    for (;*end && *end == ' '; end++)
+        /* empty */;
+
     if (!end || str == end || *end) {
         errno = EINVAL;
         return -EINVAL;
@@ -47,6 +50,9 @@ inline int mx_strtoull(char *str, unsigned long long int *to)
 
     if (errno)
         return -errno;
+
+    for (;*end && *end == ' '; end++)
+        /* empty */;
 
     if (!end || str == end || *end) {
         errno = EINVAL;
@@ -77,6 +83,9 @@ inline int mx_strtol(char *str, signed long int *to)
     if (errno)
         return -errno;
 
+    for (;*end && *end == ' '; end++)
+        /* empty */;
+
     if (!end || str == end || *end) {
         errno = EINVAL;
         return -EINVAL;
@@ -98,6 +107,9 @@ inline int mx_strtoll(char *str, signed long long int *to)
 
     if (errno)
         return -errno;
+
+    for (;*end && *end == ' '; end++)
+        /* empty */;
 
     if (!end || str == end || *end) {
         errno = EINVAL;

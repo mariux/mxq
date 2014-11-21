@@ -85,6 +85,15 @@ all: build
 
 .PHONY: build
 
+.PHONY: test
+test:
+	@for i in $^ ; do \
+		echo "TEST  $$i" ; \
+		./$$i ; \
+	done
+
+
+
 ########################################################################
 
 .PHONY: clean
@@ -358,12 +367,13 @@ build: mxq_job_dump
 
 clean: CLEAN += mxq_job_dump
 
-### stuff --------------------------------------------------------------
-
-clean: CLEAN += test.o
-
-test: mxq_util.o
-
-clean: CLEAN += test
-
 ########################################################################
+
+test_mx_util.o: $(mx_util.h)
+clean: CLEAN += test_mx_util.o
+
+test_mx_util: mx_util.o
+clean: CLEAN += test_mx_util
+
+test: test_mx_util
+
