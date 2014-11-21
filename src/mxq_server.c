@@ -343,66 +343,66 @@ static struct mxq_group_list *server_update_groupdata(struct mxq_server *server,
 
 static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 {
-        struct mxq_group *g;
-        struct mxq_server *s;
-        struct passwd *passwd;
-        pid_t pid;
-        int res;
+    struct mxq_group *g;
+    struct mxq_server *s;
+    struct passwd *passwd;
+    pid_t pid;
+    int res;
 
-        assert(j);
-        assert(group);
-        assert(group->user);
-        assert(group->user->server);
+    assert(j);
+    assert(group);
+    assert(group->user);
+    assert(group->user->server);
 
-        s = group->user->server;
-        g = &group->group;
+    s = group->user->server;
+    g = &group->group;
 
-        /** restore signal handler **/
-        signal(SIGINT,  SIG_DFL);
-        signal(SIGTERM, SIG_DFL);
-        signal(SIGQUIT, SIG_DFL);
-        signal(SIGTSTP, SIG_DFL);
-        signal(SIGTTIN, SIG_DFL);
-        signal(SIGTTOU, SIG_DFL);
-        signal(SIGCHLD, SIG_DFL);
+    /** restore signal handler **/
+    signal(SIGINT,  SIG_DFL);
+    signal(SIGTERM, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+    signal(SIGTSTP, SIG_DFL);
+    signal(SIGTTIN, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
+    signal(SIGCHLD, SIG_DFL);
 
-        /** set sessionid and pgrp leader **/
-        pid = setsid();
-        if (pid == -1) {
-            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setsid(): %m\n",
-                g->user_name, g->user_uid, g->group_id, j->job_id);
-        }
+    /** set sessionid and pgrp leader **/
+    pid = setsid();
+    if (pid == -1) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setsid(): %m\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id);
+    }
 
-        /** prepare environment **/
-        res = clearenv();
-        if (res != 0) {
-            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu clearenv(): %m\n",
-                g->user_name, g->user_uid, g->group_id, j->job_id);
-            return 0;
-        }
+    /** prepare environment **/
+    res = clearenv();
+    if (res != 0) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu clearenv(): %m\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id);
+        return 0;
+    }
 
-        passwd = getpwuid(g->user_uid);
-        if (!passwd) {
-            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu getpwuid(): %m\n",
-                g->user_name, g->user_uid, g->group_id, j->job_id);
-            return 0;
-        }
+    passwd = getpwuid(g->user_uid);
+    if (!passwd) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu getpwuid(): %m\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id);
+        return 0;
+    }
 
-        res += mxq_setenv("USER",     g->user_name);
-        res += mxq_setenv("USERNAME", g->user_name);
-        res += mxq_setenv("LOGNAME",  g->user_name);
-        res += mxq_setenv("PATH",     MXQ_INITIAL_PATH);
-        res += mxq_setenv("PWD",      j->job_workdir);
-        res += mxq_setenv("HOME",     passwd->pw_dir);
-        res += mxq_setenv("HOSTNAME", mxq_hostname());
-        res += mxq_setenvf("JOB_ID",      "%d",     j->job_id);
-        res += mxq_setenvf("MXQ_JOBID",   "%d",     j->job_id);
-        res += mxq_setenvf("MXQ_THREADS", "%d",     g->job_threads);
-        res += mxq_setenvf("MXQ_SLOTS",   "%d",     group->slots_per_job);
-        res += mxq_setenvf("MXQ_MEMORY",  "%d",     g->job_memory);
-        res += mxq_setenvf("MXQ_TIME",    "%d",     g->job_time);
-        res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
-        return 1;
+    res += mxq_setenv("USER",     g->user_name);
+    res += mxq_setenv("USERNAME", g->user_name);
+    res += mxq_setenv("LOGNAME",  g->user_name);
+    res += mxq_setenv("PATH",     MXQ_INITIAL_PATH);
+    res += mxq_setenv("PWD",      j->job_workdir);
+    res += mxq_setenv("HOME",     passwd->pw_dir);
+    res += mxq_setenv("HOSTNAME", mxq_hostname());
+    res += mxq_setenvf("JOB_ID",      "%d",     j->job_id);
+    res += mxq_setenvf("MXQ_JOBID",   "%d",     j->job_id);
+    res += mxq_setenvf("MXQ_THREADS", "%d",     g->job_threads);
+    res += mxq_setenvf("MXQ_SLOTS",   "%d",     group->slots_per_job);
+    res += mxq_setenvf("MXQ_MEMORY",  "%d",     g->job_memory);
+    res += mxq_setenvf("MXQ_TIME",    "%d",     g->job_time);
+    res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
+    return 1;
 }
 
 /**********************************************************************/
