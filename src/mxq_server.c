@@ -690,6 +690,7 @@ unsigned long start_job(struct mxq_group_list *group)
     struct mxq_job_list *job;
     pid_t pid;
     int res;
+    char **argv;
 
     assert(group);
     assert(group->user);
@@ -724,9 +725,6 @@ unsigned long start_job(struct mxq_group_list *group)
 
         mxq_job_set_tmpfilenames(&group->group, &mxqjob);
 
-        int x;
-        srandom(getpid());
-        x = random() % 10;
 
         res = mxq_redirect_input("/dev/null");
         if (res < 0) {
@@ -744,8 +742,8 @@ unsigned long start_job(struct mxq_group_list *group)
             _exit(EX__MAX + 1);
         }
 
-        char *argv[] = { "sleep", "5", NULL };
 
+        char **argv = str_to_strvec(mxqjob.job_argv_str);
         execvp(argv[0], argv);
         MXQ_LOG_ERROR("execvp: %m");
         exit(1);
