@@ -5,7 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-
+#include <stdio.h>
 
 #include "mx_util.h"
 
@@ -337,4 +337,28 @@ char *mx_strdup_forever(char *str)
     } while(!dup);
 
     return dup;
+}
+
+int mx_vasprintf_forever(char **strp, const char *fmt, va_list ap)
+{
+    int len;
+
+    do {
+        len = vasprintf(strp, fmt, ap);
+    } while (len < 0);
+
+    return len;
+}
+
+
+int mx_asprintf_forever(char **strp, const char *fmt, ...)
+{
+    va_list ap;
+    int len;
+
+    va_start(ap, fmt);
+    len = mx_vasprintf_forever(strp, fmt, ap);
+    va_end(ap);
+
+    return len;
 }

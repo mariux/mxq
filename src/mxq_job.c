@@ -403,14 +403,9 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
         tmp = mx_strdup_forever(j->job_stdout);
         dir = dirname(tmp);
 
-        res = asprintf(&j->tmp_stdout, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stdout.tmp",
+        mx_asprintf_forever(&j->tmp_stdout, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stdout.tmp",
             dir, g->user_uid, g->group_id, j->job_id, j->host_hostname,
             j->server_id, j->host_pid);
-        if (res == -1) {
-            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu asprintf() failed: %m\n",
-                g->user_name, g->user_uid, g->group_id, j->job_id);
-            return 0;
-        }
     }
 
     if (!streq(j->job_stderr, "/dev/null")) {
@@ -424,14 +419,9 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
         tmp = mx_strdup_forever(j->job_stderr);
         dir = dirname(tmp);
 
-        res = asprintf(&j->tmp_stderr, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stderr.tmp",
+        mx_asprintf_forever(&j->tmp_stderr, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stderr.tmp",
             dir, g->user_uid, g->group_id, j->job_id, j->host_hostname,
             j->server_id, j->host_pid);
-        if (res == -1) {
-            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu asprintf() failed: %m\n",
-                g->user_name, g->user_uid, g->group_id, j->job_id);
-            return 0;
-        }
     }
     return 1;
 }
