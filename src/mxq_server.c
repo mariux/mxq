@@ -9,11 +9,15 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <sysexits.h>
+
 #include <sys/file.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+
 #include <pwd.h>
 
 #include "mx_flock.h"
@@ -437,6 +441,139 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
 /**********************************************************************/
 
+int mxq_redirect_open(char *fname)
+{
+    int fh;
+    int res;
+
+    int    flags = O_WRONLY|O_CREAT|O_NOFOLLOW|O_TRUNC;
+    mode_t mode  = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH;
+
+
+    if (!fname) {
+        fname = "/dev/null";
+    } else if (!streq(fname, "/dev/null")) {
+        res = unlink(fname);
+        if (res == -1 && errno != ENOENT) {
+            MXQ_LOG_ERROR("unlink() failed: %m\n");
+           return -2;
+        }
+        flags |= O_EXCL;
+    }
+
+    fh = open(fname, flags, mode);
+    if (fh == -1) {
+            MXQ_LOG_ERROR("open() failed: %m\n");
+    }
+
+    return fh;
+
+}
+
+int mxq_redirect_copyfd(int from, int to)
+{
+    int res;
+
+    if (from == to)
+        return 0;
+
+    res = close(to);
+    if (res == -1) {
+        MXQ_LOG_ERROR("close() failed: %m\n");
+        return -1;
+    }
+
+    res = dup2(from, to);
+    if(res == -1) {
+        MXQ_LOG_ERROR("dup2() failed: %m\n");
+        return -2;
+    }
+
+    return 0;
+}
+
+int mxq_redirect_movefd(int from, int to)
+{
+    int res;
+
+    if (from == to)
+        return 0;
+
+    res = mxq_redirect_copyfd(from, to);
+    if (res == -1) {
+        return -1;
+    }
+
+    res = close(from);
+    if (res == -1) {
+        MXQ_LOG_ERROR("close() failed: %m\n");
+        return -2;
+    }
+
+    return 0;
+}
+
+int mxq_redirect(char *fname, int fd)
+{
+    int fh;
+    int res;
+
+    fh = mxq_redirect_open(fname);
+    if (fh < 0)
+        return -1;
+
+    res = mxq_redirect_movefd(fh, fd);
+    if (res < 0)
+        return -2;
+
+    return 0;
+}
+
+int mxq_redirect_output(char *stdout_fname, char *stderr_fname)
+{
+    int res;
+
+    res = mxq_redirect(stderr_fname, STDERR_FILENO);
+    if (res < 0) {
+        return -1;
+    }
+
+    if (stdout_fname == stderr_fname) {
+        res = mxq_redirect_copyfd(STDERR_FILENO, STDOUT_FILENO);
+        if( res < 0) {
+            return -2;
+        }
+        return 0;
+    }
+
+    res = mxq_redirect(stdout_fname, STDOUT_FILENO);
+    if (res < 0) {
+        return -3;
+    }
+
+    return 0;
+}
+
+int mxq_redirect_input(char *stdin_fname)
+{
+    int fh;
+    int res;
+
+    fh = open(stdin_fname, O_RDONLY|O_NOFOLLOW);
+    if (fh == -1) {
+        MXQ_LOG_ERROR("open() failed: %m\n");
+        return -1;
+    }
+
+    res = mxq_redirect_movefd(fh, STDIN_FILENO);
+    if (res < 0) {
+        return -2;
+    }
+
+    return 1;
+}
+
+
 unsigned long start_job(struct mxq_group_list *group)
 {
     struct mxq_server *server;
@@ -476,15 +613,27 @@ unsigned long start_job(struct mxq_group_list *group)
         if (!res)
             exit(1);
 
+        mxq_job_set_tmpfilenames(&group->group, &mxqjob);
 
         int x;
         srandom(getpid());
         x = random() % 10;
 
-        MXQ_LOG_INFO("   job=%s(%d):%lu:%lu pgrp=%d sid=%d cmd='sleep\\0%d\\0' :: running command.\n",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-            getpgrp(), pid, x);
-        sleep(x);
+        res = mxq_redirect_input("/dev/null");
+        if (res < 0) {
+            MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu mxq_redirect_input() failed (%d): %m\n",
+                group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
+                res);
+            _exit(EX__MAX + 1);
+        }
+
+        res = mxq_redirect_output(mxqjob.tmp_stdout, mxqjob.tmp_stderr);
+        if (res < 0) {
+            MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu mxq_redirect_output() failed (%d): %m\n",
+                group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
+                res);
+            _exit(EX__MAX + 1);
+        }
 
         char *argv[] = { "sleep", "5", NULL };
 
@@ -832,6 +981,7 @@ int catchall(struct mxq_server *server) {
     struct mxq_job_list *job;
     struct mxq_job *j;
     struct mxq_group *g;
+    int res;
 
     while (server->jobs_running) {
         pid = wait3(&status, WNOHANG, &rusage);
@@ -872,6 +1022,24 @@ int catchall(struct mxq_server *server) {
             g->group_jobs_failed++;
         } else if(j->job_status == MXQ_JOB_STATUS_KILLED) {
             g->group_jobs_failed++;
+        }
+
+        mxq_job_set_tmpfilenames(g, j);
+
+        if (!streq(j->job_stdout, "/dev/null")) {
+            res = rename(j->tmp_stdout, j->job_stdout);
+            if (res == -1) {
+                MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m\n",
+                        g->user_name, g->user_uid, g->group_id, j->job_id, pid);
+            }
+        }
+
+        if (!streq(j->job_stderr, "/dev/null") && !streq(j->job_stderr, j->job_stdout)) {
+            res = rename(j->tmp_stderr, j->job_stderr);
+            if (res == -1) {
+                MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m\n",
+                        g->user_name, g->user_uid, g->group_id, j->job_id, pid);
+            }
         }
 
         cnt += job->group->slots_per_job;

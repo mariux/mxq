@@ -1,9 +1,12 @@
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <mysql.h>
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+#include <libgen.h>
 
 #include <sys/resource.h>
 
@@ -202,6 +205,14 @@ void mxq_job_free_content(struct mxq_job *j)
         free_null(j->job_stderr);
         j->_job_stderr_length = 0;
 
+
+        if (j->tmp_stderr == j->tmp_stdout) {
+            j->tmp_stdout = NULL;
+        } else {
+           free_null(j->tmp_stdout);
+        }
+        free_null(j->tmp_stderr);
+
         free_null(j->host_submit);
         j->_host_submit_length = 0;
 
@@ -378,6 +389,60 @@ int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t newstatus)
 
     return res;
 }
+
+int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
+{
+    int res;
+    char *dir;
+
+    if (!streq(j->job_stdout, "/dev/null")) {
+        _cleanup_free_ char *tmp = NULL;
+        tmp = strdup(j->job_stdout);
+        if (!tmp) {
+            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu strdup() failed: %m\n",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
+        dir = dirname(tmp);
+
+        res = asprintf(&j->tmp_stdout, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stdout.tmp",
+            dir, g->user_uid, g->group_id, j->job_id, j->host_hostname,
+            j->server_id, j->host_pid);
+        if (res == -1) {
+            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu asprintf() failed: %m\n",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
+    }
+
+    if (!streq(j->job_stderr, "/dev/null")) {
+        _cleanup_free_ char *tmp = NULL;
+
+        if (streq(j->job_stderr, j->job_stdout)) {
+            j->tmp_stderr = j->tmp_stdout;
+            return 1;
+        }
+
+        tmp = strdup(j->job_stderr);
+        if (!tmp) {
+            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu strdup() failed: %m\n",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
+        dir = dirname(tmp);
+
+        res = asprintf(&j->tmp_stderr, "%s/mxq.%u.%lu.%lu.%s.%s.%d.stderr.tmp",
+            dir, g->user_uid, g->group_id, j->job_id, j->host_hostname,
+            j->server_id, j->host_pid);
+        if (res == -1) {
+            MXQ_LOG_ERROR("job=%s(%d):%lu:%lu asprintf() failed: %m\n",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
+    }
+    return 1;
+}
+
 
 int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id)
 {
