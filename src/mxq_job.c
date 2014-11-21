@@ -222,7 +222,7 @@ void mxq_job_free_content(struct mxq_job *j)
         free_null(j->host_hostname);
         j->_host_hostname_length = 0;
 
-        strvec_free(j->job_argv);
+        free_null(j->job_argv);
         j->job_argv = NULL;
 }
 
@@ -444,7 +444,7 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
 }
 
 
-int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id)
+int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id)
 {
     MYSQL_STMT *stmt;
     MYSQL_BIND result[MXQ_JOB_COL__END];
@@ -469,7 +469,7 @@ int mxq_job_load_reserved(MYSQL *mysql, struct mxq_job *job, char *hostname, cha
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_JOB_COL__END, param, result);
     if (!stmt) {
-        MXQ_LOG_ERROR("mxq_job_load_reserved(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_JOB_COL__END, param, result);
+        MXQ_LOG_ERROR("mxq_job_load_assigned(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_JOB_COL__END, param, result);
         return -1;
     }
 
@@ -493,9 +493,9 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
     memset(mxqjob, 0, sizeof(*mxqjob));
 
     do {
-        res = mxq_job_load_reserved(mysql, mxqjob, hostname, server_id);
+        res = mxq_job_load_assigned(mysql, mxqjob, hostname, server_id);
         if(res < 0) {
-            MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_load_reserved: %m\n", group_id, mxqjob->job_id);
+            MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_load_assigned: %m\n", group_id, mxqjob->job_id);
             return 0;
         }
         if(res == 1) {
@@ -510,19 +510,13 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
         res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_ASSIGNED);
         if (res < 0) {
             if (errno == ENOENT) {
-                MXQ_LOG_WARNING("group_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED): No matching job found - maybe another server was a bit faster. ;)\n", group_id);
+                MXQ_LOG_WARNING("  group_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED): No matching job found - maybe another server was a bit faster. ;)\n", group_id);
             } else {
                 MXQ_LOG_ERROR("  group_id=%lu :: mxq_job_update_status(MXQ_JOB_STATUS_ASSIGNED): %m\n", group_id);
             }
             return 0;
         }
     } while (1);
-
-//    res = mxq_job_load_reserved(mysql, mxqjob, hostname, server_id);
-//    if(res < 0) {
-//        MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_load_reserved: %m\n", group_id, mxqjob->job_id);
-//        return 0;
-//    }
 
     res = mxq_job_update_status(mysql, mxqjob, MXQ_JOB_STATUS_LOADED);
     if (res < 0) {
