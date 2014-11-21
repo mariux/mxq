@@ -291,6 +291,9 @@ build: mxq_server
 
 clean: CLEAN += mxq_server
 
+install:: mxq_server
+	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_server,${DESTDIR}${BINDIR}/mxq_server)
+
 ### mxq_exec -----------------------------------------------------------
 
 mxq_exec: bee_getopt.o
@@ -298,11 +301,11 @@ mxq_exec: mxq_mysql.o
 mxq_exec: mxq_util.o
 mxq_exec: LDLIBS += $(LDLIBS_MYSQL)
 
-build: mxq_exec
+#build: mxq_exec
 clean: CLEAN += mxq_exec
 
-install:: mxq_exec
-	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_exec,${DESTDIR}${BINDIR}/mxq_exec)
+#install:: mxq_exec
+#	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_exec,${DESTDIR}${BINDIR}/mxq_exec)
 
 ### mxq_submit ---------------------------------------------------------
 
@@ -311,12 +314,12 @@ mxq_submit: mxq_mysql.o
 mxq_submit: mxq_util.o
 mxq_submit: LDLIBS += $(LDLIBS_MYSQL)
 
-build: mxq_submit
+#build: mxq_submit
 
 clean: CLEAN += mxq_submit
 
-install:: mxq_submit
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_submit,${DESTDIR}${BINDIR}/mxq_submit)
+#install:: mxq_submit
+#	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_submit,${DESTDIR}${BINDIR}/mxq_submit)
 
 ### mxq_sub ------------------------------------------------------------
 
@@ -339,12 +342,12 @@ mxq_list: mxq_mysql.o
 mxq_list: mxq_util.o
 mxq_list: LDLIBS += $(LDLIBS_MYSQL)
 
-build: mxq_list
+#build: mxq_list
 
 clean: CLEAN += mxq_list
 
-install:: mxq_list
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_LIST),$(GROUP_LIST),mxq_list,${DESTDIR}${BINDIR}/mxq_list)
+#install:: mxq_list
+#	$(call quiet-installforuser,$(SUID_MODE),$(USER_LIST),$(GROUP_LIST),mxq_list,${DESTDIR}${BINDIR}/mxq_list)
 
 ### mxq_group_dump -----------------------------------------------------
 

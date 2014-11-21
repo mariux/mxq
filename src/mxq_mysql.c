@@ -32,6 +32,9 @@ MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql)
     if (mmysql->default_file)
         mysql_options(mysql, MYSQL_READ_DEFAULT_FILE,  mmysql->default_file);
 
+//    MXQ_LOG_INFO("MAIN: Connecting to Database using file=%s group=%s\n",
+//        mmysql->default_file, mmysql->default_group);
+
     mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "mxq_submit");
     mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 

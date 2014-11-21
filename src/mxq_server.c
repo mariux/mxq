@@ -119,11 +119,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     BEE_GETOPT_FINISH(optctl, argc, argv);
 
-    server->mmysql.default_file  = arg_mysql_default_file;
-    server->mmysql.default_group = arg_mysql_default_group;
-
     memset(server, 0, sizeof(*server));
 
+    server->mmysql.default_file  = arg_mysql_default_file;
+    server->mmysql.default_group = arg_mysql_default_group;
     server->hostname = mxq_hostname();
     server->server_id = arg_server_id;
 
@@ -512,14 +511,14 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     dprintf(fh, "%d", g->user_uid);
     close(fh);
 
-    //res = initgroups(passwd->pw_name, g->user_gid);
+    res = initgroups(passwd->pw_name, g->user_gid);
     if (res == -1) {
         MXQ_LOG_ERROR("job=%s(%d):%lu:%lu initgroups() failed: %m\n",
             g->user_name, g->user_uid, g->group_id, j->job_id);
         return 0;
     }
 
-    //res = setregid(g->user_gid, g->user_gid);
+    res = setregid(g->user_gid, g->user_gid);
     if (res == -1) {
         MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m\n",
             g->user_name, g->user_uid, g->group_id, j->job_id,
@@ -527,7 +526,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
         return 0;
     }
 
-    //res = setreuid(g->user_uid, g->user_uid);
+    res = setreuid(g->user_uid, g->user_uid);
     if (res == -1) {
         MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m\n",
             g->user_name, g->user_uid, g->group_id, j->job_id,
@@ -1209,14 +1208,6 @@ int main(int argc, char *argv[])
 
     /*** server init ***/
 
-    signal(SIGINT,  sig_handler);
-    signal(SIGTERM, SIG_IGN);
-    signal(SIGQUIT, SIG_IGN);
-    signal(SIGTSTP, SIG_IGN);
-    signal(SIGTTIN, SIG_IGN);
-    signal(SIGTTOU, SIG_IGN);
-    signal(SIGCHLD, no_handler);
-
     res = server_init(&server, argc, argv);
     if (res < 0) {
         if (res == -2) {
@@ -1233,12 +1224,17 @@ int main(int argc, char *argv[])
 
     /*** database connect ***/
 
-    server.mmysql.default_file  = NULL;
-    server.mmysql.default_group = "mxq_submit";
     server.mysql = mxq_mysql_connect(&server.mmysql);
 
     /*** main loop ***/
 
+    signal(SIGINT,  sig_handler);
+    signal(SIGTERM, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
+    signal(SIGCHLD, no_handler);
 
     do {
         slots_returned = catchall(&server);
