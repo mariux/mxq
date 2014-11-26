@@ -754,9 +754,9 @@ unsigned long start_job(struct mxq_group_list *group)
 
     mxqjob.host_pid = pid;
     mxqjob.host_slots = group->slots_per_job;
-    res = mxq_job_update_status(server->mysql, &mxqjob, MXQ_JOB_STATUS_RUNNING);
+    res = mxq_job_update_status_running(server->mysql, &mxqjob);
     if (res <= 0) {
-        perror("mxq_job_update_status(MXQ_JOB_STATUS_RUNNING)\n");
+        perror("mxq_job_update_status_running()\n");
     }
 
     do {
@@ -1120,7 +1120,7 @@ int catchall(struct mxq_server *server) {
         MXQ_LOG_INFO("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.\n",
                 g->user_name, g->user_uid, g->group_id, j->job_id, pid, status);
 
-        mxq_job_update_status(server->mysql, j, MXQ_JOB_STATUS_EXIT);
+        mxq_job_update_status_exit(server->mysql, j);
 
         if (j->job_status == MXQ_JOB_STATUS_FINISHED) {
             g->group_jobs_finished++;

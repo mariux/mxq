@@ -77,7 +77,10 @@ struct mxq_job {
 int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id);
 void mxq_job_free_content(struct mxq_job *j);
 int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
-int mxq_job_update_status(MYSQL *mysql, struct mxq_job *job, uint16_t status);
+int mxq_job_update_status_assigned(MYSQL *mysql, struct mxq_job *job);
+int mxq_job_update_status_loaded(MYSQL *mysql, struct mxq_job *job);
+int mxq_job_update_status_running(MYSQL *mysql, struct mxq_job *job);
+int mxq_job_update_status_exit(MYSQL *mysql, struct mxq_job *job);
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j);
 
 #endif
