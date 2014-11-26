@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <libgen.h>
+#include <unistd.h>
 
 #include "mx_util.h"
 
@@ -395,4 +396,42 @@ char *mx_dirname_forever(char *path)
     } while (!dname);
 
     return dname;
+}
+
+int mx_dup2_close_new(int oldfd, int newfd)
+{
+    int res;
+
+    if (oldfd == newfd)
+        return 0;
+
+    res = close(newfd);
+    if (res == -1 && errno == EBADF)
+        return -errno;
+
+    res = dup2(oldfd, newfd);
+    if(res == -1)
+        return -errno;
+
+    return res;
+}
+
+int mx_dup2_close_both(int oldfd, int newfd)
+{
+    int res;
+
+    if (oldfd == newfd)
+        return 0;
+
+    res = mx_dup2_close_new(oldfd, newfd);
+    if (res < 0)
+        return res;
+
+    assert(res == newfd);
+
+    res = close(oldfd);
+    if (res == -1 && errno == EBADF)
+        return -errno;
+
+    return newfd;
 }

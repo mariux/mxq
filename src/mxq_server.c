@@ -578,49 +578,6 @@ int mxq_redirect_open(char *fname)
 
 }
 
-int mxq_redirect_copyfd(int from, int to)
-{
-    int res;
-
-    if (from == to)
-        return 0;
-
-    res = close(to);
-    if (res == -1) {
-        MXQ_LOG_ERROR("close() failed: %m\n");
-        return -1;
-    }
-
-    res = dup2(from, to);
-    if(res == -1) {
-        MXQ_LOG_ERROR("dup2() failed: %m\n");
-        return -2;
-    }
-
-    return 0;
-}
-
-int mxq_redirect_movefd(int from, int to)
-{
-    int res;
-
-    if (from == to)
-        return 0;
-
-    res = mxq_redirect_copyfd(from, to);
-    if (res == -1) {
-        return -1;
-    }
-
-    res = close(from);
-    if (res == -1) {
-        MXQ_LOG_ERROR("close() failed: %m\n");
-        return -2;
-    }
-
-    return 0;
-}
-
 int mxq_redirect(char *fname, int fd)
 {
     int fh;
@@ -630,7 +587,7 @@ int mxq_redirect(char *fname, int fd)
     if (fh < 0)
         return -1;
 
-    res = mxq_redirect_movefd(fh, fd);
+    res = mx_dup2_close_both(fh, fd);
     if (res < 0)
         return -2;
 
@@ -647,7 +604,7 @@ int mxq_redirect_output(char *stdout_fname, char *stderr_fname)
     }
 
     if (stdout_fname == stderr_fname) {
-        res = mxq_redirect_copyfd(STDERR_FILENO, STDOUT_FILENO);
+        res = mx_dup2_close_new(STDERR_FILENO, STDOUT_FILENO);
         if( res < 0) {
             return -2;
         }
@@ -673,7 +630,7 @@ int mxq_redirect_input(char *stdin_fname)
         return -1;
     }
 
-    res = mxq_redirect_movefd(fh, STDIN_FILENO);
+    res = mx_dup2_close_both(fh, STDIN_FILENO);
     if (res < 0) {
         return -2;
     }

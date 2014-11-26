@@ -29,4 +29,7 @@ int mx_asprintf_forever(char **strp, const char *fmt, ...);
 char *mx_dirname(char *path);
 char *mx_dirname_forever(char *path);
 
+int mx_dup2_close_new(int oldfd, int newfd);
+int mx_dup2_close_both(int oldfd, int newfd);
+
 #endif
