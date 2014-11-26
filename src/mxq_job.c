@@ -207,11 +207,10 @@ void mxq_job_free_content(struct mxq_job *j)
         free_null(j->job_stderr);
         j->_job_stderr_length = 0;
 
-
         if (j->tmp_stderr == j->tmp_stdout) {
             j->tmp_stdout = NULL;
         } else {
-           free_null(j->tmp_stdout);
+            free_null(j->tmp_stdout);
         }
         free_null(j->tmp_stderr);
 
