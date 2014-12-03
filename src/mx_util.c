@@ -28,15 +28,11 @@ inline int mx_strtoul(char *str, unsigned long int *to)
     for (;*end && *end == ' '; end++)
         /* empty */;
 
-    if (!end || str == end || *end) {
-        errno = EINVAL;
-        return -EINVAL;
-    }
+    if (!end || str == end || *end)
+        return -(errno=EINVAL);
 
-    if (strchr(str, '-')) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if (strchr(str, '-'))
+        return -(errno=ERANGE);
 
     *to = ul;
 
@@ -58,15 +54,11 @@ inline int mx_strtoull(char *str, unsigned long long int *to)
     for (;*end && *end == ' '; end++)
         /* empty */;
 
-    if (!end || str == end || *end) {
-        errno = EINVAL;
-        return -EINVAL;
-    }
+    if (!end || str == end || *end)
+        return -(errno=EINVAL);
 
-    if (strchr(str, '-')) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if (strchr(str, '-'))
+        return -(errno=ERANGE);
 
     *to = ull;
 
@@ -90,10 +82,8 @@ inline int mx_strtol(char *str, signed long int *to)
     for (;*end && *end == ' '; end++)
         /* empty */;
 
-    if (!end || str == end || *end) {
-        errno = EINVAL;
-        return -EINVAL;
-    }
+    if (!end || str == end || *end)
+        return -(errno=EINVAL);
 
     *to = l;
 
@@ -115,10 +105,8 @@ inline int mx_strtoll(char *str, signed long long int *to)
     for (;*end && *end == ' '; end++)
         /* empty */;
 
-    if (!end || str == end || *end) {
-        errno = EINVAL;
-        return -EINVAL;
-    }
+    if (!end || str == end || *end)
+        return -(errno=EINVAL);
 
     *to = ll;
 
@@ -137,10 +125,8 @@ int mx_strtoui(char *str, unsigned int *to)
     if (res < 0)
         return res;
 
-    if ((unsigned long int)(unsigned int)ul != ul) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((unsigned long int)(unsigned int)ul != ul)
+        return -(errno=ERANGE);
 
     *to = (unsigned int)ul;
 
@@ -157,10 +143,8 @@ int mx_strtou8(char *str, uint8_t *to)
     if (res < 0)
         return res;
 
-    if ((unsigned long int)(uint8_t)ul != ul) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((unsigned long int)(uint8_t)ul != ul)
+        return -(errno=ERANGE);
 
     *to = (uint8_t)ul;
 
@@ -177,10 +161,8 @@ int mx_strtou16(char *str, uint16_t *to)
     if (res < 0)
         return res;
 
-    if ((unsigned long int)(uint16_t)ul != ul) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((unsigned long int)(uint16_t)ul != ul)
+        return -(errno=ERANGE);
 
     *to = (uint16_t)ul;
 
@@ -197,10 +179,8 @@ int mx_strtou32(char *str, uint32_t *to)
     if (res < 0)
         return res;
 
-    if ((unsigned long int)(uint32_t)ul != ul) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((unsigned long int)(uint32_t)ul != ul)
+        return -(errno=ERANGE);
 
     *to = (uint32_t)ul;
 
@@ -217,10 +197,8 @@ int mx_strtou64(char *str, uint64_t *to)
     if (res < 0)
         return res;
 
-    if ((unsigned long long int)(uint64_t)ull != ull) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((unsigned long long int)(uint64_t)ull != ull)
+        return -(errno=ERANGE);
 
     *to = (uint64_t)ull;
 
@@ -239,10 +217,8 @@ int mx_strtoi(char *str, signed int *to)
     if (res < 0)
         return res;
 
-    if ((signed long int)(signed int)l != l) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((signed long int)(signed int)l != l)
+        return -(errno=ERANGE);
 
     *to = (signed int)l;
 
@@ -259,10 +235,8 @@ int mx_strtoi8(char *str, int8_t *to)
     if (res < 0)
         return res;
 
-    if ((signed long int)(int8_t)l != l) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((signed long int)(int8_t)l != l)
+        return -(errno=ERANGE);
 
     *to = (uint8_t)l;
 
@@ -279,10 +253,8 @@ int mx_strtoi16(char *str, int16_t *to)
     if (res < 0)
         return res;
 
-    if ((signed long int)(int16_t)l != l) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((signed long int)(int16_t)l != l)
+        return -(errno=ERANGE);
 
     *to = (uint16_t)l;
 
@@ -299,10 +271,8 @@ int mx_strtoi32(char *str, int32_t *to)
     if (res < 0)
         return res;
 
-    if ((signed long int)(int32_t)l != l) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((signed long int)(int32_t)l != l)
+        return -(errno=ERANGE);
 
     *to = (int32_t)l;
 
@@ -319,10 +289,8 @@ int mx_strtoi64(char *str, int64_t *to)
     if (res < 0)
         return res;
 
-    if ((signed long long int)(int64_t)ll != ll) {
-        errno = ERANGE;
-        return -ERANGE;
-    }
+    if ((signed long long int)(int64_t)ll != ll)
+        return -(errno=ERANGE);
 
     *to = (int64_t)ll;
 
