@@ -35,6 +35,50 @@
 volatile sig_atomic_t global_sigint_cnt=0;
 
 /**********************************************************************/
+int setup_cronolog(char *cronolog, char *link, char *format)
+{
+    int res;
+    int pipe_fd[2];
+    int pid;
+
+    res = pipe(pipe_fd);
+    if (res == -1) {
+        MXQ_LOG_ERROR("can't create pipe for cronolog: (%m)\n");
+        return 0;
+    }
+
+    pid = fork();
+    if (pid < 0) {
+        MXQ_LOG_ERROR("cronolog fork failed: %m");
+        return 1;
+    } else if(pid == 0) {
+        res = dup2(pipe_fd[0], STDIN_FILENO);
+        if (res == -1) {
+            MXQ_LOG_ERROR("dup2(fh=%d, %d) for cronolog stdin failed (%m)\n", pipe_fd[0], STDIN_FILENO);
+            return 0;
+        }
+        close(pipe_fd[0]);
+        close(pipe_fd[1]);
+        execl(cronolog, cronolog, "--link", link, format, NULL);
+        MXQ_LOG_ERROR("execl('%s', ...) failed (%m)\n", cronolog);
+        _exit(EX__MAX + 1);
+    }
+
+    res = dup2(pipe_fd[1], STDOUT_FILENO);
+    if (res == -1) {
+        MXQ_LOG_ERROR("dup2(fh=%d, %d) for cronolog stdout failed (%m)\n", pipe_fd[0], STDOUT_FILENO);
+        return 0;
+    }
+    res = dup2(STDOUT_FILENO, STDERR_FILENO);
+    if (res == -1) {
+        MXQ_LOG_ERROR("dup2(fh=%d, %d) for cronolog stderr failed (%m)\n", STDOUT_FILENO, STDERR_FILENO);
+        return 0;
+    }
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+
+    return 1;
+}
 
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
@@ -142,6 +186,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     if (server->memory_max_per_slot < server->memory_avg_per_slot)
        server->memory_max_per_slot = server->memory_avg_per_slot;
+
+
+    res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
+    if (!res) {
+        MXQ_LOG_ERROR("MAIN: cronolog setup failed. exiting.\n");
+        return -1;
+    }
 
     return 1;
 }
