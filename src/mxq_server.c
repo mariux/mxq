@@ -216,7 +216,7 @@ void group_init(struct mxq_group_list *group)
     struct mxq_server *s;
     struct mxq_group *g;
 
-    long double memory_slots;
+    long double memory_threads;
 
     assert(group);
     assert(group->user);
@@ -238,12 +238,12 @@ void group_init(struct mxq_group_list *group)
     if (group->slots_per_job < g->job_threads)
        group->slots_per_job = g->job_threads;
 
-    memory_slots = group->memory_max_available / group->memory_per_thread;
+    memory_threads = group->memory_max_available / group->memory_per_thread;
 
     if (group->memory_per_thread > s->memory_max_per_slot) {
-        group->jobs_max = memory_slots + 0.5;
+        group->jobs_max = memory_threads + 0.5;
     } else if (group->memory_per_thread > s->memory_avg_per_slot) {
-        group->jobs_max = memory_slots + 0.5;
+        group->jobs_max = memory_threads + 0.5;
     } else {
         group->jobs_max = s->slots;
     }
