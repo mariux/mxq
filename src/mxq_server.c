@@ -89,6 +89,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     int opt;
     unsigned long threads_total = 1;
     unsigned long memory_total = 2048;
+    unsigned long memory_max   = 0;
     int i;
 
     struct bee_getopt_ctl optctl;
@@ -97,7 +98,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 BEE_OPTION_NO_ARG("version",            'V'),
                 BEE_OPTION_REQUIRED_ARG("slots",        'j'),
                 BEE_OPTION_REQUIRED_ARG("memory",       'm'),
-                BEE_OPTION_REQUIRED_ARG("server_id",    'N'),
+                BEE_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
+                BEE_OPTION_REQUIRED_ARG("server-id",    'N'),
                 BEE_OPTION_REQUIRED_ARG("mysql-default-file", 'M'),
                 BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
                 BEE_OPTION_END
@@ -144,7 +146,14 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                     exit(1);
                 }
                 if (!memory_total)
-                    memory_total = 1024;
+                    memory_total = 2048;
+                break;
+
+            case 'x':
+                if (mx_strtoul(optctl.optarg, &memory_max) < 0) {
+                    fprintf(stderr, "Error in --max-memory-per-slot '%s': %m\n", optctl.optarg);
+                    exit(1);
+                }
                 break;
 
             case 'N':
@@ -181,11 +190,14 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     server->slots = threads_total;;
     server->memory_total = memory_total;
-    server->memory_max_per_slot = 0;
+    server->memory_max_per_slot = memory_max;
     server->memory_avg_per_slot = server->memory_total / server->slots;
 
     if (server->memory_max_per_slot < server->memory_avg_per_slot)
        server->memory_max_per_slot = server->memory_avg_per_slot;
+
+    if (server->memory_max_per_slot > server->memory_total)
+       server->memory_max_per_slot = server->memory_total;
 
 
     res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
