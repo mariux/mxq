@@ -502,6 +502,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     signal(SIGINT,  SIG_DFL);
     signal(SIGTERM, SIG_DFL);
     signal(SIGQUIT, SIG_DFL);
+    signal(SIGHUP,  SIG_DFL);
     signal(SIGTSTP, SIG_DFL);
     signal(SIGTTIN, SIG_DFL);
     signal(SIGTTOU, SIG_DFL);
@@ -1192,6 +1193,7 @@ int main(int argc, char *argv[])
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, SIG_IGN);
     signal(SIGQUIT, SIG_IGN);
+    signal(SIGHUP,  SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
