@@ -44,7 +44,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_mysql_default_file;
     int opt;
     unsigned long threads_total = 1;
-    unsigned long memory_total = 1024;
+    unsigned long memory_total = 2048;
     int i;
 
     struct bee_getopt_ctl optctl;
