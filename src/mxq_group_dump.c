@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     int group_cnt;
     int i;
 
-    mmysql.default_file  = NULL;
+    mmysql.default_file  = MXQ_MYSQL_DEFAULT_FILE;
     mmysql.default_group = "mxq_submit";
 
     mysql = mxq_mysql_connect(&mmysql);
