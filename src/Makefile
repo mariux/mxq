@@ -375,7 +375,7 @@ build: mxq_group_dump
 clean: CLEAN += mxq_group_dump
 
 install:: mxq_group_dump
-	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_group_dump,${DESTDIR}${BINDIR}/mxqdump)
+	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_group_dump,${DESTDIR}${BINDIR}/mxqdump)
 
 ### mxq_job_dump -------------------------------------------------------
 
