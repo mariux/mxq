@@ -224,6 +224,8 @@ clean: CLEAN += mxq_list.o
 
 mxq_group_dump.o: $(mxq_util.h)
 mxq_group_dump.o: $(mxq_mysql.h)
+mxq_group_dump.o: CFLAGS += $(CFLAGS_MYSQL)
+mxq_group_dump.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
 clean: CLEAN += mxq_group_dump.o
 
@@ -275,6 +277,16 @@ mxq_server.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
 mxq_server.o: CFLAGS += -Wno-unused-but-set-variable
 
 clean: CLEAN += mxq_server.o
+
+### mxq_sub.o -------------------------------------------------------
+
+mxq_sub.o: $(bee_getopt.h)
+mxq_sub.o: $(mx_util.h)
+mxq_sub.o: $(mxq_mysql.h)
+mxq_sub.o: CFLAGS += $(CFLAGS_MYSQL)
+mxq_sub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+
+clean: CLEAN += mxq_sub.o
 
 ########################################################################
 
