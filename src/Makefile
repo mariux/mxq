@@ -125,6 +125,7 @@ fix:
 .PHONY: install
 install::
 	$(call quiet-installdir,0755,${DESTDIR}${BINDIR})
+	$(call quiet-installdir,0755,${DESTDIR}${SBINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
 
 ########################################################################
@@ -222,7 +223,7 @@ clean: CLEAN += mxq_list.o
 ### mxq_group_dump.o ---------------------------------------------------
 
 mxq_group_dump.o: $(mxq_util.h)
-mxq_group_dumo.o: $(mxq_mysql.h)
+mxq_group_dump.o: $(mxq_mysql.h)
 
 clean: CLEAN += mxq_group_dump.o
 
@@ -293,7 +294,7 @@ build: mxq_server
 clean: CLEAN += mxq_server
 
 install:: mxq_server
-	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_server,${DESTDIR}${BINDIR}/mxq_server)
+	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_server,${DESTDIR}${SBINDIR}/mxqd)
 
 ### mxq_exec -----------------------------------------------------------
 
@@ -334,7 +335,7 @@ build: mxq_sub
 clean: CLEAN += mxq_sub
 
 install:: mxq_sub
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_sub,${DESTDIR}${BINDIR}/mxq_sub)
+	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_sub,${DESTDIR}${BINDIR}/mxqsub)
 
 ### mxq_list -----------------------------------------------------------
 
@@ -360,6 +361,9 @@ mxq_group_dump: LDLIBS += $(LDLIBS_MYSQL)
 build: mxq_group_dump
 
 clean: CLEAN += mxq_group_dump
+
+install:: mxq_group_dump
+	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_group_dump,${DESTDIR}${BINDIR}/mxqdump)
 
 ### mxq_job_dump -------------------------------------------------------
 
