@@ -19,14 +19,6 @@ int main(int argc, char *argv[])
     int group_cnt;
     int i;
 
-    long server_slots = 48;
-    long server_memory_total = 8*1024;
-    long double server_memory_avg_per_slot = server_memory_total / server_slots;
-    long server_memory_max_per_slot = 1*1024;
-
-    assert(server_memory_max_per_slot >= server_memory_avg_per_slot);
-
-
     mmysql.default_file  = NULL;
     mmysql.default_group = "mxq_submit";
 
@@ -35,36 +27,16 @@ int main(int argc, char *argv[])
     group_cnt = mxq_group_load_groups(mysql, &groups);
 
     for (i=0; i<group_cnt; i++) {
-        long double job_memory_per_thread = (long double)groups[i].job_memory / (long double)groups[i].job_threads;
+        struct mxq_group *g;
 
-        long double factor_overcommit = (long double)server_memory_max_per_slot / (long double)job_memory_per_thread;
-        long double job_memory_total = (long double)server_memory_total * factor_overcommit;
-        long double job_memory_slots = job_memory_total / (long double)job_memory_per_thread;
-        long job_slots;
+        g = &groups[i];
 
-        if (job_memory_per_thread > server_memory_max_per_slot) {
-            printf(" *** MEMORY LIMIT 1 *** \n");
-            job_slots = job_memory_slots + 0.5;
-        } else if (job_memory_per_thread > server_memory_avg_per_slot) {
-            printf(" *** MEMORY LIMIT 2 *** \n");
-            job_slots = job_memory_slots + 0.5;
-        } else {
-            job_slots = server_slots;
-        }
+        printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu finished=%lu inq=%lu job_threads=%u job_memory=%lu group_name=%s\n",
+                g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
+                g->group_jobs_running, g->group_slots_running, g->group_jobs_failed, g->group_jobs_finished,
+                g->group_jobs-g->group_jobs_running-g->group_jobs_failed-g->group_jobs_finished,
+                g->job_threads, g->job_memory, g->group_name);
 
-        job_slots /= groups[i].job_threads;
-        job_slots *= groups[i].job_threads;
-
-
-
-
-        printf("Mt = %ld / %d = %Lf\n", groups[i].job_memory, groups[i].job_threads, job_memory_per_thread);
-        printf("Fo = %Lf / %ld = %Lf\n", job_memory_per_thread, server_memory_max_per_slot, factor_overcommit);
-
-        printf("%ld\t%s\t%s\tthreads=%d\tmem=%ld\ttime=%d\tpri=%d\tcnt=%ld\tMt=%Lf\t%ld\t%s\n\n",
-                                groups[i].group_id,   groups[i].user_name, groups[i].group_name,     groups[i].job_threads,
-                                groups[i].job_memory, groups[i].job_time,  groups[i].group_priority, groups[i].group_jobs,
-                                job_memory_per_thread, job_slots, groups[i].job_command);
         mxq_group_free_content(&groups[i]);
     }
 
