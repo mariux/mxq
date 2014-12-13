@@ -545,26 +545,20 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     assert(res == 0);
 
-    res += mxq_setenv("USER",     g->user_name);
-    res += mxq_setenv("USERNAME", g->user_name);
-    res += mxq_setenv("LOGNAME",  g->user_name);
-    res += mxq_setenv("PATH",     MXQ_INITIAL_PATH);
-    res += mxq_setenv("PWD",      j->job_workdir);
-    res += mxq_setenv("HOME",     passwd->pw_dir);
-    res += mxq_setenv("HOSTNAME", mxq_hostname());
-    res += mxq_setenvf("JOB_ID",      "%d",     j->job_id);
-    res += mxq_setenvf("MXQ_JOBID",   "%d",     j->job_id);
-    res += mxq_setenvf("MXQ_THREADS", "%d",     g->job_threads);
-    res += mxq_setenvf("MXQ_SLOTS",   "%d",     group->slots_per_job);
-    res += mxq_setenvf("MXQ_MEMORY",  "%d",     g->job_memory);
-    res += mxq_setenvf("MXQ_TIME",    "%d",     g->job_time);
-    res += mxq_setenvf("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
-
-    if (res < 14) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setenv(): failed. %m\n",
-            g->user_name, g->user_uid, g->group_id, j->job_id);
-        return 0;
-    }
+    mx_setenv_forever("USER",     g->user_name);
+    mx_setenv_forever("USERNAME", g->user_name);
+    mx_setenv_forever("LOGNAME",  g->user_name);
+    mx_setenv_forever("PATH",     MXQ_INITIAL_PATH);
+    mx_setenv_forever("PWD",      j->job_workdir);
+    mx_setenv_forever("HOME",     passwd->pw_dir);
+    mx_setenv_forever("HOSTNAME", mxq_hostname());
+    mx_setenvf_forever("JOB_ID",      "%lu",     j->job_id);
+    mx_setenvf_forever("MXQ_JOBID",   "%lu",     j->job_id);
+    mx_setenvf_forever("MXQ_THREADS", "%d",     g->job_threads);
+    mx_setenvf_forever("MXQ_SLOTS",   "%lu",     group->slots_per_job);
+    mx_setenvf_forever("MXQ_MEMORY",  "%lu",     g->job_memory);
+    mx_setenvf_forever("MXQ_TIME",    "%d",     g->job_time);
+    mx_setenvf_forever("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {

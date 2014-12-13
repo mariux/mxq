@@ -32,4 +32,7 @@ char *mx_dirname_forever(char *path);
 int mx_dup2_close_new(int oldfd, int newfd);
 int mx_dup2_close_both(int oldfd, int newfd);
 
+int mx_setenv_forever(const char *name, const char *value);
+int mx_setenvf_forever(const char *name, char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
+
 #endif

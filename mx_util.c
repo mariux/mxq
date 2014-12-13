@@ -403,3 +403,42 @@ int mx_dup2_close_both(int oldfd, int newfd)
 
     return newfd;
 }
+
+int mx_setenv_forever(const char *name, const char *value)
+{
+    assert(name);
+    assert(*name);
+
+    int res;
+
+    do {
+        res = setenv(name, value, 1);
+        if (!res)
+            return 0;
+        assert(errno != EINVAL);
+    } while (errno == ENOMEM);
+
+    assert(errno == ENOMEM);
+    return -errno;
+}
+
+int mx_setenvf_forever(const char *name, char *fmt, ...)
+{
+    assert(name);
+    assert(*name);
+    assert(fmt);
+
+    va_list ap;
+    char *value = NULL;
+    int res;
+
+    va_start(ap, fmt);
+    mx_vasprintf_forever(&value, fmt, ap);
+    va_end(ap);
+
+    res = mx_setenv_forever(name, value);
+
+    free(value);
+
+    return res;
+}
