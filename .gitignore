@@ -3,7 +3,7 @@ mx_flock.o
 mx_util.o
 mxq_exec.o
 mxq_group.o
-mxq_group_dump.o
+mxqdump.o
 mxq_job.o
 mxq_job_dump.o
 mxq_list.o
@@ -18,7 +18,7 @@ mxq_submit
 mxq_exec
 mxq_list
 mxq_sub
-mxq_group_dump
+mxqdump
 mxq_job_dump
 mxqd
 test_mx_util
