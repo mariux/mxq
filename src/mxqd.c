@@ -30,7 +30,7 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mxq_mysql.h"
-#include "mxq_server.h"
+#include "mxqd.h"
 
 volatile sig_atomic_t global_sigint_cnt=0;
 
@@ -128,7 +128,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             case 'h':
             case 'V':
                 printf("help/version\n");
-                printf("mxq_server [mxq-options]\n");
+                printf("mxqd [mxq-options]\n");
                 exit(EX_USAGE);
 
             case 'j':
@@ -179,7 +179,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     server->hostname = mxq_hostname();
     server->server_id = arg_server_id;
 
-    server->flock = mx_flock(LOCK_EX, "/dev/shm/mxq_server.%s.%s.lck", server->hostname, server->server_id);
+    server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
     if (!server->flock) {
         return -1;
     }

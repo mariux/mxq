@@ -162,11 +162,11 @@ mxq_group.h += mxq_group.h
 
 mxq_job.h += mxq_job.h
 
-### mxq_server.h -------------------------------------------------------
+### mxqd.h ------------------------------------------------------------
 
-mxq_server.h += mxq_server.h
+mxqd.h += mxqd.h
 
-### bee_getopt.h -------------------------------------------------------
+### bee_getopt.h ------------------------------------------------------
 
 bee_getopt.h += bee_getopt.h
 
@@ -262,21 +262,21 @@ mxq_job.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_job.o
 
-### mxq_server.o -------------------------------------------------------
+### mxqd.o -------------------------------------------------------------
 
-mxq_server.o: $(bee_getopt.h)
-mxq_server.o: $(mx_flock.h)
-mxq_server.o: $(mx_util.h)
-mxq_server.o: $(mxq_server.h)
-mxq_server.o: $(mxq_group.h)
-mxq_server.o: $(mxq_job.h)
-mxq_server.o: $(mxq_mysql.h)
-mxq_server.o: CFLAGS += $(CFLAGS_MYSQL)
-mxq_server.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
-mxq_server.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
-mxq_server.o: CFLAGS += -Wno-unused-but-set-variable
+mxqd.o: $(bee_getopt.h)
+mxqd.o: $(mx_flock.h)
+mxqd.o: $(mx_util.h)
+mxqd.o: $(mxqd.h)
+mxqd.o: $(mxq_group.h)
+mxqd.o: $(mxq_job.h)
+mxqd.o: $(mxq_mysql.h)
+mxqd.o: CFLAGS += $(CFLAGS_MYSQL)
+mxqd.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
+mxqd.o: CFLAGS += -Wno-unused-but-set-variable
 
-clean: CLEAN += mxq_server.o
+clean: CLEAN += mxqd.o
 
 ### mxq_sub.o -------------------------------------------------------
 
@@ -290,23 +290,23 @@ clean: CLEAN += mxq_sub.o
 
 ########################################################################
 
-### mxq_server ---------------------------------------------------------
+### mxqd ------------------------------------------------------------
 
-mxq_server: mx_flock.o
-mxq_server: mx_util.o
-mxq_server: bee_getopt.o
-mxq_server: mxq_group.o
-mxq_server: mxq_job.o
-mxq_server: mxq_util.o
-mxq_server: mxq_mysql.o
-mxq_server: LDLIBS += $(LDLIBS_MYSQL)
+mxqd: mx_flock.o
+mxqd: mx_util.o
+mxqd: bee_getopt.o
+mxqd: mxq_group.o
+mxqd: mxq_job.o
+mxqd: mxq_util.o
+mxqd: mxq_mysql.o
+mxqd: LDLIBS += $(LDLIBS_MYSQL)
 
-build: mxq_server
+build: mxqd
 
-clean: CLEAN += mxq_server
+clean: CLEAN += mxqd
 
-install:: mxq_server
-	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_server,${DESTDIR}${SBINDIR}/mxqd)
+install:: mxqd
+	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxqd,${DESTDIR}${SBINDIR}/mxqd)
 
 ### mxq_exec -----------------------------------------------------------
 
