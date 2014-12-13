@@ -278,15 +278,15 @@ mxqd.o: CFLAGS += -Wno-unused-but-set-variable
 
 clean: CLEAN += mxqd.o
 
-### mxq_sub.o -------------------------------------------------------
+### mxqsub.o -------------------------------------------------------
 
-mxq_sub.o: $(bee_getopt.h)
-mxq_sub.o: $(mx_util.h)
-mxq_sub.o: $(mxq_mysql.h)
-mxq_sub.o: CFLAGS += $(CFLAGS_MYSQL)
-mxq_sub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+mxqsub.o: $(bee_getopt.h)
+mxqsub.o: $(mx_util.h)
+mxqsub.o: $(mxq_mysql.h)
+mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
+mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
-clean: CLEAN += mxq_sub.o
+clean: CLEAN += mxqsub.o
 
 ########################################################################
 
@@ -335,19 +335,19 @@ clean: CLEAN += mxq_submit
 #install:: mxq_submit
 #	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_submit,${DESTDIR}${BINDIR}/mxq_submit)
 
-### mxq_sub ------------------------------------------------------------
+### mxqsub ------------------------------------------------------------
 
-mxq_sub: bee_getopt.o
-mxq_sub: mxq_mysql.o
-mxq_sub: mxq_util.o
-mxq_sub: LDLIBS += $(LDLIBS_MYSQL)
+mxqsub: bee_getopt.o
+mxqsub: mxq_mysql.o
+mxqsub: mxq_util.o
+mxqsub: LDLIBS += $(LDLIBS_MYSQL)
 
-build: mxq_sub
+build: mxqsub
 
-clean: CLEAN += mxq_sub
+clean: CLEAN += mxqsub
 
-install:: mxq_sub
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_sub,${DESTDIR}${BINDIR}/mxqsub)
+install:: mxqsub
+	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxqsub,${DESTDIR}${BINDIR}/mxqsub)
 
 ### mxq_list -----------------------------------------------------------
 

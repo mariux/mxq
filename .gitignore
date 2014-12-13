@@ -9,7 +9,7 @@ mxq_job_dump.o
 mxq_list.o
 mxq_mysql.o
 mxqd.o
-mxq_sub.o
+mxqsub.o
 mxq_submit.o
 mxq_util.o
 test_mx_util.o
@@ -17,7 +17,7 @@ test_mx_util.o
 mxq_submit
 mxq_exec
 mxq_list
-mxq_sub
+mxqsub
 mxqdump
 mxq_job_dump
 mxqd
