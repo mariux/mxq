@@ -82,6 +82,7 @@ static void print_usage(void)
     "  amount of ressources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
     "\n"
+    "  -n | --program-name <name>        set program name (default: first part of <command>)\n"
     "  -N | --group-name <name>          set group name (default: 'default')\n"
     "  -P | --group-priority <priority>  set group priority (default: 127)\n"
     "\n"
@@ -369,6 +370,7 @@ int main(int argc, char *argv[])
     u_int16_t  arg_priority;
     char      *arg_group_name;
     u_int16_t  arg_group_priority;
+    char      *arg_program_name;
     u_int16_t  arg_threads;
     u_int64_t  arg_memory;
     u_int32_t  arg_time;
@@ -407,6 +409,8 @@ int main(int argc, char *argv[])
                 BEE_OPTION_REQUIRED_ARG("group-name",     'N'),
                 BEE_OPTION_REQUIRED_ARG("group-priority", 'P'),
 
+                BEE_OPTION_REQUIRED_ARG("program-name", 'n'),
+
                 BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
                 BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
                 BEE_OPTION_REQUIRED_ARG("stderr",       'e'),
@@ -434,6 +438,7 @@ int main(int argc, char *argv[])
     arg_priority       = 127;
     arg_group_name     = "default";
     arg_group_priority = 127;
+    arg_program_name   = NULL;
     arg_threads        = 1;
     arg_memory         = 2048;
     arg_time           = 15;
@@ -481,6 +486,16 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "INFO: option --group_id is deprecated. please use --group-name instead.\n");
             case 'N':
                 arg_group_name = optctl.optarg;
+                break;
+
+            case 'n':
+                if (*optctl.optarg) {
+                    char *p;
+                    arg_program_name = optctl.optarg;
+                    p = strchr(arg_program_name, ' ');
+                    if (p)
+                        *p = 0;
+                }
                 break;
 
             case 2:
@@ -559,6 +574,9 @@ int main(int argc, char *argv[])
 
     /* from this point values in argc,argv are the ones of the cluster job  */
 
+    if (!arg_program_name)
+        arg_program_name = argv[0];
+
     /******************************************************************/
 
     if (*arg_stdout != '/') {
@@ -623,7 +641,7 @@ int main(int argc, char *argv[])
 
     /******************************************************************/
 
-    group.job_command = argv[0];
+    group.job_command = arg_program_name;
     job.host_submit = mxq_hostname();
 
     /******************************************************************/
