@@ -1241,8 +1241,8 @@ int main(int argc, char *argv[])
         if (!server.group_cnt) {
             assert(!server.jobs_running);
             assert(!group_cnt);
-            MXQ_LOG_INFO("Nothing to do. Sleeping for a short while. (7 seconds)\n");
-            sleep(7);
+            MXQ_LOG_INFO("Nothing to do. Sleeping for a short while. (1 second)\n");
+            sleep(1);
             continue;
         }
 
