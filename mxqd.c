@@ -80,6 +80,33 @@ int setup_cronolog(char *cronolog, char *link, char *format)
     return 1;
 }
 
+
+int setup_stdin(char *fname)
+{
+    int fh;
+    int res;
+
+    fh = open(fname, O_RDONLY|O_NOFOLLOW);
+    if (fh == -1) {
+        MXQ_LOG_ERROR("open(%s) for stdin failed (%m)\n", fname);
+        return 0;
+    }
+
+    if (fh != STDIN_FILENO) {
+        res = dup2(fh, STDIN_FILENO);
+        if (res == -1) {
+            MXQ_LOG_ERROR("dup2(fh=%d, %d) failed (%m)\n", fh, STDIN_FILENO);
+            return 0;
+        }
+        res = close(fh);
+        if (res == -1) {
+            MXQ_LOG_ERROR("close(fh=%d) failed (%m)\n", fh);
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
     int res;
@@ -196,11 +223,19 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     if (arg_daemonize) {
-        res = daemon(0, 0);
+        res = daemon(0, 1);
         if (res == -1) {
-            perror("daemon(0,0)");
+            perror("daemon(0,1)");
             exit(EX_UNAVAILABLE);
         }
+    }
+
+    setup_stdin("/dev/null");
+
+    res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
+    if (!res) {
+        MXQ_LOG_ERROR("MAIN: cronolog setup failed. exiting.\n");
+        return -1;
     }
 
     server->slots = threads_total;;
@@ -214,12 +249,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (server->memory_max_per_slot > server->memory_total)
        server->memory_max_per_slot = server->memory_total;
 
-
-    res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
-    if (!res) {
-        MXQ_LOG_ERROR("MAIN: cronolog setup failed. exiting.\n");
-        return -1;
-    }
 
     return 1;
 }
