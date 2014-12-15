@@ -82,7 +82,7 @@ static void print_usage(void)
     "  amount of ressources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
     "\n"
-    "  -n | --program-name <name>        set program name (default: first part of <command>)\n"
+    "  -a | --command-alias <name>       set command alias (default: first part of <command>)\n"
     "  -N | --group-name <name>          set group name (default: 'default')\n"
     "  -P | --group-priority <priority>  set group priority (default: 127)\n"
     "\n"
@@ -405,11 +405,12 @@ int main(int argc, char *argv[])
                 BEE_OPTION_REQUIRED_ARG("group_id",       1),
                 BEE_OPTION_REQUIRED_ARG("group_priority", 2),
                 BEE_OPTION_REQUIRED_ARG("group-id",       3),
+                BEE_OPTION_REQUIRED_ARG("time",           4),
 
                 BEE_OPTION_REQUIRED_ARG("group-name",     'N'),
                 BEE_OPTION_REQUIRED_ARG("group-priority", 'P'),
 
-                BEE_OPTION_REQUIRED_ARG("program-name", 'n'),
+                BEE_OPTION_REQUIRED_ARG("command-alias", 'a'),
 
                 BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
                 BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
@@ -419,7 +420,7 @@ int main(int argc, char *argv[])
 
                 BEE_OPTION_REQUIRED_ARG("threads",      'j'),
                 BEE_OPTION_REQUIRED_ARG("memory",       'm'),
-                BEE_OPTION_REQUIRED_ARG("time",         't'),
+                BEE_OPTION_REQUIRED_ARG("runtime",      't'),
 
                 BEE_OPTION_REQUIRED_ARG("define",       'D'),
 
@@ -488,7 +489,7 @@ int main(int argc, char *argv[])
                 arg_group_name = optctl.optarg;
                 break;
 
-            case 'n':
+            case 'a':
                 if (*optctl.optarg) {
                     char *p;
                     arg_program_name = optctl.optarg;
@@ -523,9 +524,11 @@ int main(int argc, char *argv[])
                 }
                 break;
 
+            case 4:
+                fprintf(stderr, "INFO: option --time is deprecated. please use --runtime instead.\n");
             case 't':
                 if (!safe_convert_string_to_ui32(optctl.optarg, &arg_time)) {
-                    fprintf(stderr, "ignoring --time '%s': %s\n", optctl.optarg, strerror(errno));
+                    fprintf(stderr, "ignoring --runtime '%s': %s\n", optctl.optarg, strerror(errno));
                 }
                 break;
 
