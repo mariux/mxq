@@ -73,6 +73,7 @@ struct mxq_server {
     char *hostname;
     char *server_id;
     char *lockfilename;
+    char *pidfilename;
     struct mx_flock *flock;
 
     int is_running;

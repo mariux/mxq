@@ -107,12 +107,32 @@ int setup_stdin(char *fname)
     return 1;
 }
 
+int write_pid_to_file(char *fname)
+{
+    int fd;
+    int res;
+
+    fd = mx_open_newfile(fname);
+    if (fd < 0)
+        return fd;
+
+    dprintf(fd, "%d\n", getpid());
+    res = fsync(fd);
+    if (res == -1)
+        return -errno;
+
+    close(fd);
+    return 0;
+}
+
+
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
     int res;
     char *arg_server_id = "main";
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
+    char *arg_pidfile = NULL;
     char arg_daemonize = 0;
     int opt;
     unsigned long threads_total = 1;
@@ -125,6 +145,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 BEE_OPTION_NO_ARG("help",               'h'),
                 BEE_OPTION_NO_ARG("version",            'V'),
                 BEE_OPTION_NO_ARG("daemonize",            1),
+                BEE_OPTION_REQUIRED_ARG("pid-file",       2),
                 BEE_OPTION_REQUIRED_ARG("slots",        'j'),
                 BEE_OPTION_REQUIRED_ARG("memory",       'm'),
                 BEE_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
@@ -156,6 +177,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         switch (opt) {
             case 1:
                 arg_daemonize = 1;
+                break;
+
+            case 2:
+                arg_pidfile = optctl.optarg;
                 break;
 
             case 'h':
@@ -230,13 +255,24 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
     }
 
+    if (arg_pidfile) {
+        res = write_pid_to_file(arg_pidfile);
+        if (res < 0) {
+            fprintf(stderr, "MAIN: pidfile (%s) setup failed: %m.  Exiting.\n", arg_pidfile);
+            exit(EX_IOERR);
+        }
+
+        server->pidfilename = arg_pidfile;
+    }
+
     setup_stdin("/dev/null");
 
     res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
     if (!res) {
         MXQ_LOG_ERROR("MAIN: cronolog setup failed. exiting.\n");
-        return -1;
+        exit(EX_IOERR);
     }
+
 
     server->slots = threads_total;;
     server->memory_total = memory_total;
@@ -1105,6 +1141,9 @@ void server_close(struct mxq_server *server)
         unext = user->next;
         free(user);
     }
+
+    if (server->pidfilename)
+        unlink(server->pidfilename);
 
     mx_funlock(server->flock);
 }

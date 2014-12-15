@@ -9,6 +9,10 @@
 #include <libgen.h>
 #include <unistd.h>
 
+//#include <sys/types.h>
+//#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "mx_util.h"
 
 /* wrapper unsigned */
@@ -441,4 +445,36 @@ int mx_setenvf_forever(const char *name, char *fmt, ...)
     free(value);
 
     return res;
+}
+
+int mx_open_newfile(char *fname)
+{
+    int fh;
+    int res;
+
+    int    flags = 0;
+    mode_t mode  = 0;
+
+    flags |= O_CREAT|O_WRONLY|O_TRUNC;
+    flags |= O_NOFOLLOW;
+
+    mode |= S_IRUSR|S_IWUSR;
+    mode |= S_IRGRP|S_IWGRP;
+    mode |= S_IROTH|S_IWOTH;
+
+    if (!fname) {
+        fname = "/dev/null";
+    } else if (strcmp(fname, "/dev/null") != 0) {
+        res = unlink(fname);
+        if (res == -1 && errno != ENOENT)
+            return -errno;
+
+        flags |= O_EXCL;
+    }
+
+    fh = open(fname, flags, mode);
+    if (fh == -1)
+        return -errno;
+
+    return fh;
 }
