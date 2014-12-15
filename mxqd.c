@@ -86,6 +86,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_server_id = "main";
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
+    char arg_daemonize = 0;
     int opt;
     unsigned long threads_total = 1;
     unsigned long memory_total = 2048;
@@ -96,6 +97,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     struct bee_option opts[] = {
                 BEE_OPTION_NO_ARG("help",               'h'),
                 BEE_OPTION_NO_ARG("version",            'V'),
+                BEE_OPTION_NO_ARG("daemonize",            1),
                 BEE_OPTION_REQUIRED_ARG("slots",        'j'),
                 BEE_OPTION_REQUIRED_ARG("memory",       'm'),
                 BEE_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
@@ -125,6 +127,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
 
         switch (opt) {
+            case 1:
+                arg_daemonize = 1;
+                break;
+
             case 'h':
             case 'V':
                 printf("help/version\n");
@@ -185,7 +191,16 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     if (!server->flock->locked) {
-        return -2;
+        fprintf(stderr, "MXQ Server '%s' on host '%s' is already running. Exiting.\n", server->server_id, server->hostname);
+        exit(2);
+    }
+
+    if (arg_daemonize) {
+        res = daemon(0, 0);
+        if (res == -1) {
+            perror("daemon(0,0)");
+            exit(EX_UNAVAILABLE);
+        }
     }
 
     server->slots = threads_total;;
@@ -1198,10 +1213,6 @@ int main(int argc, char *argv[])
 
     res = server_init(&server, argc, argv);
     if (res < 0) {
-        if (res == -2) {
-            MXQ_LOG_ERROR("MXQ Server '%s' on host '%s' is already running. Exiting.\n", server.server_id, server.hostname);
-            exit(2);
-        }
         MXQ_LOG_ERROR("MXQ Server: Can't initialize server handle. Exiting.\n");
         exit(1);
     }
