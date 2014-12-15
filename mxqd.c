@@ -217,6 +217,12 @@ void group_init(struct mxq_group_list *group)
     struct mxq_group *g;
 
     long double memory_threads;
+    long double memory_per_thread;
+    long double memory_max_available;
+    unsigned long slots_per_job;
+    unsigned long jobs_max;
+    unsigned long slots_max;
+    unsigned long memory_max;
 
     assert(group);
     assert(group->user);
@@ -225,35 +231,49 @@ void group_init(struct mxq_group_list *group)
     s = group->user->server;
     g = &group->group;
 
-    group->orphaned = 0;
+    memory_per_thread    = (long double)g->job_memory / (long double) g->job_threads;
+    memory_max_available = (long double)s->memory_total * (long double)s->memory_max_per_slot / memory_per_thread;
 
-    group->memory_per_thread = (long double)g->job_memory / (long double) g->job_threads;
-    group->memory_max_available = s->memory_total * s->memory_max_per_slot / group->memory_per_thread;
+    if (memory_max_available > s->memory_total)
+        memory_max_available = s->memory_total;
 
-    if (group->memory_max_available > s->memory_total)
-        group->memory_max_available = s->memory_total;
+    slots_per_job = ceill((long double)g->job_memory / s->memory_avg_per_slot);
 
-    group->slots_per_job = ceill((long double)g->job_memory / s->memory_avg_per_slot);
+    if (slots_per_job < g->job_threads)
+       slots_per_job = g->job_threads;
 
-    if (group->slots_per_job < g->job_threads)
-       group->slots_per_job = g->job_threads;
+    memory_threads = memory_max_available / memory_per_thread;
 
-    memory_threads = group->memory_max_available / group->memory_per_thread;
-
-    if (group->memory_per_thread > s->memory_max_per_slot) {
-        group->jobs_max = memory_threads + 0.5;
-    } else if (group->memory_per_thread > s->memory_avg_per_slot) {
-        group->jobs_max = memory_threads + 0.5;
+    if (memory_per_thread > s->memory_max_per_slot) {
+        jobs_max = memory_threads + 0.5;
+    } else if (memory_per_thread > s->memory_avg_per_slot) {
+        jobs_max = memory_threads + 0.5;
     } else {
-        group->jobs_max = s->slots;
+        jobs_max = s->slots;
     }
+    jobs_max /= g->job_threads;
 
-    group->jobs_max /= g->job_threads;
-    group->slots_max = group->jobs_max * group->slots_per_job;
-    group->memory_max = group->jobs_max * g->job_memory;
+    slots_max = jobs_max * slots_per_job;
+    memory_max = jobs_max * g->job_memory;
 
-    MXQ_LOG_INFO("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group initialized.\n",
-                    g->user_name, g->user_uid, g->group_id, group->jobs_max, group->slots_max, group->memory_max, group->slots_per_job);
+    if (group->memory_per_thread != memory_per_thread
+       || group->memory_max_available != memory_max_available
+       || group->memory_max_available != memory_max_available
+       || group->slots_per_job != slots_per_job
+       || group->jobs_max != jobs_max
+       || group->slots_max != slots_max
+       || group->memory_max != memory_max)
+        MXQ_LOG_INFO("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.\n",
+                    g->user_name, g->user_uid, g->group_id, jobs_max, slots_max, memory_max, slots_per_job,
+                    group->orphaned?"re":"");
+
+    group->orphaned = 0;
+    group->memory_per_thread = memory_per_thread;
+    group->memory_max_available = memory_max_available;
+    group->slots_per_job = slots_per_job;
+    group->jobs_max = jobs_max;
+    group->slots_max = slots_max;
+    group->memory_max = memory_max;
 }
 
 /**********************************************************************/
@@ -810,8 +830,8 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
 
     assert(slots_to_start <= server->slots - server->slots_running);
 
-    MXQ_LOG_INFO(" user=%s(%d) slots_to_start=%ld job_limit=%d :: trying to start jobs for user.\n",
-            mxqgrp->user_name, mxqgrp->user_uid, slots_to_start, job_limit);
+//    MXQ_LOG_INFO(" user=%s(%d) slots_to_start=%ld job_limit=%d :: trying to start jobs for user.\n",
+//            mxqgrp->user_name, mxqgrp->user_uid, slots_to_start, job_limit);
 
     for (group=user->groups; group && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); group=gnext) {
 
@@ -902,7 +922,7 @@ unsigned long start_users(struct mxq_server *server)
     if (!server->user_cnt)
         return 0;
 
-    MXQ_LOG_INFO("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users\n", server->slots - server->slots_running, server->user_cnt);
+    //MXQ_LOG_INFO("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users\n", server->slots - server->slots_running, server->user_cnt);
 
     for (user=server->users; user; user=user->next) {
 
@@ -930,9 +950,6 @@ unsigned long start_users(struct mxq_server *server)
             started = 0;
         }
     }
-
-    MXQ_LOG_INFO("server-stats:\t%6lu of %6lu MiB\tallocated\n", server->memory_used, server->memory_total);
-    MXQ_LOG_INFO("\t%6lu of %6lu slots\tallocated for %lu running threads (%lu jobs)\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
 
     return slots_started_total;
 }
@@ -1018,6 +1035,9 @@ void server_dump(struct mxq_server *server)
             }
         }
     }
+
+    MXQ_LOG_INFO("memory_used=%lu memory_total=%lu\n", server->memory_used, server->memory_total);
+    MXQ_LOG_INFO("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
     MXQ_LOG_INFO("====================== SERVER DUMP END ======================\n");
 }
 
@@ -1168,8 +1188,8 @@ int main(int argc, char *argv[])
     struct mxq_server server;
     struct mxq_group_list *group;
 
-    unsigned long slots_started;
-    unsigned long slots_returned;
+    unsigned long slots_started  = 0;
+    unsigned long slots_returned = 0;
 
     int i;
     int res;
@@ -1210,11 +1230,13 @@ int main(int argc, char *argv[])
         if (slots_returned)
             MXQ_LOG_INFO("slots_returned=%lu :: Main Loop freed %lu slots.\n", slots_returned, slots_returned);
 
-        server_dump(&server);
+        if (slots_started || slots_returned) {
+            server_dump(&server);
+        }
 
         group_cnt = load_groups(&server);
-        if (group_cnt)
-            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n", group_cnt, group_cnt);
+//        if (group_cnt)
+//            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n", group_cnt, group_cnt);
 
         if (!server.group_cnt) {
             assert(!server.jobs_running);
@@ -1225,8 +1247,8 @@ int main(int argc, char *argv[])
         }
 
         if (server.slots_running == server.slots) {
-            MXQ_LOG_INFO("All slots running. Sleeping for a short while.\n");
-            sleep(20);
+            MXQ_LOG_INFO("All slots running. Sleeping for a short while (7 seconds).\n");
+            sleep(7);
             continue;
         }
 
@@ -1236,8 +1258,8 @@ int main(int argc, char *argv[])
 
         if (!slots_started && !slots_returned) {
             if (!server.jobs_running) {
-                MXQ_LOG_INFO("Tried Hard and nobody is doing anything. Sleeping for a long while (30 seconds).\n");
-                sleep(30);
+                MXQ_LOG_INFO("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).\n");
+                sleep(15);
             } else {
                 MXQ_LOG_INFO("Tried Hard. But have done nothing. Sleeping for a very short while.\n");
                 sleep(3);
