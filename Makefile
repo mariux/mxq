@@ -54,6 +54,13 @@ CFLAGS_MXQ_INITIAL_PATH = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 
 MYSQL_CONFIG = mysql_config
 
+OS_RELEASE = $(shell ./os-release)
+
+# special defaults for mariux64
+ifeq (${OS_RELEASE}, mariux64)
+   MXQ_INITIAL_PATH := ${MXQ_INITIAL_PATH}:/usr/local/package/bin
+endif
+
 CFLAGS_MYSQL += $(shell $(MYSQL_CONFIG) --cflags)
 LDLIBS_MYSQL += $(shell $(MYSQL_CONFIG) --libs)
 
