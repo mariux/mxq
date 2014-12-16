@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+
 #include <sysexits.h>
 
 #include <sys/file.h>
@@ -18,6 +19,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
+#include <signal.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -33,6 +35,7 @@
 #include "mxqd.h"
 
 volatile sig_atomic_t global_sigint_cnt=0;
+volatile sig_atomic_t global_sigterm_cnt=0;
 
 /**********************************************************************/
 int setup_cronolog(char *cronolog, char *link, char *format)
@@ -77,7 +80,7 @@ int setup_cronolog(char *cronolog, char *link, char *format)
     close(pipe_fd[0]);
     close(pipe_fd[1]);
 
-    return 1;
+    return pid;
 }
 
 
@@ -1148,6 +1151,32 @@ void server_close(struct mxq_server *server)
     mx_funlock(server->flock);
 }
 
+int killall(struct mxq_server *server, int sig, unsigned int pgrp)
+{
+    struct mxq_user_list  *user;
+    struct mxq_group_list *group;
+    struct mxq_job_list   *job;
+    pid_t pid;
+
+    assert(server);
+
+    for (user=server->users; user; user=user->next) {
+        for (group=user->groups; group; group=group->next) {
+            for (job=group->jobs; job; job=job->next) {
+                pid = job->job.host_pid;
+                if (pgrp)
+                    pid = -pid;
+                MXQ_LOG_INFO("Sending signal=%d to job=%s(%d):%lu:%lu %s=%d\n",
+                    sig,
+                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    pgrp?"pgrp":"pid", pid);
+                kill(pid, sig);
+            }
+        }
+    }
+    return 0;
+}
+
 int catchall(struct mxq_server *server) {
 
     struct rusage rusage;
@@ -1260,6 +1289,11 @@ static void sig_handler(int sig)
       global_sigint_cnt++;
       return;
     }
+
+    if (sig == SIGTERM) {
+      global_sigterm_cnt++;
+      return;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -1296,7 +1330,7 @@ int main(int argc, char *argv[])
     /*** main loop ***/
 
     signal(SIGINT,  sig_handler);
-    signal(SIGTERM, SIG_IGN);
+    signal(SIGTERM, sig_handler);
     signal(SIGQUIT, SIG_IGN);
     signal(SIGHUP,  SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
@@ -1345,22 +1379,25 @@ int main(int argc, char *argv[])
             }
             continue;
         }
-    } while (!global_sigint_cnt);
+    } while (!global_sigint_cnt && !global_sigterm_cnt);
 
     /*** clean up ***/
 
-    MXQ_LOG_INFO("global_sigint_cnt=%d : Exiting.\n", global_sigint_cnt);
+    MXQ_LOG_INFO("global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting.\n", global_sigint_cnt, global_sigterm_cnt);
 
     while (server.jobs_running) {
-       slots_returned = catchall(&server);
-       if (slots_returned) {
-           MXQ_LOG_INFO("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d : \n",
-                   server.jobs_running, slots_returned, global_sigint_cnt);
+        slots_returned = catchall(&server);
+        if (slots_returned) {
+           MXQ_LOG_INFO("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : \n",
+                   server.jobs_running, slots_returned, global_sigint_cnt, global_sigterm_cnt);
            continue;
-       }
-       MXQ_LOG_INFO("jobs_running=%lu global_sigint_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.\n",
-              server.jobs_running, global_sigint_cnt);
-       sleep(1);
+        }
+        if (global_sigint_cnt)
+            killall(&server, SIGTERM, 0);
+
+        MXQ_LOG_INFO("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.\n",
+              server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
+        sleep(1);
     }
 
     mxq_mysql_close(server.mysql);
