@@ -1196,22 +1196,48 @@ int catchall(struct mxq_server *server) {
     struct mxq_group *g;
     int res;
 
-    while (server->jobs_running) {
-        pid = wait3(&status, WNOHANG, &rusage);
+    while (1) {
+        siginfo_t siginfo;
 
-        if (pid < 0) {
-            MXQ_LOG_ERROR("wait3: %m\n");
+        siginfo.si_pid = 0;
+        res = waitid(P_ALL, 0, &siginfo, WEXITED|WNOHANG|WNOWAIT);
+
+        if (res == -1) {
+            MXQ_LOG_ERROR("waitid: %m\n");
             return -1;
         }
 
-        if (pid == 0)
+        /* no childs changed state => return */
+        if (res == 0 && siginfo.si_pid == 0)
             return 0;
 
-        job = server_remove_job_by_pid(server, pid);
+        assert(siginfo.si_pid > 1);
+
+        job = server_remove_job_by_pid(server, siginfo.si_pid);
         if (!job) {
-            MXQ_LOG_ERROR("unknown pid returned.. pid=%d\n", pid);
+            MXQ_LOG_ERROR("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d\n",
+                siginfo.si_pid, siginfo.si_uid, siginfo.si_code, siginfo.si_status,
+                getpgid(siginfo.si_pid), getsid(siginfo.si_pid));
+            pid = waitpid(siginfo.si_pid, &status, WNOHANG);
+            if (pid != siginfo.si_pid)
+                MXQ_LOG_ERROR("FIX ME BUG!!! pid=%d errno=%d (%m)\n", pid, errno);
             continue;
         }
+
+        /* reap child and save new state */
+        pid = wait4(siginfo.si_pid, &status, WNOHANG, &rusage);
+
+        if (pid == -1) {
+            MXQ_LOG_ERROR("wait4: %m\n");
+            return -1;
+        }
+
+        if (pid == 0) {
+            MXQ_LOG_ERROR("wait4: spurious pid=%d. Continuing anyway. Please FIX.\n", siginfo.si_pid);
+            pid = siginfo.si_pid;
+        }
+
+        assert(pid == siginfo.si_pid);
 
         gettimeofday(&now, NULL);
 
