@@ -1223,6 +1223,12 @@ int catchall(struct mxq_server *server) {
                 MXQ_LOG_ERROR("FIX ME BUG!!! pid=%d errno=%d (%m)\n", pid, errno);
             continue;
         }
+        /* valid job returned.. */
+
+        /* kill possible leftovers with SIGKILL */
+        res = kill(-siginfo.si_pid, SIGKILL);
+        if (res == -1)
+            MXQ_LOG_ERROR("kill process group pgrp=%d failed: %m\n", -siginfo.si_pid);
 
         /* reap child and save new state */
         pid = wait4(siginfo.si_pid, &status, WNOHANG, &rusage);
