@@ -18,6 +18,7 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/prctl.h>
 
 #include <signal.h>
 #include <pwd.h>
@@ -266,6 +267,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
 
         server->pidfilename = arg_pidfile;
+    }
+
+    res = prctl(PR_SET_CHILD_SUBREAPER, 1);
+    if (res == -1) {
+        fprintf(stderr, "MAIN: prctl(PR_SET_CHILD_SUBREAPER) setup failed: %m.  Exiting.\n");
+        exit(EX_IOERR);
     }
 
     setup_stdin("/dev/null");
