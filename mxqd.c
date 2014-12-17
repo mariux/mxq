@@ -245,6 +245,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         exit(EX_USAGE);
     }
 
+    if (getuid()) {
+        fprintf(stderr, "Running mxqd as non-root user is not permitted.\n");
+        exit(EX_USAGE);
+    }
 
     memset(server, 0, sizeof(*server));
 
