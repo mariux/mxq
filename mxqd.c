@@ -1358,6 +1358,9 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    MXQ_LOG_INFO("mxqd - " MXQ_VERSIONFULL "\n");
+    MXQ_LOG_INFO("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n");
+    MXQ_LOG_INFO("  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n");
     MXQ_LOG_INFO("hostname=%s server_id=%s :: MXQ server started.\n", server.hostname, server.server_id);
     MXQ_LOG_INFO("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.\n",
                   server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);

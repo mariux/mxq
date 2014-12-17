@@ -31,24 +31,24 @@
 
 #define MXQ_JOB_STATUS_ACTIVE      (1)
 
-#ifndef VERSION
-#define VERSION "0.00"
+#ifndef MXQ_VERSION
+#define MXQ_VERSION "0.00"
 #endif
 
-#ifndef VERSIONFULL
-#define VERSIONFULL "MXQ v0.00 super alpha 0"
+#ifndef MXQ_VERSIONFULL
+#define MXQ_VERSIONFULL "MXQ v0.00 super alpha 0"
 #endif
 
-#ifndef VERSIONDATE
-#define VERSIONDATE "2014"
+#ifndef MXQ_VERSIONDATE
+#define MXQ_VERSIONDATE "2014"
 #endif
 
 
 static void print_usage(void)
 {
     printf(
-    VERSIONFULL "\n"
-    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " VERSIONDATE "\n"
+    "mxqsub - " MXQ_VERSIONFULL "\n"
+    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
     "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
     "\n"
     "Usage:\n"
@@ -472,8 +472,6 @@ int main(int argc, char *argv[])
         switch (opt) {
             case 'h':
             case 'V':
-                printf("help/version\n");
-                printf("mxq_submit [mxq-options] <command> [command-arguments]\n");
                 print_usage();
                 exit(EX_USAGE);
 

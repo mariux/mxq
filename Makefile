@@ -56,6 +56,10 @@ MYSQL_CONFIG = mysql_config
 
 OS_RELEASE = $(shell ./os-release)
 
+MXQ_VERSION = 0.1
+MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
+MXQ_VERSIONDATE = 2013-2014
+
 # special defaults for mariux64
 ifeq (${OS_RELEASE}, mariux64)
    MXQ_INITIAL_PATH := ${MXQ_INITIAL_PATH}:/usr/local/package/bin
@@ -67,6 +71,9 @@ LDLIBS_MYSQL += $(shell $(MYSQL_CONFIG) --libs)
 CFLAGS += -g
 CFLAGS += -Wall
 CFLAGS += -Wno-unused-variable
+CFLAGS += -DMXQ_VERSION=\"${MXQ_VERSION}\"
+CFLAGS += -DMXQ_VERSIONFULL=\"${MXQ_VERSIONFULL}\"
+CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
 
 ########################################################################
 
