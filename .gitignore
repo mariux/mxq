@@ -1,22 +1,16 @@
 bee_getopt.o
 mx_flock.o
 mx_util.o
-mxq_exec.o
 mxq_group.o
 mxqdump.o
 mxq_job.o
 mxq_job_dump.o
-mxq_list.o
 mxq_mysql.o
 mxqd.o
 mxqsub.o
-mxq_submit.o
 mxq_util.o
 test_mx_util.o
 
-mxq_submit
-mxq_exec
-mxq_list
 mxqsub
 mxqdump
 mxq_job_dump

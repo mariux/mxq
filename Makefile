@@ -203,30 +203,6 @@ mxq_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_mysql.o
 
-### mxq_exec.o ---------------------------------------------------------
-
-mxq_exec.o: $(mxq_mysql.h)
-mxq_exec.o: $(mxq_util.h)
-mxq_exec.o: $(bee_getopt.h)
-
-clean: CLEAN += mxq_exec.o
-
-### mxq_submit.o -------------------------------------------------------
-
-mxq_submit.o: $(mxq_mysql.h)
-mxq_submit.o: $(mxq_util.h)
-mxq_submit.o: $(bee_getopt.h)
-
-clean: CLEAN += mxq_submit.o
-
-### mxq_list.o ---------------------------------------------------------
-
-mxq_list.o: $(mxq_mysql.h)
-mxq_list.o: $(mxq_util.h)
-mxq_list.o: $(bee_getopt.h)
-
-clean: CLEAN += mxq_list.o
-
 ### mxqdump.o ---------------------------------------------------
 
 mxqdump.o: $(mxq_util.h)
@@ -315,33 +291,6 @@ clean: CLEAN += mxqd
 install:: mxqd
 	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxqd,${DESTDIR}${SBINDIR}/mxqd)
 
-### mxq_exec -----------------------------------------------------------
-
-mxq_exec: bee_getopt.o
-mxq_exec: mxq_mysql.o
-mxq_exec: mxq_util.o
-mxq_exec: LDLIBS += $(LDLIBS_MYSQL)
-
-#build: mxq_exec
-clean: CLEAN += mxq_exec
-
-#install:: mxq_exec
-#	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxq_exec,${DESTDIR}${BINDIR}/mxq_exec)
-
-### mxq_submit ---------------------------------------------------------
-
-mxq_submit: bee_getopt.o
-mxq_submit: mxq_mysql.o
-mxq_submit: mxq_util.o
-mxq_submit: LDLIBS += $(LDLIBS_MYSQL)
-
-#build: mxq_submit
-
-clean: CLEAN += mxq_submit
-
-#install:: mxq_submit
-#	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxq_submit,${DESTDIR}${BINDIR}/mxq_submit)
-
 ### mxqsub ------------------------------------------------------------
 
 mxqsub: bee_getopt.o
@@ -355,20 +304,6 @@ clean: CLEAN += mxqsub
 
 install:: mxqsub
 	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxqsub,${DESTDIR}${BINDIR}/mxqsub)
-
-### mxq_list -----------------------------------------------------------
-
-mxq_list: bee_getopt.o
-mxq_list: mxq_mysql.o
-mxq_list: mxq_util.o
-mxq_list: LDLIBS += $(LDLIBS_MYSQL)
-
-#build: mxq_list
-
-clean: CLEAN += mxq_list
-
-#install:: mxq_list
-#	$(call quiet-installforuser,$(SUID_MODE),$(USER_LIST),$(GROUP_LIST),mxq_list,${DESTDIR}${BINDIR}/mxq_list)
 
 ### mxqdump -----------------------------------------------------
 
