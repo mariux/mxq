@@ -138,6 +138,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_mysql_default_file;
     char *arg_pidfile = NULL;
     char arg_daemonize = 0;
+    char arg_nolog = 0;
     int opt;
     unsigned long threads_total = 1;
     unsigned long memory_total = 2048;
@@ -149,6 +150,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 BEE_OPTION_NO_ARG("help",               'h'),
                 BEE_OPTION_NO_ARG("version",            'V'),
                 BEE_OPTION_NO_ARG("daemonize",            1),
+                BEE_OPTION_NO_ARG("no-log",               3),
                 BEE_OPTION_REQUIRED_ARG("pid-file",       2),
                 BEE_OPTION_REQUIRED_ARG("slots",        'j'),
                 BEE_OPTION_REQUIRED_ARG("memory",       'm'),
@@ -185,6 +187,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 2:
                 arg_pidfile = optctl.optarg;
+                break;
+
+            case 3:
+                arg_nolog = 1;
                 break;
 
             case 'h':
@@ -234,6 +240,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     BEE_GETOPT_FINISH(optctl, argc, argv);
 
+    if (arg_daemonize && arg_nolog) {
+        fprintf(stderr, "Error while using conflicting options --daemonize and --no-log at once.\n");
+        exit(EX_USAGE);
+    }
+
+
     memset(server, 0, sizeof(*server));
 
     server->mmysql.default_file  = arg_mysql_default_file;
@@ -277,10 +289,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     setup_stdin("/dev/null");
 
-    res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
-    if (!res) {
-        MXQ_LOG_ERROR("MAIN: cronolog setup failed. exiting.\n");
-        exit(EX_IOERR);
+    if (!arg_nolog) {
+        res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
+        if (!res) {
+            MXQ_LOG_ERROR("MAIN: cronolog setup failed. exiting.\n");
+            exit(EX_IOERR);
+        }
     }
 
 
