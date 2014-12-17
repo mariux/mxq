@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <time.h>
 #include "mxq_util.h"
 
 
@@ -23,6 +24,27 @@ mode_t getumask(void)
     return mask;
 }
 
+size_t timetag(char *buf, size_t max)
+{
+    time_t t;
+    struct tm *ltime;
+
+    *buf = 0;
+
+    t = time(NULL);
+    if (t == ((time_t) -1)) {
+        perror("timetag::time");
+        return 0;
+    }
+
+    ltime = localtime(&t);
+    if (ltime == NULL) {
+        perror("timetag::localtime");
+        return 0;
+    }
+
+    return strftime(buf, max, "%F %T %z", ltime);
+}
 
 int log_msg(int prio, const char *fmt, ...)
 {
@@ -32,9 +54,10 @@ int log_msg(int prio, const char *fmt, ...)
     static int cnt = 0;
     int res;
     size_t len;
+    char timebuf[1024];
 
     if (!fmt) {
-        free(lastmsg);
+        free_null(lastmsg);
         return 0;
     }
 
@@ -54,16 +77,24 @@ int log_msg(int prio, const char *fmt, ...)
             free(msg);
             return 2;
         }
+    }
+
+    timetag(timebuf, sizeof(timebuf));
+
+    if (cnt > 1)
+        printf("%s %s[%d]: last message repeated %d times\n", timebuf, program_invocation_short_name, getpid(), cnt);
+    else if (cnt == 1)
+        printf("%s %s[%d]: %s", timebuf, program_invocation_short_name, getpid(), lastmsg);
+    cnt = 0;
+    fflush(stdout);
+
+    if (lastmsg) {
         free(lastmsg);
     }
+
     lastmsg = msg;
 
-
-    if (cnt) {
-        printf("%s[%d]: last message repeated %d times\n",program_invocation_short_name, getpid(), cnt);
-        cnt = 0;
-    }
-    printf("%s[%d]: %s",program_invocation_short_name, getpid(), msg);
+    printf("%s %s[%d]: %s", timebuf, program_invocation_short_name, getpid(), msg);
     fflush(stdout);
     return 1;
 }
@@ -84,6 +115,33 @@ char *mxq_hostname(void)
     }
 
     return hostname;
+}
+
+void *realloc_or_free(void *ptr, size_t size)
+{
+    void *new_ptr;
+
+    new_ptr = realloc(ptr, size);
+    if (new_ptr)
+        return new_ptr;
+
+    free(ptr);
+    return NULL;
+}
+
+void *realloc_forever(void *ptr, size_t size)
+{
+    void *new_ptr;
+
+    assert(size > 0);
+
+    do {
+        new_ptr = realloc(ptr, size);
+        if (new_ptr)
+            return new_ptr;
+
+        sleep(1);
+    } while (1);
 }
 
 int safe_convert_string_to_ull(char *string, unsigned long long int *integer)
@@ -186,20 +244,50 @@ char **strvec_new(void)
     return strvec;
 }
 
-size_t strvec_length(char* const* strvec)
+static inline size_t strvec_length_cache(char **strvec, int32_t len)
 {
+    static char ** sv = NULL;
+    static size_t l = 0;
+
+    if (likely(len == -1)) {
+        if (likely(sv == strvec)) {
+            return l;
+        }
+        return -1;
+    }
+
+    if (likely(sv == strvec)) {
+        l = len;
+    } else {
+        sv = strvec;
+        l = len;
+    }
+    return l;
+}
+
+size_t strvec_length(char ** strvec)
+{
+    char ** sv;
     size_t len;
 
     assert(strvec);
 
-    for (len=0; *strvec; strvec++, len++);
+    sv = strvec;
 
+    len = strvec_length_cache(sv, -1);
+    if (len != -1)
+        return len;
+
+    for (; *sv; sv++);
+
+    len = sv-strvec;
+    strvec_length_cache(sv, len);
     return len;
 }
 
-int strvec_push_str(char*** strvecp, char* str)
+int strvec_push_str(char *** strvecp, char * str)
 {
-    char **sv;
+    char ** sv;
 
     size_t len;
 
@@ -214,8 +302,10 @@ int strvec_push_str(char*** strvecp, char* str)
        return 0;
     }
 
-    sv[len]   = str;
-    sv[len+1] = NULL;
+    sv[len++] = str;
+    sv[len] = NULL;
+
+    strvec_length_cache(sv, len);
 
     *strvecp = sv;
 
@@ -242,6 +332,8 @@ int strvec_push_strvec(char ***strvecp, char **strvec)
     }
 
     memcpy(sv+len1, strvec, sizeof(*strvec) * (len2 + 1));
+
+    strvec_length_cache(sv, len1+len2);
 
     *strvecp = sv;
 
@@ -289,6 +381,23 @@ char *strvec_to_str(char **strvec)
     *str = '\0';
 
     return buf;
+}
+
+void strvec_free(char **strvec)
+{
+    char **sv;
+    char*  buf;
+    char*  s;
+    size_t totallen;
+    char*  str;
+
+    if (!strvec)
+        return;
+
+    for (sv = strvec; *sv; sv++) {
+        free(sv);
+    }
+    free(strvec);
 }
 
 char **str_to_strvec(char *str)
@@ -377,6 +486,43 @@ char **stringtostringvec(int argc, char *s)
     }
 
     return argv;
+}
+
+int mxq_setenv(const char *name, const char *value)
+{
+    int res;
+
+    res = setenv(name, value, 1);
+    if (res == -1) {
+        MXQ_LOG_ERROR("mxq_setenv(%s, %s) failed! (%s)\n", name, value, strerror(errno));
+        return 0;
+    }
+
+    return 1;
+}
+
+
+int mxq_setenvf(const char *name, char *fmt, ...)
+{
+    va_list ap;
+    _cleanup_free_ char *value = NULL;
+    size_t len;
+    int res;
+
+    assert(name);
+    assert(*name);
+    assert(fmt);
+
+    va_start(ap, fmt);
+    len = vasprintf(&value, fmt, ap);
+    va_end(ap);
+
+    if (len == -1) {
+        MXQ_LOG_ERROR("mxq_setenvf(%s, %s, ...) failed! (%s)\n", name, fmt, strerror(errno));
+        return 0;
+    }
+
+    return mxq_setenv(name, value);
 }
 
 int chrcnt(char *s, char c)

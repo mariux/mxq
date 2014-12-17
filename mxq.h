@@ -3,6 +3,16 @@
 
 #include <sys/types.h>
 #include <sys/resource.h>
+#include <stdint.h>
+
+
+#define MXQ_LOG_ERROR(fmt, ...)   log_msg(0, "%s:%d:%s: ERROR @ " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__);
+#define MXQ_LOG_WARNING(fmt, ...) log_msg(1, "WARNING @ " fmt, ##__VA_ARGS__);
+#define MXQ_LOG_INFO(fmt, ...)    log_msg(2, fmt, ##__VA_ARGS__);
+
+
+#include "mxq_group.h"
+#include "mxq_job.h"
 
 struct mxq_job_full {
     u_int64_t  job_id;

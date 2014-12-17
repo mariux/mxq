@@ -1,6 +1,184 @@
 
 
 
+DROP TABLE mxq_group;
+CREATE TABLE IF NOT EXISTS mxq_group (
+   group_id       INT8 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   group_name     VARCHAR(511)  NOT NULL DEFAULT 'default',
+   group_status   INT1 UNSIGNED NOT NULL DEFAULT 0,
+   group_priority INT2 UNSIGNED NOT NULL DEFAULT 127,
+
+   user_uid        INT4 UNSIGNED   NOT NULL,
+   user_name       VARCHAR(255)    NOT NULL,
+   user_gid        INT4 UNSIGNED   NOT NULL,
+   user_group      VARCHAR(255)    NOT NULL,
+
+   job_command    VARCHAR(4095)   NOT NULL,
+
+   job_threads    INT2 UNSIGNED NOT NULL DEFAULT 1,
+   job_memory     INT8 UNSIGNED NOT NULL DEFAULT 1024,
+   job_time       INT4 UNSIGNED NOT NULL DEFAULT 15,
+
+   group_jobs          INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_running  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_finished INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_failed   INT8 UNSIGNED NOT NULL DEFAULT 0,
+
+   group_slots_running INT8 UNSIGNED NOT NULL DEFAULT 0,
+
+   group_mtime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+   stats_max_maxrss   INT4 NOT NULL DEFAULT 0,
+
+   stats_max_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_stime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_real_sec   INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   INDEX(group_id),
+   INDEX(group_name)
+);
+
+DROP TABLE mxq_job;
+CREATE TABLE IF NOT EXISTS mxq_job (
+   job_id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   job_status     INT2 UNSIGNED   NOT NULL DEFAULT 0,
+   job_priority   INT2 UNSIGNED   NOT NULL DEFAULT 127,
+
+   group_id       INT8 UNSIGNED   NOT NULL,
+
+   job_workdir    VARCHAR(4095)   NOT NULL,
+   job_argc       INT2 UNSIGNED   NOT NULL,
+   job_argv       VARCHAR(40959)  NOT NULL,
+
+   job_stdout     VARCHAR(4095)   NOT NULL DEFAULT '/dev/null',
+   job_stderr     VARCHAR(4095)   NOT NULL DEFAULT '/dev/null',
+
+   job_umask      INT4            NOT NULL,
+
+   host_submit    VARCHAR(64)     NOT NULL DEFAULT "localhost",
+
+   server_id      VARCHAR(1023)   NOT NULL DEFAULT "",
+
+   host_hostname  VARCHAR(64)     NOT NULL DEFAULT "",
+   host_pid       INT4 UNSIGNED   NOT NULL DEFAULT 0,
+   host_slots     INT4 UNSIGNED   NOT NULL DEFAULT 0,
+
+   date_submit  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   date_start   TIMESTAMP NOT NULL DEFAULT 0,
+   date_end     TIMESTAMP NOT NULL DEFAULT 0,
+
+   stats_status   INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   stats_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_utime_usec INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_stime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_stime_usec INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_real_sec   INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_real_usec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   stats_maxrss   INT4 NOT NULL DEFAULT 0,
+   stats_minflt   INT4 NOT NULL DEFAULT 0,
+   stats_majflt   INT4 NOT NULL DEFAULT 0,
+   stats_nswap    INT4 NOT NULL DEFAULT 0,
+   stats_inblock  INT4 NOT NULL DEFAULT 0,
+   stats_oublock  INT4 NOT NULL DEFAULT 0,
+   stats_nvcsw    INT4 NOT NULL DEFAULT 0,
+   stats_nivcsw   INT4 NOT NULL DEFAULT 0,
+
+   INDEX (job_id),
+   INDEX (job_status),
+   INDEX (job_priority),
+   INDEX (host_hostname(64)),
+   INDEX (server_id(767))
+);
+
+DELIMITER |
+DROP TRIGGER mxq_update_group|
+CREATE TRIGGER mxq_update_group BEFORE UPDATE ON mxq_group
+    FOR EACH ROW BEGIN
+        IF NEW.group_status = 99 THEN
+            UPDATE mxq_job SET
+                job_status = 990
+            WHERE group_id=NEW.group_id AND job_status = 0;
+        END IF;
+    END;
+|
+DROP TRIGGER mxq_add_job|
+CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
+    FOR EACH ROW BEGIN
+        UPDATE mxq_group SET
+            group_jobs=group_jobs+1,
+            group_mtime=NULL
+        WHERE group_id=NEW.group_id;
+    END;
+|
+DROP TRIGGER mxq_update_job|
+CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
+    FOR EACH ROW BEGIN
+        IF NEW.job_status = 200 AND OLD.job_status IN (0, 100, 150)  THEN
+            UPDATE mxq_group SET
+               group_jobs_running=group_jobs_running+1,
+               group_slots_running=group_slots_running+NEW.host_slots,
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        ELSEIF NEW.job_status IN (400, 750) AND OLD.job_status IN (200, 250, 300, 350) THEN
+            UPDATE mxq_group SET
+               group_slots_running=group_slots_running-NEW.host_slots,
+               group_jobs_running=group_jobs_running-1,
+               group_jobs_failed=group_jobs_failed+1,
+               stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
+               stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
+               stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
+               stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (200, 250, 300, 350) THEN
+            UPDATE mxq_group SET
+               group_slots_running=group_slots_running-NEW.host_slots,
+               group_jobs_running=group_jobs_running-1,
+               group_jobs_finished=group_jobs_finished+1,
+               stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
+               stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
+               stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
+               stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        ELSEIF NEW.job_status != 990 THEN
+            UPDATE mxq_group SET
+               stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
+               stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
+               stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
+               stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        END IF;
+    END;
+|
+DELIMITER ;
+
+
+DROP TABLE mxq_server;
+CREATE TABLE IF NOT EXISTS mxq_server (
+   host_id          INT4 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   host_hostname    VARCHAR(511)  NOT NULL DEFAULT 'localhost',
+
+   server_id        VARCHAR(511)  NOT NULL DEFAULT 'default',
+
+   host_slots       INT2 UNSIGNED NOT NULL DEFAULT 1,
+   host_memory      INT8 UNSIGNED NOT NULL DEFAULT 1024,
+   host_time        INT4 UNSIGNED NOT NULL DEFAULT 15,
+
+   host_jobs_running    INT2 UNSIGNED NOT NULL DEFAULT 0,
+   host_slots_running   INT2 UNSIGNED NOT NULL DEFAULT 0,
+
+   host_mtime       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+   server_start     TIMESTAMP DEFAULT 0,
+   server_stop      TIMESTAMP DEFAULT 0,
+
+
+);
+
 DROP TABLE job;
 
 CREATE TABLE IF NOT EXISTS job (
@@ -99,7 +277,7 @@ INSERT INTO job SET user_uid=1,user_name='user1',user_gid=1,user_group='group1',
 DROP VIEW v_job_status;
 CREATE VIEW v_job_status AS
 SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads, job_time, job_command, COUNT(*) AS sum,
-        SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0, 
+        SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0,
         SUM(CASE WHEN job_status = 1 THEN 1 ELSE 0 END) AS status1,
         SUM(CASE WHEN job_status = 2 THEN 1 ELSE 0 END) AS status2,
         SUM(CASE WHEN job_status = 3 THEN 1 ELSE 0 END) AS status3,
@@ -112,7 +290,7 @@ SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads
 	MIN(date_submit) AS date_submit_min,
 	MIN(CASE WHEN date_start > 0 THEN date_start END) AS date_start_min,
 	MAX(date_end) AS date_end_max
-FROM 
+FROM
     job
 GROUP BY
     user_uid,
@@ -128,7 +306,7 @@ GROUP BY
 DROP VIEW v_job_status;
 CREATE VIEW v_job_status AS
 SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads, job_time, job_command, host_hostname, COUNT(*) AS sum,
-        SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0, 
+        SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0,
         SUM(CASE WHEN job_status = 1 THEN 1 ELSE 0 END) AS status1,
         SUM(CASE WHEN job_status = 2 THEN 1 ELSE 0 END) AS status2,
         SUM(CASE WHEN job_status = 3 THEN 1 ELSE 0 END) AS status3,
@@ -139,7 +317,7 @@ SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads
 	AVG(stats_stime),
 	MAX(stats_real),
 	AVG(stats_real)
-FROM 
+FROM
     job
 GROUP BY
     user_uid,
@@ -153,13 +331,13 @@ GROUP BY
 
 
 SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads, job_time, COUNT(*) AS sum,
-         SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0, 
+         SUM(CASE WHEN job_status = 0 THEN 1 ELSE 0 END) AS status0,
          SUM(CASE WHEN job_status = 1 THEN 1 ELSE 0 END) AS status1,
          SUM(CASE WHEN job_status = 2 THEN 1 ELSE 0 END) AS status2,
          SUM(CASE WHEN job_status = 3 THEN 1 ELSE 0 END) AS status3,
 
          (job_memory*80)/(job_threads*1024*1024),
-         
+
          POW(1024*1024,2)*POW(job_threads,2) / (POW(job_memory,2)*80) AS max_slots_total,
 
          LEAST(80,FLOOR(FLOOR((POW(1024*1024,2)*POW(job_threads,2)) / (POW(job_memory,2)*80) + 0.5) / job_threads) * job_threads) AS max_slots_host,
@@ -167,7 +345,7 @@ SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads
          LEAST(FLOOR(80/job_threads)*job_threads ,FLOOR(FLOOR((POW(1024*1024,2)*POW(job_threads,2)) / (POW(job_memory,2)*80) + 0.5) / job_threads) * job_threads) AS max_slots_real,
 
          LEAST(FLOOR(80/job_threads) ,FLOOR(FLOOR((POW(1024*1024,2)*POW(job_threads,2)) / (POW(job_memory,2)*80) + 0.5) / job_threads)) AS max_jobs_real,
-         
+
          MIN(date_submit),
 	 MIN(date_start),
 	 MAX(date_end)
@@ -176,7 +354,7 @@ SELECT user_uid, group_id, group_priority, job_priority, job_memory, job_threads
 
 drop view v_job_overview;
 create view v_job_overview as
-select 
+select
     user_name,
     group_id,
     job_command,
@@ -189,8 +367,8 @@ select
     COUNT(CASE WHEN job_status = 2 THEN job_status END) AS total_jobs_runnning,
     COUNT(CASE WHEN job_status > 2 THEN job_status END) AS total_jobs_done
 from
-    job 
-group by 
+    job
+group by
     user_uid,
     job_command,
     job_memory,
@@ -205,13 +383,13 @@ group by
 CREATE TABLE IF NOT EXISTS servers (
    host_hostname  VARCHAR(1023)   DEFAULT NULL,
    server_id      VARCHAR(1023)   DEFAULT NULL,
-   
+
    server_status  INT1 UNSIGNED   NOT NULL DEFAULT 0,
 
    host_threads   INT2 UNSIGNED   NOT NULL DEFAULT 1,
    host_memory    INT8 UNSIGNED   NOT NULL DEFAULT 1024,
    host_time      INT4 UNSIGNED   NOT NULL DEFAULT 15,
-   
+
    UNIQUE (host_hostname(767), server_id(767)),
    INDEX  (server_status),
    INDEX  (host_threads),
@@ -227,7 +405,7 @@ insert into servers values('testhost2', 'testserver3', 1, 80,  2048, 45);
 
 drop view v_job_schedule;
 create view v_job_schedule as
-select 
+select
     user_name,
     group_id,
     job_command,
@@ -240,7 +418,7 @@ select
     COUNT(CASE WHEN job_status = 2 OR job_status = 1 THEN job_status END) AS total_jobs_active
 from
     job
-group by 
+group by
     job_command,
     user_uid,
     job_memory,
