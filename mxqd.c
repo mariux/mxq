@@ -1071,18 +1071,21 @@ int remove_orphaned_groups(struct mxq_server *server)
     struct mxq_job_list   *job;
     int cnt=0;
 
-    for (user=server->users, uprev=NULL; user; uprev=user, user=unext) {
+    for (user=server->users, uprev=NULL; user; user=unext) {
         unext = user->next;
-        for (group=user->groups, gprev=NULL; group; gprev=group, group=gnext) {
+        for (group=user->groups, gprev=NULL; group; group=gnext) {
             gnext = group->next;
 
-            if (group->job_cnt)
+            if (group->job_cnt) {
+                gprev = group;
                 continue;
+            }
 
             assert(!group->jobs);
 
             if (!group->orphaned && group->group.group_jobs-group->group.group_jobs_failed-group->group.group_jobs_finished) {
                 group->orphaned = 1;
+                gprev = group;
                 continue;
             }
 
@@ -1099,10 +1102,12 @@ int remove_orphaned_groups(struct mxq_server *server)
             server->group_cnt--;
             cnt++;
             mxq_group_free_content(&group->group);
-            free(group);
+            free_null(group);
         }
-        if(user->groups)
+        if(user->groups) {
+            uprev = user;
             continue;
+        }
 
         if (uprev) {
             uprev->next = unext;
@@ -1111,7 +1116,7 @@ int remove_orphaned_groups(struct mxq_server *server)
             server->users = unext;
         }
         server->user_cnt--;
-        free(user);
+        free_null(user);
 
         MXQ_LOG_INFO("Removed orphaned user. %lu users left.\n", server->user_cnt);
     }
