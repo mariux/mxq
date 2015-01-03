@@ -56,9 +56,9 @@ MYSQL_CONFIG = mysql_config
 
 OS_RELEASE = $(shell ./os-release)
 
-MXQ_VERSION = 0.1
+MXQ_VERSION = 0.1.1
 MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
-MXQ_VERSIONDATE = 2013-2014
+MXQ_VERSIONDATE = 2013-2015
 
 # special defaults for mariux64
 ifeq (${OS_RELEASE}, mariux64)
