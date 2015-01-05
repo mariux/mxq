@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <mysql.h>
+#include <mysql/mysqld_error.h>
 
 #include <errno.h>
 
@@ -117,6 +118,7 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
 {
     MYSQL_STMT *stmt;
     int res;
+    int triesleft = 0;
 
     assert(mysql);
     assert(stmt_str);
@@ -163,13 +165,30 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
         }
     }
 
-    res = mysql_stmt_execute(stmt);
-    if (res) {
+    triesleft = 10;
+
+    do {
+        res = mysql_stmt_execute(stmt);
+
+        if (!res)
+            break;
+
         MXQ_LOG_ERROR("mysql_stmt_execute(stmt=%p)\n", stmt);
         mxq_mysql_stmt_print_error(stmt);
+
+        if (mysql_stmt_errno(stmt) == ER_LOCK_DEADLOCK) {
+            MXQ_LOG_WARNING("trying to recover from ER_LOCK_DEADLOCK. %d tries left.\n", --triesleft);
+            continue;
+        }
+
+        if (mysql_stmt_errno(stmt) == ER_LOCK_WAIT_TIMEOUT) {
+            MXQ_LOG_WARNING("trying to recover from ER_LOCK_WAIT_TIMEOUT. %d tries left.\n", --triesleft);
+            continue;
+        }
+
         mysql_stmt_close(stmt);
         return NULL;
-    }
+    } while(triesleft);
 
     return stmt;
 }
