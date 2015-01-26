@@ -697,6 +697,9 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     signal(SIGTTOU, SIG_DFL);
     signal(SIGCHLD, SIG_DFL);
 
+    /* reset SIGPIPE which seems to be ignored by mysqlclientlib (?) */
+    signal(SIGPIPE, SIG_DFL);
+
     /** set sessionid and pgrp leader **/
     pid = setsid();
     if (pid == -1) {
