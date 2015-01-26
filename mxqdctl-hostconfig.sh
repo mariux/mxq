@@ -11,34 +11,34 @@ pidfilebase=/dev/shm/mxqdctl-hostconfig
 
 shopt -s nullglob
 
-function start_all_hostconfig() 
+function start_all_hostconfig()
 {
-    while read -a line ; do 
+    while read -a line ; do
         host=${line[0]}
         var=${line[1]}
-        
+
         unset 'line[0]'
         unset 'line[1]'
-        
-        
+
+
         if [ "${var}" != "mxqd" ] ; then
             continue
         fi
 
-        if [ "${host}" != "${shorthost}" ] ; then 
+        if [ "${host}" != "${shorthost}" ] ; then
             continue
         fi
 
         args=(${defaultargs[@]} --pid-file "${pidfilebase}${started}.pid" ${line[@]})
 
         echo "executing ${mxqd} ${args[@]}"
-        
+
         ${mxqd} ${args[@]}
 
         started+=1
     done < ${hostconfig}
 
-    if [ ${started} -lt 1 ] ; then 
+    if [ ${started} -lt 1 ] ; then
         echo >&2 "host '${shorthost}' is not configured for mxqd in '${hostconfig}'."
         exit 1
     fi

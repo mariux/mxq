@@ -127,7 +127,7 @@ clean:
 
 .PHONY: fix
 fix:
-	@for i in *.c *.h Makefile mysql/create_tables ; do \
+	@for i in *.c *.h Makefile mysql/create_tables mxqdctl-hostconfig.sh ; do \
 	    if grep -q -m 1 -E '\s+$$' $$i ; then \
 	        echo "FIX   $$i" ; \
 	        sed -i $$i -e 's/\s*$$//g' ; \
