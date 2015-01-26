@@ -40,16 +40,23 @@
 #endif
 
 #ifndef MXQ_VERSIONDATE
-#define MXQ_VERSIONDATE "2014"
+#define MXQ_VERSIONDATE "2015"
 #endif
 
 
-static void print_usage(void)
+static void print_version(void)
 {
     printf(
     "mxqsub - " MXQ_VERSIONFULL "\n"
     "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
     "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
+    );
+}
+
+static void print_usage(void)
+{
+    print_version();
+    printf(
     "\n"
     "Usage:\n"
     "  mxqsub [mxqsub-options] <command> [command options and arguments ..]\n"
@@ -73,7 +80,7 @@ static void print_usage(void)
     "  on the priority given to the job.\n"
     "\n"
     "  -j | --threads  <number>  set number of threads (default: 1)\n"
-    "  -m | --memory   <size>    set amount of memory (default: 2048MiB)\n"
+    "  -m | --memory   <size>    set amount of memory in MiB (default: 2048)\n"
     "  -t | --time     <minutes> set runtime (default: 15 minutes)\n"
     "\n"
     "Job grouping:\n"
@@ -470,8 +477,11 @@ int main(int argc, char *argv[])
         }
 
         switch (opt) {
-            case 'h':
             case 'V':
+                print_version();
+                exit(EX_USAGE);
+
+            case 'h':
                 print_usage();
                 exit(EX_USAGE);
 

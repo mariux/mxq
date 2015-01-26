@@ -35,8 +35,55 @@
 #include "mxq_mysql.h"
 #include "mxqd.h"
 
+#ifndef MXQ_VERSION
+#define MXQ_VERSION "0.00"
+#endif
+
+#ifndef MXQ_VERSIONFULL
+#define MXQ_VERSIONFULL "MXQ v0.00 super alpha 0"
+#endif
+
+#ifndef MXQ_VERSIONDATE
+#define MXQ_VERSIONDATE "2015"
+#endif
+
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
+
+
+static void print_version(void)
+{
+    printf(
+    "mxqd - " MXQ_VERSIONFULL "\n"
+    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
+    "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
+    );
+}
+
+static void print_usage(void)
+{
+    print_version();
+    printf(
+    "\n"
+    "Usage:\n"
+    "  mxqd [options]\n"
+    "\n"
+    "options:\n"
+    "  -j | --slots     <slots>           default: 1\n"
+    "  -m | --memory    <memory>          default: 2048 (in MiB)\n"
+    "  -x | --max-memory-per-slot <mem>   default: <memory>/<slots>\n"
+    "\n"
+    "  -N | --server-id <id>              default: main\n"
+    "\n"
+    "       --pid-file <pidfile>          default: create no pid file\n"
+    "       --daemonize                   default: run in foreground\n"
+    "       --no-log                      default: write a logfile\n"
+    "\n"
+    "  -V | --version\n"
+    "  -h | --help\n"
+    "\n"
+    );
+}
 
 /**********************************************************************/
 int setup_cronolog(char *cronolog, char *link, char *format)
@@ -193,10 +240,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 arg_nolog = 1;
                 break;
 
-            case 'h':
             case 'V':
-                printf("help/version\n");
-                printf("mxqd [mxq-options]\n");
+                print_version();
+                exit(EX_USAGE);
+
+            case 'h':
+                print_usage();
                 exit(EX_USAGE);
 
             case 'j':
