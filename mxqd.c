@@ -50,6 +50,7 @@
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
 
+int mxq_redirect_output(char *stdout_fname, char *stderr_fname);
 
 static void print_version(void)
 {
@@ -110,6 +111,9 @@ int setup_cronolog(char *cronolog, char *link, char *format)
         }
         close(pipe_fd[0]);
         close(pipe_fd[1]);
+
+        mxq_redirect_output("/dev/null", "/dev/null");
+
         execl(cronolog, cronolog, "--link", link, format, NULL);
         MXQ_LOG_ERROR("execl('%s', ...) failed (%m)\n", cronolog);
         _exit(EX__MAX + 1);
