@@ -338,6 +338,11 @@ clean: CLEAN += mxq_job_dump
 
 ########################################################################
 
+install:: mxqdctl-hostconfig.sh
+	$(call quiet-install,0755,mxqdctl-hostconfig.sh,${DESTDIR}${SBINDIR}/mxqdctl-hostconfig)
+
+########################################################################
+
 test_mx_util.o: $(mx_util.h)
 clean: CLEAN += test_mx_util.o
 
