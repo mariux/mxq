@@ -56,7 +56,7 @@ MYSQL_CONFIG = mysql_config
 
 OS_RELEASE = $(shell ./os-release)
 
-MXQ_VERSION = 0.1.1
+MXQ_VERSION = 0.1.2
 MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
 MXQ_VERSIONDATE = 2013-2015
 
