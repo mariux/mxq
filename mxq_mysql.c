@@ -14,6 +14,8 @@
 
 #include <errno.h>
 
+#include <time.h>
+
 #include "mxq_mysql.h"
 #include "mxq_util.h"
 
@@ -118,7 +120,8 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
 {
     MYSQL_STMT *stmt;
     int res;
-    int triesleft = 0;
+    long tries = 0;
+    struct timespec nsleep = {0};
 
     assert(mysql);
     assert(stmt_str);
@@ -165,30 +168,29 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
         }
     }
 
-    triesleft = 10;
-
     do {
         res = mysql_stmt_execute(stmt);
-
         if (!res)
             break;
 
-        MXQ_LOG_ERROR("mysql_stmt_execute(stmt=%p)\n", stmt);
-        mxq_mysql_stmt_print_error(stmt);
-
         if (mysql_stmt_errno(stmt) == ER_LOCK_DEADLOCK) {
-            MXQ_LOG_WARNING("trying to recover from ER_LOCK_DEADLOCK. %d tries left.\n", --triesleft);
+            MXQ_LOG_WARNING("MySQL recoverable error detected in mysql_stmt_execute(): ER_LOCK_DEADLOCK. (try %ld).\n", ++tries);
+            nsleep.tv_nsec = tries*1000000L;
+            nanosleep(&nsleep, NULL);
             continue;
         }
 
         if (mysql_stmt_errno(stmt) == ER_LOCK_WAIT_TIMEOUT) {
-            MXQ_LOG_WARNING("trying to recover from ER_LOCK_WAIT_TIMEOUT. %d tries left.\n", --triesleft);
+            MXQ_LOG_WARNING("MySQL recoverable error detected in mysql_stmt_execute(): ER_LOCK_WAIT_TIMEOUT. (try %ld).\n", ++tries);
+            nsleep.tv_nsec = tries*1000000L;
+            nanosleep(&nsleep, NULL);
             continue;
         }
 
+        mxq_mysql_stmt_print_error(stmt);
         mysql_stmt_close(stmt);
         return NULL;
-    } while(triesleft);
+    } while(1);
 
     return stmt;
 }
