@@ -1,4 +1,8 @@
 
+MXQ_VERSION = 0.1.4
+MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
+MXQ_VERSIONDATE = 2013-2015
+
 PREFIX     = /usr
 EPREFIX    = ${PREFIX}
 SBINDIR    = ${EPREFIX}/sbin
@@ -55,10 +59,6 @@ CFLAGS_MXQ_INITIAL_PATH = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 MYSQL_CONFIG = mysql_config
 
 OS_RELEASE = $(shell ./os-release)
-
-MXQ_VERSION = 0.1.3
-MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
-MXQ_VERSIONDATE = 2013-2015
 
 # special defaults for mariux64
 ifeq (${OS_RELEASE}, mariux64)
