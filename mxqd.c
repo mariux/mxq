@@ -735,8 +735,6 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
         return 0;
     }
 
-    assert(res == 0);
-
     mx_setenv_forever("USER",     g->user_name);
     mx_setenv_forever("USERNAME", g->user_name);
     mx_setenv_forever("LOGNAME",  g->user_name);
