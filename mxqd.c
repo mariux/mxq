@@ -718,6 +718,14 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
         return 0;
     }
 
+    if (!streq(passwd->pw_name, g->user_name)) {
+        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping\n",
+            g->user_name, g->user_uid, g->group_id, j->job_id,
+            g->user_uid, g->user_name, passwd->pw_name);
+        return 0;
+    }
+
+
     /** prepare environment **/
 
     res = clearenv();
