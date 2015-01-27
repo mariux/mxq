@@ -735,12 +735,13 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenv_forever("PATH",     MXQ_INITIAL_PATH);
     mx_setenv_forever("PWD",      j->job_workdir);
     mx_setenv_forever("HOME",     passwd->pw_dir);
+    mx_setenv_forever("SHELL",    passwd->pw_shell);
     mx_setenv_forever("HOSTNAME", mxq_hostname());
-    mx_setenvf_forever("JOB_ID",      "%lu",     j->job_id);
-    mx_setenvf_forever("MXQ_JOBID",   "%lu",     j->job_id);
+    mx_setenvf_forever("JOB_ID",      "%lu",    j->job_id);
+    mx_setenvf_forever("MXQ_JOBID",   "%lu",    j->job_id);
     mx_setenvf_forever("MXQ_THREADS", "%d",     g->job_threads);
-    mx_setenvf_forever("MXQ_SLOTS",   "%lu",     group->slots_per_job);
-    mx_setenvf_forever("MXQ_MEMORY",  "%lu",     g->job_memory);
+    mx_setenvf_forever("MXQ_SLOTS",   "%lu",    group->slots_per_job);
+    mx_setenvf_forever("MXQ_MEMORY",  "%lu",    g->job_memory);
     mx_setenvf_forever("MXQ_TIME",    "%d",     g->job_time);
     mx_setenvf_forever("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
 
