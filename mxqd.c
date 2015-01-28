@@ -47,6 +47,9 @@
 #define MXQ_VERSIONDATE "2015"
 #endif
 
+#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
+#define MYSQL_DEFAULT_GROUP    "mxqd"
+
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
 
@@ -82,6 +85,15 @@ static void print_usage(void)
     "\n"
     "  -V | --version\n"
     "  -h | --help\n"
+    "\n"
+    "Change how to connect to the mysql server:\n"
+    "\n"
+    "  -M | --mysql-default-file [mysql-file]    default: " MYSQL_DEFAULT_FILE "\n"
+    "  -S | --mysql-default-group [mysql-group]  default: " MYSQL_DEFAULT_GROUP "\n"
+    "\n"
+    "Environment:\n"
+    "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
+    "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
     "\n"
     );
 }
@@ -207,19 +219,20 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 BEE_OPTION_REQUIRED_ARG("memory",       'm'),
                 BEE_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
                 BEE_OPTION_REQUIRED_ARG("server-id",    'N'),
-                BEE_OPTION_REQUIRED_ARG("mysql-default-file", 'M'),
-                BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
+                BEE_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
+                BEE_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
                 BEE_OPTION_END
     };
 
     arg_server_id = "main";
+
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = "mxq_submit";
+        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
+        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
 
     bee_getopt_init(&optctl, argc-1, &argv[1], opts);
 

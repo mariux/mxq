@@ -43,6 +43,8 @@
 #define MXQ_VERSIONDATE "2015"
 #endif
 
+#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
+#define MYSQL_DEFAULT_GROUP    "mxqsub"
 
 static void print_version(void)
 {
@@ -69,19 +71,19 @@ static void print_usage(void)
     "  by the cluster:\n"
     "\n"
     "Job environment:\n"
-    "  -w | --workdir  <directory> set working directory (default: current workdir)\n"
+    "  -w | --workdir  <directory> set working directory      (default: current workdir)\n"
     "  -o | --stdout   <file>      set file to capture stdout (default: '/dev/null')\n"
     "  -e | --stderr   <file>      set file to capture stderr (default: <stdout>)\n"
-    "  -u | --umask    <mask>      set mode to use as umask (default: current umask)\n"
-    "  -p | --priority <priority>  set priority (default: 127)\n"
+    "  -u | --umask    <mask>      set mode to use as umask   (default: current umask)\n"
+    "  -p | --priority <priority>  set priority               (default: 127)\n"
     "\n"
     "Job resource information:\n"
     "  Scheduling is done based on the resources a job needs and\n"
     "  on the priority given to the job.\n"
     "\n"
-    "  -j | --threads  <number>  set number of threads (default: 1)\n"
+    "  -j | --threads  <number>  set number of threads       (default: 1)\n"
     "  -m | --memory   <size>    set amount of memory in MiB (default: 2048)\n"
-    "  -t | --time     <minutes> set runtime (default: 15 minutes)\n"
+    "  -t | --time     <minutes> set runtime in minutes      (default: 15)\n"
     "\n"
     "Job grouping:\n"
     "  Grouping is done by default based on the jobs resource\n"
@@ -89,9 +91,18 @@ static void print_usage(void)
     "  amount of resources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
     "\n"
-    "  -a | --command-alias <name>       set command alias (default: <command>)\n"
-    "  -N | --group-name <name>          set group name (default: 'default')\n"
+    "  -a | --command-alias <name>       set command alias  (default: <command>)\n"
+    "  -N | --group-name <name>          set group name     (default: 'default')\n"
     "  -P | --group-priority <priority>  set group priority (default: 127)\n"
+    "\n"
+    "Change how to connect to the mysql server:\n"
+    "\n"
+    "  -M | --mysql-default-file [mysql-file]    (default: " MYSQL_DEFAULT_FILE ")\n"
+    "  -S | --mysql-default-group [mysql-group]  (default: " MYSQL_DEFAULT_GROUP ")\n"
+    "\n"
+    "Environment:\n"
+    "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
+    "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
     "\n"
     );
 }
@@ -434,8 +445,8 @@ int main(int argc, char *argv[])
 
                 BEE_OPTION_REQUIRED_ARG("define",       'D'),
 
-                BEE_OPTION_REQUIRED_ARG("mysql-default-file",  'M'),
-                BEE_OPTION_REQUIRED_ARG("mysql-default-group", 'S'),
+                BEE_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
+                BEE_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
                 BEE_OPTION_END
     };
 
@@ -463,11 +474,11 @@ int main(int argc, char *argv[])
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = "mxq_submit";
+        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
+        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
 
     /******************************************************************/
 
