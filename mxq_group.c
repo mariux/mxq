@@ -128,6 +128,39 @@ void mxq_group_free_content(struct mxq_group *g)
         g->_job_command_length = 0;
 }
 
+
+inline uint64_t mxq_group_jobs_done(struct mxq_group *g)
+{
+    uint64_t done = 0;
+
+    done += g->group_jobs_finished;
+    done += g->group_jobs_failed;
+
+    return done;
+}
+
+inline uint64_t mxq_group_jobs_active(struct mxq_group *g)
+{
+    uint64_t inq;
+
+    inq  = g->group_jobs;
+    inq -= mxq_group_jobs_done(g);
+
+    return inq;
+}
+
+inline uint64_t mxq_group_jobs_inq(struct mxq_group *g)
+{
+    uint64_t inq;
+
+    inq  = mxq_group_jobs_active(g);
+    inq -= g->group_jobs_running;
+
+    return inq;
+}
+
+
+
 int mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group)
 {
     MYSQL_STMT *stmt;

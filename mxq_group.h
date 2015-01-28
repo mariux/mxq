@@ -44,6 +44,10 @@ struct mxq_group {
 
 #define MXQ_GROUP_STATUS_CANCELLED    99
 
+inline uint64_t mxq_group_jobs_done(struct mxq_group *g);
+inline uint64_t mxq_group_jobs_active(struct mxq_group *g);
+inline uint64_t mxq_group_jobs_inq(struct mxq_group *g);
+
 int  mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group);
 void mxq_group_free_content(struct mxq_group *g);
 

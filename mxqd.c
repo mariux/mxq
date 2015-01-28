@@ -1029,7 +1029,7 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
             continue;
         }
 
-        if (mxqgrp->group_jobs-mxqgrp->group_jobs_failed-mxqgrp->group_jobs_finished-mxqgrp->group_jobs_running == 0) {
+        if (mxq_group_jobs_inq(mxqgrp) == 0) {
             gnext = group->next;
             if (!gnext && started) {
                 gnext = group->user->groups;
@@ -1146,7 +1146,7 @@ int remove_orphaned_groups(struct mxq_server *server)
 
             assert(!group->jobs);
 
-            if (!group->orphaned && group->group.group_jobs-group->group.group_jobs_failed-group->group.group_jobs_finished) {
+            if (!group->orphaned && mxq_group_jobs_active(&group->group)) {
                 group->orphaned = 1;
                 gprev = group;
                 continue;
@@ -1203,7 +1203,7 @@ void server_dump(struct mxq_server *server)
         for (group=user->groups; group; group=group->next) {
             MXQ_LOG_INFO("        group=%s(%d):%lu %s jobs_in_q=%lu\n",
                 group->group.user_name, group->group.user_uid, group->group.group_id,
-                group->group.group_name, group->group.group_jobs-group->group.group_jobs_failed-group->group.group_jobs_finished-group->group.group_jobs_running);
+                group->group.group_name, mxq_group_jobs_inq(&group->group));
             for (job=group->jobs; job; job=job->next) {
                 MXQ_LOG_INFO("            job=%s(%d):%lu:%lu %s\n",
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
