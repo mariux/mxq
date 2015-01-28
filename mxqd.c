@@ -1388,7 +1388,7 @@ int load_groups(struct mxq_server *server) {
     int total;
     int i;
 
-    group_cnt = mxq_group_load_groups(server->mysql, &mxqgroups);
+    group_cnt = mxq_group_load_active_groups(server->mysql, &mxqgroups);
 
     for (i=0, total=0; i<group_cnt; i++) {
         group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);

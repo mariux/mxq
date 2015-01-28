@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
     mysql = mxq_mysql_connect(&mmysql);
 
-    group_cnt = mxq_group_load_groups(mysql, &groups);
+    group_cnt = mxq_group_load_active_groups(mysql, &groups);
 
     for (i=0; i<group_cnt; i++) {
         struct mxq_group *g;

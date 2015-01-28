@@ -128,7 +128,7 @@ void mxq_group_free_content(struct mxq_group *g)
         g->_job_command_length = 0;
 }
 
-int mxq_group_load_groups(MYSQL *mysql, struct mxq_group **mxq_group)
+int mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group)
 {
     MYSQL_STMT *stmt;
     MYSQL_BIND result[MXQ_GROUP_COL__END];
