@@ -1,4 +1,11 @@
 
+
+
+ALTER TABLE mxq_group
+   ADD COLUMN group_jobs_cancelled INT8 UNSIGNED NOT NULL DEFAULT 0
+   AFTER group_jobs_failed;
+
+
 DROP TABLE mxq_group;
 CREATE TABLE IF NOT EXISTS mxq_group (
    group_id       INT8 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -17,10 +24,11 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    job_memory     INT8 UNSIGNED NOT NULL DEFAULT 1024,
    job_time       INT4 UNSIGNED NOT NULL DEFAULT 15,
 
-   group_jobs          INT8 UNSIGNED NOT NULL DEFAULT 0,
-   group_jobs_running  INT8 UNSIGNED NOT NULL DEFAULT 0,
-   group_jobs_finished INT8 UNSIGNED NOT NULL DEFAULT 0,
-   group_jobs_failed   INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs           INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_running   INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_finished  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_failed    INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_cancelled INT8 UNSIGNED NOT NULL DEFAULT 0,
 
    group_slots_running INT8 UNSIGNED NOT NULL DEFAULT 0,
 
@@ -94,7 +102,7 @@ DELIMITER |
 DROP TRIGGER mxq_update_group|
 CREATE TRIGGER mxq_update_group BEFORE UPDATE ON mxq_group
     FOR EACH ROW BEGIN
-        IF NEW.group_status = 99 THEN
+        IF NEW.group_status = 99 AND OLD.group_status = 0 THEN
             UPDATE mxq_job SET
                 job_status = 990
             WHERE group_id=NEW.group_id AND job_status = 0;
@@ -128,6 +136,11 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
                stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
                stats_max_real_sec=GREATEST(stats_max_real_sec, NEW.stats_real_sec),
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        ELSEIF NEW.job_status = 990 AND OLD.job_status = 0 THEN
+            UPDATE mxq_group SET
+               group_jobs_cancelled=group_jobs_finished+1,
                group_mtime=NULL
             WHERE group_id=NEW.group_id;
         ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (200, 250, 300, 350) THEN

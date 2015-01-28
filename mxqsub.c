@@ -113,6 +113,7 @@ void mxq_mysql_row_to_group(struct mxq_job *j, MYSQL_ROW row)
     safe_convert_string_to_ui64(row[r++], &g->group_jobs_running);
     safe_convert_string_to_ui64(row[r++], &g->group_jobs_finished);
     safe_convert_string_to_ui64(row[r++], &g->group_jobs_failed);
+    safe_convert_string_to_ui64(row[r++], &g->group_jobs_cancelled);
 
     safe_convert_string_to_ui64(row[r++], &g->group_slots_running);
     r++; /* mtime */
@@ -170,6 +171,8 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
         "group_jobs_running,"
         "group_jobs_finished,"
         "group_jobs_failed,"
+        "group_jobs_cancelled,"
+
         "group_slots_running,"
 
         "group_mtime,"
@@ -206,7 +209,7 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
 
     if (num_rows == 1) {
         num_fields = mysql_num_fields(mres);
-        assert(num_fields == 13);
+        assert(num_fields == 14);
 
         row = mysql_fetch_row(mres);
         if (!row) {

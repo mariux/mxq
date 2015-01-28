@@ -41,9 +41,9 @@ int main(int argc, char *argv[])
 
         g = &groups[i];
 
-        printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu finished=%lu inq=%lu job_threads=%u job_memory=%lu job_time=%u stats_max_utime=%lu stats_max_real=%lu job_command=%s group_name=%s\n",
+        printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu finished=%lu cancelled=%lu inq=%lu job_threads=%u job_memory=%lu job_time=%u stats_max_utime=%lu stats_max_real=%lu job_command=%s group_name=%s\n",
                 g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
-                g->group_jobs_running, g->group_slots_running, g->group_jobs_failed, g->group_jobs_finished,
+                g->group_jobs_running, g->group_slots_running, g->group_jobs_failed, g->group_jobs_finished, g->group_jobs_cancelled,
                 mxq_group_jobs_inq(g),
                 g->job_threads, g->job_memory, g->job_time, g->stats_max_utime.tv_sec, g->stats_max_real.tv_sec,
                 g->job_command, g->group_name);

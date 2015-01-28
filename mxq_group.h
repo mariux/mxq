@@ -32,6 +32,7 @@ struct mxq_group {
    uint64_t  group_jobs_running;
    uint64_t  group_jobs_finished;
    uint64_t  group_jobs_failed;
+   uint64_t  group_jobs_cancelled;
 
    uint64_t  group_slots_running;
 
@@ -42,6 +43,7 @@ struct mxq_group {
    struct timeval stats_max_real;
 };
 
+#define MXQ_GROUP_STATUS_OK            0
 #define MXQ_GROUP_STATUS_CANCELLED    99
 
 inline uint64_t mxq_group_jobs_done(struct mxq_group *g);
