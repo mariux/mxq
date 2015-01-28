@@ -214,6 +214,7 @@ clean: CLEAN += mxq_mysql.o
 
 mxqdump.o: $(mxq_util.h)
 mxqdump.o: $(mxq_mysql.h)
+mxqdump.o: $(bee_getopt.h)
 mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqdump.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
@@ -317,6 +318,7 @@ install:: mxqsub
 mxqdump: mxq_group.o
 mxqdump: mxq_mysql.o
 mxqdump: mxq_util.o
+mxqdump: bee_getopt.o
 mxqdump: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqdump
