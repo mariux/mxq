@@ -29,6 +29,7 @@ int mxq_mysql_stmt_fetch_row(MYSQL_STMT *stmt);
 
 MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_count, MYSQL_BIND *param, MYSQL_BIND *result);
 
+int mxq_mysql_do_update(MYSQL *mysql, char* query, MYSQL_BIND *param);
 
 #define MXQ_MYSQL_BIND_INT(b, c, v, t, s) \
     do { \

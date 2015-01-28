@@ -276,6 +276,30 @@ char *mxq_mysql_escape_strvec(MYSQL *mysql, char **sv)
     return quoted;
 }
 
+int mxq_mysql_do_update(MYSQL *mysql, char* query, MYSQL_BIND *param)
+{
+    MYSQL_STMT *stmt;
+    int   res;
+
+    stmt = mxq_mysql_stmt_do_query(mysql, query, 0, param, NULL);
+    if (!stmt) {
+        MXQ_LOG_ERROR("mxq_mysql_do_update: Failed to query database.\n");
+        errno = EIO;
+        return -1;
+    }
+
+    res = mysql_stmt_affected_rows(stmt);
+    mysql_stmt_close(stmt);
+
+    if (res == 0) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    return res;
+}
+
+
 char *mxq_mysql_escape_string(MYSQL *mysql, char *s)
 {
     return mxq_mysql_escape_str(mysql, s);

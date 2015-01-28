@@ -227,29 +227,6 @@ void mxq_job_free_content(struct mxq_job *j)
         j->job_argv = NULL;
 }
 
-int mysql_do_update(MYSQL *mysql, char* query, MYSQL_BIND *param)
-{
-    MYSQL_STMT *stmt;
-    int   res;
-
-    stmt = mxq_mysql_stmt_do_query(mysql, query, 0, param, NULL);
-    if (!stmt) {
-        MXQ_LOG_ERROR("mysql_do_update: Failed to query database.\n");
-        errno = EIO;
-        return -1;
-    }
-
-    res = mysql_stmt_affected_rows(stmt);
-    mysql_stmt_close(stmt);
-
-    if (res == 0) {
-        errno = ENOENT;
-        return -1;
-    }
-
-    return res;
-}
-
 int mxq_job_update_status_assigned(MYSQL *mysql, struct mxq_job *job)
 {
     char *query;
@@ -274,7 +251,7 @@ int mxq_job_update_status_assigned(MYSQL *mysql, struct mxq_job *job)
     MXQ_MYSQL_BIND_STRING(param, 1, job->server_id);
     MXQ_MYSQL_BIND_UINT64(param, 2, &job->group_id);
 
-    res = mysql_do_update(mysql, query, param);
+    res = mxq_mysql_do_update(mysql, query, param);
 
     job->job_status = MXQ_JOB_STATUS_ASSIGNED;
 
@@ -301,7 +278,7 @@ int mxq_job_update_status_loaded(MYSQL *mysql, struct mxq_job *job)
     MXQ_MYSQL_BIND_STRING(param, 1, job->host_hostname);
     MXQ_MYSQL_BIND_STRING(param, 2, job->server_id);
 
-    res = mysql_do_update(mysql, query, param);
+    res = mxq_mysql_do_update(mysql, query, param);
 
     job->job_status = MXQ_JOB_STATUS_LOADED;
 
@@ -341,7 +318,7 @@ int mxq_job_update_status_running(MYSQL *mysql, struct mxq_job *job)
     MXQ_MYSQL_BIND_STRING(param, 3, job->host_hostname);
     MXQ_MYSQL_BIND_STRING(param, 4, job->server_id);
 
-    res = mysql_do_update(mysql, query, param);
+    res = mxq_mysql_do_update(mysql, query, param);
 
     job->job_status = MXQ_JOB_STATUS_RUNNING;
 
@@ -421,7 +398,7 @@ int mxq_job_update_status_exit(MYSQL *mysql, struct mxq_job *job)
     MXQ_MYSQL_BIND_STRING(param, 18,  job->server_id);
     MXQ_MYSQL_BIND_UINT32(param, 19, &job->host_pid);
 
-    res = mysql_do_update(mysql, query, param);
+    res = mxq_mysql_do_update(mysql, query, param);
 
     job->job_status = newstatus;
 
