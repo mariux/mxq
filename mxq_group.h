@@ -52,5 +52,6 @@ inline uint64_t mxq_group_jobs_inq(struct mxq_group *g);
 
 int  mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group);
 void mxq_group_free_content(struct mxq_group *g);
+int  mxq_group_update_status_cancelled(MYSQL *mysql, struct mxq_group *group);
 
 #endif

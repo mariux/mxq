@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <mysql.h>
 
+#include "mxq_group.h"
+
 struct mxq_job {
     uint64_t  job_id;
     uint16_t   job_status;
@@ -82,5 +84,7 @@ int mxq_job_update_status_loaded(MYSQL *mysql, struct mxq_job *job);
 int mxq_job_update_status_running(MYSQL *mysql, struct mxq_job *job);
 int mxq_job_update_status_exit(MYSQL *mysql, struct mxq_job *job);
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j);
+
+int mxq_job_update_status_cancelled_by_group(MYSQL *mysql, struct mxq_group *group);
 
 #endif

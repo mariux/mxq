@@ -518,3 +518,28 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
 
     return 1;
 }
+
+int mxq_job_update_status_cancelled_by_group(MYSQL *mysql, struct mxq_group *group)
+{
+    char *query;
+    MYSQL_BIND param[1];
+    int   res;
+
+    assert(group->group_id);
+
+    memset(param, 0, sizeof(param));
+
+    query = "UPDATE mxq_job SET"
+            " job_status = " status_str(MXQ_JOB_STATUS_CANCELLED)
+            " WHERE group_id = ?"
+            " AND job_status = " status_str(MXQ_JOB_STATUS_INQ)
+            " AND host_hostname = ''"
+            " AND server_id = ''"
+            " AND host_pid = 0";
+
+    MXQ_MYSQL_BIND_UINT64(param, 0, &group->group_id);
+
+    res = mxq_mysql_do_update(mysql, query, param);
+
+    return res;
+}

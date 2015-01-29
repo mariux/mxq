@@ -1,6 +1,10 @@
 
 #include <stdio.h>
+
+#include <assert.h>
+
 #include <mysql.h>
+
 
 #include "mxq_group.h"
 #include "mxq_mysql.h"
@@ -201,4 +205,33 @@ int mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group)
 
     mysql_stmt_close(stmt);
     return cnt;
+}
+
+int mxq_group_update_status_cancelled(MYSQL *mysql, struct mxq_group *group)
+{
+    char *query;
+    MYSQL_BIND param[3];
+    int   res;
+
+    assert(group->group_id);
+    assert(group->user_uid);
+    assert(group->user_name);
+    assert(*group->user_name);
+
+    memset(param, 0, sizeof(param));
+    query = "UPDATE mxq_group SET"
+            " group_status = " status_str(MXQ_GROUP_STATUS_CANCELLED)
+            " WHERE group_id = ?"
+            " AND group_status = " status_str(MXQ_GROUP_STATUS_OK)
+            " AND user_uid = ?"
+            " AND user_name = ?"
+            " AND group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled > 0";
+
+    MXQ_MYSQL_BIND_UINT64(param, 0, &group->group_id);
+    MXQ_MYSQL_BIND_UINT32(param, 1, &group->user_uid);
+    MXQ_MYSQL_BIND_STRING(param, 2, group->user_name);
+
+    res = mxq_mysql_do_update(mysql, query, param);
+
+    return res;
 }

@@ -8,11 +8,13 @@ mxq_job_dump.o
 mxq_mysql.o
 mxqd.o
 mxqsub.o
+mxqkill.o
 mxq_util.o
 test_mx_util.o
 
 mxqsub
 mxqdump
+mxqkill
 mxq_job_dump
 mxqd
 test_mx_util

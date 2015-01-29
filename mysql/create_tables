@@ -5,6 +5,7 @@ ALTER TABLE mxq_group
    ADD COLUMN group_jobs_cancelled INT8 UNSIGNED NOT NULL DEFAULT 0
    AFTER group_jobs_failed;
 
+DROP TRIGGER mxq_update_group;
 
 DROP TABLE mxq_group;
 CREATE TABLE IF NOT EXISTS mxq_group (
@@ -99,16 +100,6 @@ CREATE TABLE IF NOT EXISTS mxq_job (
 );
 
 DELIMITER |
-DROP TRIGGER mxq_update_group|
-CREATE TRIGGER mxq_update_group BEFORE UPDATE ON mxq_group
-    FOR EACH ROW BEGIN
-        IF NEW.group_status = 99 AND OLD.group_status = 0 THEN
-            UPDATE mxq_job SET
-                job_status = 990
-            WHERE group_id=NEW.group_id AND job_status = 0;
-        END IF;
-    END;
-|
 DROP TRIGGER mxq_add_job|
 CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
     FOR EACH ROW BEGIN
@@ -140,7 +131,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
             WHERE group_id=NEW.group_id;
         ELSEIF NEW.job_status = 990 AND OLD.job_status = 0 THEN
             UPDATE mxq_group SET
-               group_jobs_cancelled=group_jobs_finished+1,
+               group_jobs_cancelled=group_jobs_cancelled+1,
                group_mtime=NULL
             WHERE group_id=NEW.group_id;
         ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (200, 250, 300, 350) THEN

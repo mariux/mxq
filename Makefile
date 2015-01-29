@@ -175,6 +175,7 @@ mxq_group.h += mxq_group.h
 ### mxq_job.h ---------------------------------------------------------
 
 mxq_job.h += mxq_job.h
+mxq_job.h += mxq_group.h
 
 ### mxqd.h ------------------------------------------------------------
 
@@ -219,6 +220,17 @@ mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqdump.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
 clean: CLEAN += mxqdump.o
+
+### mxqkill.o ---------------------------------------------------
+
+mxqkill.o: $(mx_util.h)
+mxqkill.o: $(mxq_util.h)
+mxqkill.o: $(mxq_mysql.h)
+mxqkill.o: $(bee_getopt.h)
+mxqkill.o: CFLAGS += $(CFLAGS_MYSQL)
+mxqkill.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+
+clean: CLEAN += mxqkill.o
 
 ### mxq_job_dump.o -----------------------------------------------------
 
@@ -327,6 +339,23 @@ clean: CLEAN += mxqdump
 
 install:: mxqdump
 	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxqdump,${DESTDIR}${BINDIR}/mxqdump)
+
+### mxqkill -----------------------------------------------------
+
+mxqkill: mxq_mysql.o
+mxqkill: mxq_util.o
+mxqkill: mx_util.o
+mxqkill: mxq_group.o
+mxqkill: mxq_job.o
+mxqkill: bee_getopt.o
+mxqkill: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxqkill
+
+clean: CLEAN += mxqkill
+
+install:: mxqkill
+	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxqkill,${DESTDIR}${BINDIR}/mxqkill)
 
 ### mxq_job_dump -------------------------------------------------------
 
