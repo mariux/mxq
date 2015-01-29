@@ -1302,8 +1302,10 @@ int catchall(struct mxq_server *server) {
         res = waitid(P_ALL, 0, &siginfo, WEXITED|WNOHANG|WNOWAIT);
 
         if (res == -1) {
+            if (errno == ECHILD)
+                return 0;
             MXQ_LOG_ERROR("waitid: %m\n");
-            return -1;
+            return 0;
         }
 
         /* no childs changed state => return */
