@@ -1283,6 +1283,38 @@ int killall(struct mxq_server *server, int sig, unsigned int pgrp)
     return 0;
 }
 
+int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
+{
+    struct mxq_user_list  *user;
+    struct mxq_group_list *group;
+    struct mxq_job_list   *job;
+    pid_t pid;
+
+    assert(server);
+
+    for (user=server->users; user; user=user->next) {
+        for (group=user->groups; group; group=group->next) {
+            if (group->group.group_status != MXQ_GROUP_STATUS_CANCELLED)
+                continue;
+
+            MXQ_LOG_INFO("Cancelling all running jobs in group=%s(%d):%lu\n",
+                group->group.user_name, group->group.user_uid, group->group.group_id);
+
+            for (job=group->jobs; job; job=job->next) {
+                pid = job->job.host_pid;
+                if (pgrp)
+                    pid = -pid;
+                MXQ_LOG_INFO("  Sending signal=%d to job=%s(%d):%lu:%lu %s=%d\n",
+                    sig,
+                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    pgrp?"pgrp":"pid", pid);
+                kill(pid, sig);
+            }
+        }
+    }
+    return 0;
+}
+
 int catchall(struct mxq_server *server) {
 
     struct rusage rusage;
@@ -1493,6 +1525,8 @@ int main(int argc, char *argv[])
         group_cnt = load_groups(&server);
 //        if (group_cnt)
 //            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n", group_cnt, group_cnt);
+
+        killallcancelled(&server, SIGINT, 0);
 
         if (!server.group_cnt) {
             assert(!server.jobs_running);
