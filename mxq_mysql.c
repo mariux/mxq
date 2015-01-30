@@ -32,19 +32,19 @@ MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql)
     if (!mysql)
         return NULL;
 
-    if (mmysql->default_file && *mmysql->default_file)
-        if (*mmysql->default_file != '/' || euidaccess(mmysql->default_file, R_OK) == 0)
-            mysql_options(mysql, MYSQL_READ_DEFAULT_FILE,  mmysql->default_file);
-
-    if (mmysql->default_group && *mmysql->default_group)
-        mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, mmysql->default_group);
-    else
-        mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "mxq");
-
-    mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-
     while (1) {
-        mres = mysql_real_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, CLIENT_REMEMBER_OPTIONS);
+        if (mmysql->default_file && *mmysql->default_file)
+            if (*mmysql->default_file != '/' || euidaccess(mmysql->default_file, R_OK) == 0)
+                mysql_options(mysql, MYSQL_READ_DEFAULT_FILE,  mmysql->default_file);
+
+        if (mmysql->default_group && *mmysql->default_group)
+            mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, mmysql->default_group);
+        else
+            mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "mxq");
+
+        mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+
+        mres = mysql_real_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, 0);
         if (mres == mysql)
             return mysql;
 
