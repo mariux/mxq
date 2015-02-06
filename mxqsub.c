@@ -23,6 +23,7 @@
 
 #include "mxq_mysql.h"
 #include "mxq_util.h"
+#include "mx_util.h"
 #include "bee_getopt.h"
 
 
@@ -500,8 +501,9 @@ int main(int argc, char *argv[])
                 exit(EX_USAGE);
 
             case 'p':
-                if (!safe_convert_string_to_ui16(optctl.optarg, &arg_priority)) {
-                    fprintf(stderr, "ignoring --priority '%s': %s\n", optctl.optarg, strerror(errno));
+                if (mx_strtou16(optctl.optarg, &arg_priority) < 0) {
+                    fprintf(stderr, "fatal error: --priority '%s': %m\n", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
                 break;
 
@@ -524,8 +526,9 @@ int main(int argc, char *argv[])
             case 2:
                 fprintf(stderr, "INFO: option --group_priority is deprecated. please use --group-priority instead.\n");
             case 'P':
-                if (!safe_convert_string_to_ui16(optctl.optarg, &arg_group_priority)) {
-                    fprintf(stderr, "ignoring --group-priority '%s': %s\n", optctl.optarg, strerror(errno));
+                if (mx_strtou16(optctl.optarg, &arg_group_priority) < 0) {
+                    fprintf(stderr, "fatal error: --group-priority '%s': %m\n", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
                 break;
 
@@ -535,30 +538,35 @@ int main(int argc, char *argv[])
                 break;
 
             case 'j':
-                if (!safe_convert_string_to_ui16(optctl.optarg, &arg_threads)) {
-                    fprintf(stderr, "ignoring --threads '%s': %s\n", optctl.optarg, strerror(errno));
+                if (mx_strtou16(optctl.optarg, &arg_threads) < 0) {
+                    fprintf(stderr, "fatal error: --threads '%s': %m\n", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
                 break;
 
             case 'm':
-                if (!safe_convert_string_to_ui64(optctl.optarg, &arg_memory)) {
-                    fprintf(stderr, "ignoring --memory '%s': %s\n", optctl.optarg, strerror(errno));
+                if (mx_strtou64(optctl.optarg, &arg_memory) < 0) {
+                    fprintf(stderr, "fatal error: --memory '%s': %m\n", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
                 break;
 
             case 4:
                 fprintf(stderr, "INFO: option --time is deprecated. please use --runtime instead.\n");
             case 't':
-                if (!safe_convert_string_to_ui32(optctl.optarg, &arg_time)) {
-                    fprintf(stderr, "ignoring --runtime '%s': %s\n", optctl.optarg, strerror(errno));
+                if (mx_strtou32(optctl.optarg, &arg_time) < 0) {
+                    fprintf(stderr, "fatal error: --runtime '%s': %m\n", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
                 break;
 
             case 'w':
-                if (optctl.optarg[0] == '/')
-                    arg_workdir = optctl.optarg;
-                else
-                    fprintf(stderr, "ignoring relative workdir\n");
+                if (optctl.optarg[0] != '/') {
+                    fprintf(stderr, "fatal error: --workdir '%s': workdir is a relativ path. please use absolute path.\n",
+                                optctl.optarg);
+                    exit(EX_CONFIG);
+                }
+                arg_workdir = optctl.optarg;
                 break;
 
             case 'o':
@@ -575,8 +583,9 @@ int main(int argc, char *argv[])
                 break;
             }
             case 'u':
-                if (!safe_convert_string_to_ui32(optctl.optarg, &arg_umask)) {
-                    fprintf(stderr, "ignoring --umask '%s': %s\n", optctl.optarg, strerror(errno));
+                if (mx_strtou32(optctl.optarg, &arg_umask) < 0) {
+                    fprintf(stderr, "fatal error: --umask '%s': %m\n", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
                 break;
 

@@ -284,6 +284,7 @@ clean: CLEAN += mxqd.o
 ### mxqsub.o -------------------------------------------------------
 
 mxqsub.o: $(bee_getopt.h)
+mxqsub.o: $(mxq_util.h)
 mxqsub.o: $(mx_util.h)
 mxqsub.o: $(mxq_mysql.h)
 mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
@@ -316,6 +317,7 @@ install:: mxqd
 mxqsub: bee_getopt.o
 mxqsub: mxq_mysql.o
 mxqsub: mxq_util.o
+mxqsub: mx_util.o
 mxqsub: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqsub
