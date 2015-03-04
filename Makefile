@@ -144,6 +144,10 @@ install::
 
 ########################################################################
 
+### mx_log.h ----------------------------------------------------------
+
+mx_log.h += mx_log.h
+
 ### mx_util.h ----------------------------------------------------------
 
 mx_util.h += mx_util.h
@@ -192,6 +196,12 @@ bee_getopt.h += bee_getopt.h
 bee_getopt.o: $(bee_getopt.h)
 
 clean: CLEAN += bee_getopt.o
+
+### mx_log.o ----------------------------------------------------------
+
+mx_log.o: $(mx_log.h)
+
+clean: CLEAN += mx_log.o
 
 ### mx_util.o ----------------------------------------------------------
 
@@ -384,3 +394,10 @@ clean: CLEAN += test_mx_util
 
 test: test_mx_util
 
+test_mx_log.o: $(mx_log.h)
+clean: CLEAN += test_mx_log.o
+
+test_mx_log: mx_log.o
+clean: CLEAN += test_mx_log
+
+test: test_mx_log
