@@ -1526,6 +1526,7 @@ int main(int argc, char *argv[])
 //        if (group_cnt)
 //            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n", group_cnt, group_cnt);
 
+        killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
 
         if (!server.group_cnt) {
