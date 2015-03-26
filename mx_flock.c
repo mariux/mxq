@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "mx_log.h"
 #include "mx_flock.h"
 
 #define FLOCK_MODE 0600
@@ -118,7 +119,7 @@ struct mx_flock *mx_flock(int operation, char *fmt, ...)
             break;
         }
 
-        fprintf(stderr, "failed to acquire lock on %s - file changed on disk - retrying\n", lock->fname);
+        mx_log_warning("failed to acquire lock on %s - file changed on disk - retrying", lock->fname);
 
         _flock_close(lock);
     }
