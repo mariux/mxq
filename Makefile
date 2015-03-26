@@ -82,19 +82,19 @@ CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
 ########################################################################
 
 quiet-command = $(if ${V},${1},$(if ${2},@echo ${2} && ${1}, @${1}))
-quiet-install = $(call quiet-command,install -m ${1} ${2} ${3},"INSTALL [${1}] ${3}")
-quiet-installdir = $(call quiet-command,install -m ${1} -d ${2},"MKDIR [${1}] ${2}")
-quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4} ${5},"INSTALL (${2}:${3}) [${1}] ${5}")
+quiet-install = $(call quiet-command,install -m ${1} ${2} ${3},"INSTALL ${3} [mode=${1}]")
+quiet-installdir = $(call quiet-command,install -m ${1} -d ${2},"  MKDIR ${2} [mode=${1}]")
+quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4} ${5},"INSTALL ${5} (user=${2} group=${3}) [mode=${1}]")
 
 ########################################################################
 
 %.o: %.c Makefile
-	$(call quiet-command,${CC} ${CFLAGS} -o $@ -c $<,"CC    $@")
+	$(call quiet-command,${CC} ${CFLAGS} -o $@ -c $<,"     CC $@")
 
 %: %.c
 
 %: %.o
-	$(call quiet-command,${CC} -o $@ $^ $(LDFLAGS) $(LDLIBS), "LINK  $@")
+	$(call quiet-command,${CC} -o $@ $^ $(LDFLAGS) $(LDLIBS), "   LINK $@")
 
 ########################################################################
 
@@ -106,7 +106,7 @@ all: build
 .PHONY: test
 test:
 	@for i in $^ ; do \
-		echo "TEST  $$i" ; \
+		echo "   TEST $$i" ; \
 		./$$i ; \
 	done
 
@@ -121,7 +121,7 @@ clean:
 			if [ "$(V)" = 1 ] ; then \
 				echo "rm -f $$i" ; \
 			else \
-				echo "CLEAN $$i" ; \
+				echo "  CLEAN $$i" ; \
 			fi ; \
 			rm -f $$i ; \
         fi \
