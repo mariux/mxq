@@ -16,6 +16,7 @@
 
 #include <mysql.h>
 
+#include "mx_log.h"
 #include "mx_util.h"
 #include "mxq_util.h"
 #include "mxq_mysql.h"
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
                 if (mx_strtou64(optctl.optarg, &arg_group_id) < 0 || !arg_group_id) {
                     if (!arg_group_id)
                         errno = ERANGE;
-                    fprintf(stderr, "Error in --group-id '%s': %m\n", optctl.optarg);
+                    mx_log_err("Invalid argument for --group-id '%s': %m", optctl.optarg);
                     exit(1);
                 }
                 break;
@@ -184,11 +185,11 @@ int main(int argc, char *argv[])
             mxq_mysql_close(mysql);
 
             if (errno == ENOENT) {
-                fprintf(stderr, "ERROR: no active group with group_id=%lu found for user=%s(%d)\n",
+                mx_log_err("no active group with group_id=%lu found for user=%s(%d)",
                         group.group_id, group.user_name, group.user_uid);
                 return 1;
             }
-            fprintf(stderr, "ERROR: cancel group failed: %m\n");
+            mx_log_err("cancelling group failed: %m");
         } else if (res) {
             assert(res == 1);
 
@@ -199,15 +200,15 @@ int main(int argc, char *argv[])
                 res=0;
 
             if (res >= 0) {
-                printf("cancelled %d jobs in group with group_id=%lu\n",
+                mx_log_info("cancelled %d jobs in group with group_id=%lu",
                         res, group.group_id);
-                printf("marked all running jobs in group with group_id=%lu to be killed by executing servers.\n",
+                mx_log_info("marked all running jobs in group with group_id=%lu to be killed by executing servers.",
                         group.group_id);
-                printf("deactivated group with group_id=%lu\n",
+                mx_log_info("deactivated group with group_id=%lu",
                         group.group_id);
                 return 0;
             } else {
-                fprintf(stderr, "ERROR: cancel jobs failed: %m\n");
+                mx_log_err("cancelling jobs failed: %m");
             }
         }
     }
