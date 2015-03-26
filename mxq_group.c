@@ -5,6 +5,7 @@
 
 #include <mysql.h>
 
+#include "mx_log.h"
 
 #include "mxq_group.h"
 #include "mxq_mysql.h"
@@ -189,7 +190,7 @@ int mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group)
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_GROUP_COL__END, NULL, result);
     if (!stmt) {
-        MXQ_LOG_ERROR("mxq_mysql_stmt_do_query(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_GROUP_COL__END, NULL, result);
+        mx_log_err("mxq_mysql_stmt_do_query(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)", mysql, query, MXQ_GROUP_COL__END, NULL, result);
         return 0;
     }
 

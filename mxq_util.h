@@ -10,10 +10,6 @@
 
 char *mxq_hostname(void);
 
-int log_msg(int prio, const char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
-
-#define print_error(fmt,...) log_msg(1, "%s:%d:%s:" fmt, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
-
 void mxq_free_job(struct mxq_job_full *job);
 
 char **stringtostringvec(int argc, char *s);

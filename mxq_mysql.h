@@ -4,6 +4,7 @@
 
 #include <sys/resource.h>
 
+#include "mx_log.h"
 #include "mxq_util.h"
 
 #include <mysql.h>
@@ -68,13 +69,13 @@ int mxq_mysql_do_update(MYSQL *mysql, char* query, MYSQL_BIND *param);
 
 
 #define mxq_mysql_print_error(mysql) \
-    MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", \
+    mx_log_err("MySQL: ERROR %u (%s): %s", \
     mysql_errno(mysql), \
     mysql_sqlstate(mysql), \
     mysql_error(mysql))
 
 #define mxq_mysql_stmt_print_error(stmt) \
-        MXQ_LOG_ERROR("MySQL: ERROR %u (%s): %s\n", \
+        mx_log_err("MySQL: ERROR %u (%s): %s", \
             mysql_stmt_errno(stmt), \
             mysql_stmt_sqlstate(stmt), \
             mysql_stmt_error(stmt))

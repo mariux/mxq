@@ -28,6 +28,7 @@
 
 #include "mx_flock.h"
 #include "mx_util.h"
+#include "mx_log.h"
 
 #include "mxq.h"
 #include "mxq_group.h"
@@ -107,18 +108,18 @@ int setup_cronolog(char *cronolog, char *link, char *format)
 
     res = pipe(pipe_fd);
     if (res == -1) {
-        MXQ_LOG_ERROR("can't create pipe for cronolog: (%m)\n");
+        mx_log_err("can't create pipe for cronolog: (%m)");
         return 0;
     }
 
     pid = fork();
     if (pid < 0) {
-        MXQ_LOG_ERROR("cronolog fork failed: %m");
+        mx_log_err("cronolog fork failed: %m");
         return 1;
     } else if(pid == 0) {
         res = dup2(pipe_fd[0], STDIN_FILENO);
         if (res == -1) {
-            MXQ_LOG_ERROR("dup2(fh=%d, %d) for cronolog stdin failed (%m)\n", pipe_fd[0], STDIN_FILENO);
+            mx_log_err("dup2(fh=%d, %d) for cronolog stdin failed (%m)", pipe_fd[0], STDIN_FILENO);
             return 0;
         }
         close(pipe_fd[0]);
@@ -127,18 +128,18 @@ int setup_cronolog(char *cronolog, char *link, char *format)
         mxq_redirect_output("/dev/null", "/dev/null");
 
         execl(cronolog, cronolog, "--link", link, format, NULL);
-        MXQ_LOG_ERROR("execl('%s', ...) failed (%m)\n", cronolog);
+        mx_log_err("execl('%s', ...) failed (%m)", cronolog);
         _exit(EX__MAX + 1);
     }
 
     res = dup2(pipe_fd[1], STDOUT_FILENO);
     if (res == -1) {
-        MXQ_LOG_ERROR("dup2(fh=%d, %d) for cronolog stdout failed (%m)\n", pipe_fd[0], STDOUT_FILENO);
+        mx_log_err("dup2(fh=%d, %d) for cronolog stdout failed (%m)", pipe_fd[0], STDOUT_FILENO);
         return 0;
     }
     res = dup2(STDOUT_FILENO, STDERR_FILENO);
     if (res == -1) {
-        MXQ_LOG_ERROR("dup2(fh=%d, %d) for cronolog stderr failed (%m)\n", STDOUT_FILENO, STDERR_FILENO);
+        mx_log_err("dup2(fh=%d, %d) for cronolog stderr failed (%m)", STDOUT_FILENO, STDERR_FILENO);
         return 0;
     }
     close(pipe_fd[0]);
@@ -155,19 +156,19 @@ int setup_stdin(char *fname)
 
     fh = open(fname, O_RDONLY|O_NOFOLLOW);
     if (fh == -1) {
-        MXQ_LOG_ERROR("open(%s) for stdin failed (%m)\n", fname);
+        mx_log_err("open(%s) for stdin failed (%m)", fname);
         return 0;
     }
 
     if (fh != STDIN_FILENO) {
         res = dup2(fh, STDIN_FILENO);
         if (res == -1) {
-            MXQ_LOG_ERROR("dup2(fh=%d, %d) failed (%m)\n", fh, STDIN_FILENO);
+            mx_log_err("dup2(fh=%d, %d) failed (%m)", fh, STDIN_FILENO);
             return 0;
         }
         res = close(fh);
         if (res == -1) {
-            MXQ_LOG_ERROR("close(fh=%d) failed (%m)\n", fh);
+            mx_log_err("close(fh=%d) failed (%m)", fh);
             return 0;
         }
     }
@@ -362,7 +363,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (!arg_nolog) {
         res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
         if (!res) {
-            MXQ_LOG_ERROR("MAIN: cronolog setup failed. exiting.\n");
+            mx_log_err("MAIN: cronolog setup failed. exiting.");
             exit(EX_IOERR);
         }
     }
@@ -437,7 +438,7 @@ void group_init(struct mxq_group_list *group)
        || group->jobs_max != jobs_max
        || group->slots_max != slots_max
        || group->memory_max != memory_max)
-        MXQ_LOG_INFO("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.\n",
+        mx_log_info("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.\n",
                     g->user_name, g->user_uid, g->group_id, jobs_max, slots_max, memory_max, slots_per_job,
                     group->orphaned?"re":"");
 
@@ -720,19 +721,19 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     /** set sessionid and pgrp leader **/
     pid = setsid();
     if (pid == -1) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setsid(): %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu setsid(): %m",
             g->user_name, g->user_uid, g->group_id, j->job_id);
     }
 
     passwd = getpwuid(g->user_uid);
     if (!passwd) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu getpwuid(): %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu getpwuid(): %m",
             g->user_name, g->user_uid, g->group_id, j->job_id);
         return 0;
     }
 
     if (!streq(passwd->pw_name, g->user_name)) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping\n",
+        mx_log_err("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping",
             g->user_name, g->user_uid, g->group_id, j->job_id,
             g->user_uid, g->user_name, passwd->pw_name);
         return 0;
@@ -743,7 +744,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     res = clearenv();
     if (res != 0) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu clearenv(): %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu clearenv(): %m",
             g->user_name, g->user_uid, g->group_id, j->job_id);
         return 0;
     }
@@ -766,7 +767,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu open(%s) failed: %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu open(%s) failed: %m",
             g->user_name, g->user_uid, g->group_id, j->job_id, "/proc/self/loginuid");
         return 0;
     }
@@ -775,14 +776,14 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     res = initgroups(passwd->pw_name, g->user_gid);
     if (res == -1) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu initgroups() failed: %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu initgroups() failed: %m",
             g->user_name, g->user_uid, g->group_id, j->job_id);
         return 0;
     }
 
     res = setregid(g->user_gid, g->user_gid);
     if (res == -1) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m",
             g->user_name, g->user_uid, g->group_id, j->job_id,
             g->user_gid, g->user_gid);
         return 0;
@@ -790,7 +791,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     res = setreuid(g->user_uid, g->user_uid);
     if (res == -1) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m",
             g->user_name, g->user_uid, g->group_id, j->job_id,
             g->user_uid, g->user_uid);
         return 0;
@@ -798,7 +799,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     res = chdir(j->job_workdir);
     if (res == -1) {
-        MXQ_LOG_ERROR("job=%s(%d):%lu:%lu chdir(%s) failed: %m\n",
+        mx_log_err("job=%s(%d):%lu:%lu chdir(%s) failed: %m",
             g->user_name, g->user_uid, g->group_id, j->job_id,
             j->job_workdir);
         return 0;
@@ -825,7 +826,7 @@ int mxq_redirect_open(char *fname)
     } else if (!streq(fname, "/dev/null")) {
         res = unlink(fname);
         if (res == -1 && errno != ENOENT) {
-            MXQ_LOG_ERROR("unlink() failed: %m\n");
+            mx_log_err("unlink() failed: %m");
            return -2;
         }
         flags |= O_EXCL;
@@ -833,7 +834,7 @@ int mxq_redirect_open(char *fname)
 
     fh = open(fname, flags, mode);
     if (fh == -1) {
-            MXQ_LOG_ERROR("open() failed: %m\n");
+            mx_log_err("open() failed: %m");
     }
 
     return fh;
@@ -888,7 +889,7 @@ int mxq_redirect_input(char *stdin_fname)
 
     fh = open(stdin_fname, O_RDONLY|O_NOFOLLOW);
     if (fh == -1) {
-        MXQ_LOG_ERROR("open() failed: %m\n");
+        mx_log_err("open() failed: %m");
         return -1;
     }
 
@@ -921,19 +922,19 @@ unsigned long start_job(struct mxq_group_list *group)
     if (!res) {
         return 0;
     }
-    MXQ_LOG_INFO("   job=%s(%d):%lu:%lu :: new job loaded.\n",
+    mx_log_info("   job=%s(%d):%lu:%lu :: new job loaded.",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
     mxq_mysql_close(server->mysql);
 
     pid = fork();
     if (pid < 0) {
-        MXQ_LOG_ERROR("fork: %m");
+        mx_log_err("fork: %m");
         return 0;
     } else if (pid == 0) {
         mxqjob.host_pid = getpid();
 
-        MXQ_LOG_INFO("   job=%s(%d):%lu:%lu host_pid=%d pgrp=%d :: new child process forked.\n",
+        mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d pgrp=%d :: new child process forked.",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
             mxqjob.host_pid, getpgrp());
 
@@ -946,7 +947,7 @@ unsigned long start_job(struct mxq_group_list *group)
 
         res = mxq_redirect_input("/dev/null");
         if (res < 0) {
-            MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu mxq_redirect_input() failed (%d): %m\n",
+            mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_input() failed (%d): %m",
                 group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
                 res);
             _exit(EX__MAX + 1);
@@ -954,7 +955,7 @@ unsigned long start_job(struct mxq_group_list *group)
 
         res = mxq_redirect_output(mxqjob.tmp_stdout, mxqjob.tmp_stderr);
         if (res < 0) {
-            MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu mxq_redirect_output() failed (%d): %m\n",
+            mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_output() failed (%d): %m",
                 group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
                 res);
             _exit(EX__MAX + 1);
@@ -963,7 +964,7 @@ unsigned long start_job(struct mxq_group_list *group)
 
         char **argv = str_to_strvec(mxqjob.job_argv_str);
         execvp(argv[0], argv);
-        MXQ_LOG_ERROR("execvp: %m");
+        mx_log_err("execvp: %m");
         exit(1);
     }
 
@@ -975,14 +976,14 @@ unsigned long start_job(struct mxq_group_list *group)
     mxqjob.host_slots = group->slots_per_job;
     res = mxq_job_update_status_running(server->mysql, &mxqjob);
     if (res <= 0) {
-        perror("mxq_job_update_status_running()\n");
+        mx_log_err("mxq_job_update_status_running(): %m");
     }
 
     do {
         job = group_add_job(group, &mxqjob);
     } while (!job);
 
-    MXQ_LOG_INFO("   job=%s(%d):%lu:%lu :: added running job to watch queue.\n",
+    mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
         group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
     return 1;
@@ -1014,8 +1015,8 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
 
     assert(slots_to_start <= server->slots - server->slots_running);
 
-//    MXQ_LOG_INFO(" user=%s(%d) slots_to_start=%ld job_limit=%d :: trying to start jobs for user.\n",
-//            mxqgrp->user_name, mxqgrp->user_uid, slots_to_start, job_limit);
+    mx_log_debug(" user=%s(%d) slots_to_start=%ld job_limit=%d :: trying to start jobs for user.",
+            mxqgrp->user_name, mxqgrp->user_uid, slots_to_start, job_limit);
 
     for (group=user->groups; group && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); group=gnext) {
 
@@ -1068,7 +1069,7 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
             }
             prio = mxqgrp->group_priority;
         }
-        MXQ_LOG_INFO("  group=%s(%d):%lu slots_to_start=%ld slots_per_job=%lu :: trying to start job for group.\n",
+        mx_log_info("  group=%s(%d):%lu slots_to_start=%ld slots_per_job=%lu :: trying to start job for group.\n",
                 mxqgrp->user_name, mxqgrp->user_uid, mxqgrp->group_id, slots_to_start, group->slots_per_job);
 
         if (start_job(group)) {
@@ -1106,7 +1107,7 @@ unsigned long start_users(struct mxq_server *server)
     if (!server->user_cnt)
         return 0;
 
-    //MXQ_LOG_INFO("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users\n", server->slots - server->slots_running, server->user_cnt);
+    mx_log_debug("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users", server->slots - server->slots_running, server->user_cnt);
 
     for (user=server->users; user; user=user->next) {
 
@@ -1172,7 +1173,7 @@ int remove_orphaned_groups(struct mxq_server *server)
                 user->groups = gnext;
             }
 
-            MXQ_LOG_INFO("group=%s(%d):%lu : Removing orphaned group.\n", group->group.user_name, group->group.user_uid, group->group.group_id);
+            mx_log_info("group=%s(%d):%lu : Removing orphaned group.\n", group->group.user_name, group->group.user_uid, group->group.group_id);
 
             user->group_cnt--;
             server->group_cnt--;
@@ -1194,7 +1195,7 @@ int remove_orphaned_groups(struct mxq_server *server)
         server->user_cnt--;
         free_null(user);
 
-        MXQ_LOG_INFO("Removed orphaned user. %lu users left.\n", server->user_cnt);
+        mx_log_info("Removed orphaned user. %lu users left.", server->user_cnt);
     }
     return cnt;
 }
@@ -1208,26 +1209,26 @@ void server_dump(struct mxq_server *server)
     if (!server->user_cnt)
         return;
 
-    MXQ_LOG_INFO("====================== SERVER DUMP START ======================\n");
+    mx_log_info("====================== SERVER DUMP START ======================");
     for (user=server->users; user; user=user->next) {
-        MXQ_LOG_INFO("    user=%s(%d) slots_running=%lu\n",
+        mx_log_info("    user=%s(%d) slots_running=%lu",
             user->groups->group.user_name, user->groups->group.user_uid,
             user->slots_running);
         for (group=user->groups; group; group=group->next) {
-            MXQ_LOG_INFO("        group=%s(%d):%lu %s jobs_in_q=%lu\n",
+            mx_log_info("        group=%s(%d):%lu %s jobs_in_q=%lu",
                 group->group.user_name, group->group.user_uid, group->group.group_id,
                 group->group.group_name, mxq_group_jobs_inq(&group->group));
             for (job=group->jobs; job; job=job->next) {
-                MXQ_LOG_INFO("            job=%s(%d):%lu:%lu %s\n",
+                mx_log_info("            job=%s(%d):%lu:%lu %s",
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
                     job->job.job_argv_str);
             }
         }
     }
 
-    MXQ_LOG_INFO("memory_used=%lu memory_total=%lu\n", server->memory_used, server->memory_total);
-    MXQ_LOG_INFO("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu\n", server->slots_running, server->slots, server->threads_running, server->jobs_running);
-    MXQ_LOG_INFO("====================== SERVER DUMP END ======================\n");
+    mx_log_info("memory_used=%lu memory_total=%lu", server->memory_used, server->memory_total);
+    mx_log_info("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu", server->slots_running, server->slots, server->threads_running, server->jobs_running);
+    mx_log_info("====================== SERVER DUMP END ======================");
 }
 
 void server_close(struct mxq_server *server)
@@ -1272,7 +1273,7 @@ int killall(struct mxq_server *server, int sig, unsigned int pgrp)
                 pid = job->job.host_pid;
                 if (pgrp)
                     pid = -pid;
-                MXQ_LOG_INFO("Sending signal=%d to job=%s(%d):%lu:%lu %s=%d\n",
+                mx_log_info("Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
                     sig,
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
                     pgrp?"pgrp":"pid", pid);
@@ -1297,14 +1298,14 @@ int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
             if (group->group.group_status != MXQ_GROUP_STATUS_CANCELLED)
                 continue;
 
-            MXQ_LOG_INFO("Cancelling all running jobs in group=%s(%d):%lu\n",
+            mx_log_info("Cancelling all running jobs in group=%s(%d):%lu",
                 group->group.user_name, group->group.user_uid, group->group.group_id);
 
             for (job=group->jobs; job; job=job->next) {
                 pid = job->job.host_pid;
                 if (pgrp)
                     pid = -pid;
-                MXQ_LOG_INFO("  Sending signal=%d to job=%s(%d):%lu:%lu %s=%d\n",
+                mx_log_info("  Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
                     sig,
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
                     pgrp?"pgrp":"pid", pid);
@@ -1336,7 +1337,7 @@ int catchall(struct mxq_server *server) {
         if (res == -1) {
             if (errno == ECHILD)
                 return 0;
-            MXQ_LOG_ERROR("waitid: %m\n");
+            mx_log_err("waitid: %m");
             return 0;
         }
 
@@ -1348,12 +1349,12 @@ int catchall(struct mxq_server *server) {
 
         job = server_remove_job_by_pid(server, siginfo.si_pid);
         if (!job) {
-            MXQ_LOG_ERROR("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d\n",
+            mx_log_err("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d",
                 siginfo.si_pid, siginfo.si_uid, siginfo.si_code, siginfo.si_status,
                 getpgid(siginfo.si_pid), getsid(siginfo.si_pid));
             pid = waitpid(siginfo.si_pid, &status, WNOHANG);
             if (pid != siginfo.si_pid)
-                MXQ_LOG_ERROR("FIX ME BUG!!! pid=%d errno=%d (%m)\n", pid, errno);
+                mx_log_err("FIX ME BUG!!! pid=%d errno=%d (%m)", pid, errno);
             continue;
         }
         /* valid job returned.. */
@@ -1361,18 +1362,18 @@ int catchall(struct mxq_server *server) {
         /* kill possible leftovers with SIGKILL */
         res = kill(-siginfo.si_pid, SIGKILL);
         if (res == -1)
-            MXQ_LOG_ERROR("kill process group pgrp=%d failed: %m\n", -siginfo.si_pid);
+            mx_log_err("kill process group pgrp=%d failed: %m", -siginfo.si_pid);
 
         /* reap child and save new state */
         pid = wait4(siginfo.si_pid, &status, WNOHANG, &rusage);
 
         if (pid == -1) {
-            MXQ_LOG_ERROR("wait4: %m\n");
+            mx_log_err("wait4: %m");
             return -1;
         }
 
         if (pid == 0) {
-            MXQ_LOG_ERROR("wait4: spurious pid=%d. Continuing anyway. Please FIX.\n", siginfo.si_pid);
+            mx_log_err("wait4: spurious pid=%d. Continuing anyway. Please FIX.", siginfo.si_pid);
             pid = siginfo.si_pid;
         }
 
@@ -1389,7 +1390,7 @@ int catchall(struct mxq_server *server) {
         j->stats_status = status;
         j->stats_rusage = rusage;
 
-        MXQ_LOG_INFO("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.\n",
+        mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.",
                 g->user_name, g->user_uid, g->group_id, j->job_id, pid, status);
 
         mxq_job_update_status_exit(server->mysql, j);
@@ -1407,7 +1408,7 @@ int catchall(struct mxq_server *server) {
         if (!streq(j->job_stdout, "/dev/null")) {
             res = rename(j->tmp_stdout, j->job_stdout);
             if (res == -1) {
-                MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m\n",
+                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m",
                         g->user_name, g->user_uid, g->group_id, j->job_id, pid);
             }
         }
@@ -1415,7 +1416,7 @@ int catchall(struct mxq_server *server) {
         if (!streq(j->job_stderr, "/dev/null") && !streq(j->job_stderr, j->job_stdout)) {
             res = rename(j->tmp_stderr, j->job_stderr);
             if (res == -1) {
-                MXQ_LOG_ERROR("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m\n",
+                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m",
                         g->user_name, g->user_uid, g->group_id, j->job_id, pid);
             }
         }
@@ -1440,7 +1441,7 @@ int load_groups(struct mxq_server *server) {
     for (i=0, total=0; i<group_cnt; i++) {
         group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
         if (!group) {
-            MXQ_LOG_ERROR("Could not add Group to control structures.\n");
+            mx_log_err("Could not add Group to control structures.");
         } else {
             total++;
         }
@@ -1487,15 +1488,15 @@ int main(int argc, char *argv[])
 
     res = server_init(&server, argc, argv);
     if (res < 0) {
-        MXQ_LOG_ERROR("MXQ Server: Can't initialize server handle. Exiting.\n");
+        mx_log_err("MXQ Server: Can't initialize server handle. Exiting.");
         exit(1);
     }
 
-    MXQ_LOG_INFO("mxqd - " MXQ_VERSIONFULL "\n");
-    MXQ_LOG_INFO("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n");
-    MXQ_LOG_INFO("  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n");
-    MXQ_LOG_INFO("hostname=%s server_id=%s :: MXQ server started.\n", server.hostname, server.server_id);
-    MXQ_LOG_INFO("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.\n",
+    mx_log_info("mxqd - " MXQ_VERSIONFULL "\n");
+    mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
+    mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
+    mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
+    mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
                   server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);
 
     /*** database connect ***/
@@ -1516,15 +1517,15 @@ int main(int argc, char *argv[])
     do {
         slots_returned = catchall(&server);
         if (slots_returned)
-            MXQ_LOG_INFO("slots_returned=%lu :: Main Loop freed %lu slots.\n", slots_returned, slots_returned);
+            mx_log_info("slots_returned=%lu :: Main Loop freed %lu slots.", slots_returned, slots_returned);
 
         if (slots_started || slots_returned) {
             server_dump(&server);
         }
 
         group_cnt = load_groups(&server);
-//        if (group_cnt)
-//            MXQ_LOG_INFO("group_cnt=%d :: %d Groups loaded\n", group_cnt, group_cnt);
+        if (group_cnt)
+           mx_log_debug("group_cnt=%d :: %d Groups loaded", group_cnt, group_cnt);
 
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
@@ -1532,27 +1533,27 @@ int main(int argc, char *argv[])
         if (!server.group_cnt) {
             assert(!server.jobs_running);
             assert(!group_cnt);
-            MXQ_LOG_INFO("Nothing to do. Sleeping for a short while. (1 second)\n");
+            mx_log_info("Nothing to do. Sleeping for a short while. (1 second)");
             sleep(1);
             continue;
         }
 
         if (server.slots_running == server.slots) {
-            MXQ_LOG_INFO("All slots running. Sleeping for a short while (7 seconds).\n");
+            mx_log_info("All slots running. Sleeping for a short while (7 seconds).");
             sleep(7);
             continue;
         }
 
         slots_started = start_users(&server);
         if (slots_started)
-            MXQ_LOG_INFO("slots_started=%lu :: Main Loop started %lu slots.\n", slots_started, slots_started);
+            mx_log_info("slots_started=%lu :: Main Loop started %lu slots.", slots_started, slots_started);
 
         if (!slots_started && !slots_returned) {
             if (!server.jobs_running) {
-                MXQ_LOG_INFO("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).\n");
+                mx_log_info("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).");
                 sleep(15);
             } else {
-                MXQ_LOG_INFO("Tried Hard. But have done nothing. Sleeping for a very short while.\n");
+                mx_log_info("Tried Hard. But have done nothing. Sleeping for a very short while.");
                 sleep(3);
             }
             continue;
@@ -1561,19 +1562,19 @@ int main(int argc, char *argv[])
 
     /*** clean up ***/
 
-    MXQ_LOG_INFO("global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting.\n", global_sigint_cnt, global_sigterm_cnt);
+    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting.", global_sigint_cnt, global_sigterm_cnt);
 
     while (server.jobs_running) {
         slots_returned = catchall(&server);
         if (slots_returned) {
-           MXQ_LOG_INFO("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : \n",
+           mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
                    server.jobs_running, slots_returned, global_sigint_cnt, global_sigterm_cnt);
            continue;
         }
         if (global_sigint_cnt)
             killall(&server, SIGTERM, 0);
 
-        MXQ_LOG_INFO("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.\n",
+        mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
               server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
         sleep(1);
     }
@@ -1582,9 +1583,9 @@ int main(int argc, char *argv[])
 
     server_close(&server);
 
-    MXQ_LOG_INFO("cu, mx.\n");
+    mx_log_info("cu, mx.");
 
-    log_msg(0, NULL);
+    mx_log_finish();
 
     return 0;
 }

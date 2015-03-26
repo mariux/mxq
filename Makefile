@@ -213,8 +213,15 @@ mx_flock.o: $(mx_flock.h)
 
 clean: CLEAN += mx_flock.o
 
+### mxq_log.o ----------------------------------------------------------
+
+mxq_log.o: $(mx_log.h)
+
+clean: CLEAN += mxq_log.o
+
 ### mxq_mysql.o --------------------------------------------------------
 
+mxq_mysql.o: $(mx_log.h)
 mxq_mysql.o: $(mxq_mysql.h)
 mxq_mysql.o: $(mxq_util.h)
 mxq_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
@@ -223,6 +230,7 @@ clean: CLEAN += mxq_mysql.o
 
 ### mxqdump.o ---------------------------------------------------
 
+mxqdump.o: $(mx_log.h)
 mxqdump.o: $(mxq_util.h)
 mxqdump.o: $(mxq_mysql.h)
 mxqdump.o: $(bee_getopt.h)
@@ -233,6 +241,7 @@ clean: CLEAN += mxqdump.o
 
 ### mxqkill.o ---------------------------------------------------
 
+mxqkill.o: $(mx_log.h)
 mxqkill.o: $(mx_util.h)
 mxqkill.o: $(mxq_util.h)
 mxqkill.o: $(mxq_mysql.h)
@@ -244,6 +253,7 @@ clean: CLEAN += mxqkill.o
 
 ### mxq_job_dump.o -----------------------------------------------------
 
+mxq_job_dump.o: $(mx_log.h)
 mxq_job_dump.o: $(mxq_util.h)
 mxq_job_dump.o: $(mxq_mysql.h)
 
@@ -251,6 +261,7 @@ clean: CLEAN += mxq_job_dump.o
 
 ### mxq_util.o ---------------------------------------------------------
 
+mxq_util.o: $(mx_log.h)
 mxq_util.o: $(mxq_util.h)
 mxq_util.o: CFLAGS += $(CFLAGS_MYSQL)
 
@@ -258,6 +269,7 @@ clean: CLEAN += mxq_util.o
 
 ### mxq_group.o --------------------------------------------------------
 
+mxq_group.o: $(mx_log.h)
 mxq_group.o: $(mxq_group.h)
 mxq_group.o: $(mxq_mysql.h)
 mxq_group.o: CFLAGS += $(CFLAGS_MYSQL)
@@ -267,6 +279,7 @@ clean: CLEAN += mxq_group.o
 ### mxq_job.o ----------------------------------------------------------
 
 mxq_job.o: $(mx_util.h)
+mxq_job.o: $(mx_log.h)
 mxq_job.o: $(mxq.h)
 mxq_job.o: $(mxq_job.h)
 mxq_job.o: $(mxq_group.h)
@@ -280,6 +293,7 @@ clean: CLEAN += mxq_job.o
 mxqd.o: $(bee_getopt.h)
 mxqd.o: $(mx_flock.h)
 mxqd.o: $(mx_util.h)
+mxqd.o: $(mx_log.h)
 mxqd.o: $(mxqd.h)
 mxqd.o: $(mxq_group.h)
 mxqd.o: $(mxq_job.h)
@@ -296,6 +310,7 @@ clean: CLEAN += mxqd.o
 mxqsub.o: $(bee_getopt.h)
 mxqsub.o: $(mxq_util.h)
 mxqsub.o: $(mx_util.h)
+mxqsub.o: $(mx_log.h)
 mxqsub.o: $(mxq_mysql.h)
 mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
@@ -308,6 +323,8 @@ clean: CLEAN += mxqsub.o
 
 mxqd: mx_flock.o
 mxqd: mx_util.o
+mxqd: mx_log.o
+mxqd: mxq_log.o
 mxqd: bee_getopt.o
 mxqd: mxq_group.o
 mxqd: mxq_job.o
@@ -328,6 +345,7 @@ mxqsub: bee_getopt.o
 mxqsub: mxq_mysql.o
 mxqsub: mxq_util.o
 mxqsub: mx_util.o
+mxqsub: mx_log.o
 mxqsub: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqsub
@@ -339,6 +357,7 @@ install:: mxqsub
 
 ### mxqdump -----------------------------------------------------
 
+mxqdump: mx_log.o
 mxqdump: mxq_group.o
 mxqdump: mxq_mysql.o
 mxqdump: mxq_util.o
@@ -354,6 +373,7 @@ install:: mxqdump
 
 ### mxqkill -----------------------------------------------------
 
+mxqkill: mx_log.o
 mxqkill: mxq_mysql.o
 mxqkill: mxq_util.o
 mxqkill: mx_util.o
@@ -371,6 +391,7 @@ install:: mxqkill
 
 ### mxq_job_dump -------------------------------------------------------
 
+mxq_job_dump: mx_log.o
 mxq_job_dump: mxq_mysql.o
 mxq_job_dump: mxq_util.o
 mxq_job_dump: LDLIBS += $(LDLIBS_MYSQL)

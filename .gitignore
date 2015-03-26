@@ -13,6 +13,7 @@ mxqkill.o
 mxq_util.o
 test_mx_util.o
 test_mx_log.o
+mxq_log.o
 
 mxqsub
 mxqdump

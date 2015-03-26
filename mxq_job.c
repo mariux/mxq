@@ -11,6 +11,7 @@
 #include <sys/resource.h>
 
 #include "mx_util.h"
+#include "mx_log.h"
 
 #include "mxq_group.h"
 #include "mxq_job.h"
@@ -294,9 +295,9 @@ int mxq_job_update_status_running(MYSQL *mysql, struct mxq_job *job)
     memset(param, 0, sizeof(param));
 
     if (job->job_status != MXQ_JOB_STATUS_LOADED) {
-        MXQ_LOG_WARNING("new status==runnning but old status(=%d) is != loaded ", job->job_status);
+        mx_log_warning("new status==runnning but old status(=%d) is != loaded ", job->job_status);
         if (job->job_status != MXQ_JOB_STATUS_ASSIGNED) {
-            MXQ_LOG_ERROR("new status==runnning but old status(=%d) is != (loaded || assigned). Aborting Status change.", job->job_status);
+            mx_log_err("new status==runnning but old status(=%d) is != (loaded || assigned). Aborting Status change.", job->job_status);
             errno = EINVAL;
             return -1;
         }
@@ -343,7 +344,7 @@ int mxq_job_update_status_exit(MYSQL *mysql, struct mxq_job *job)
     } else if(WIFSIGNALED(job->stats_status)) {
         newstatus = MXQ_JOB_STATUS_KILLED;
     } else {
-        MXQ_LOG_ERROR("Status change to status_exit called with unknown stats_status (%d). Aborting Status change.", job->stats_status);
+        mx_log_err("Status change to status_exit called with unknown stats_status (%d). Aborting Status change.", job->stats_status);
         errno = EINVAL;
         return -1;
     }
@@ -461,7 +462,7 @@ int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, cha
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_JOB_COL__END, param, result);
     if (!stmt) {
-        MXQ_LOG_ERROR("mxq_job_load_assigned(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, MXQ_JOB_COL__END, param, result);
+        mx_log_err("mxq_job_load_assigned(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)", mysql, query, MXQ_JOB_COL__END, param, result);
         return -1;
     }
 
@@ -469,7 +470,7 @@ int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, cha
     if (res < 0) {
         mxq_mysql_print_error(mysql);
         mxq_mysql_stmt_print_error(stmt);
-        MXQ_LOG_ERROR("mxq_job_fetch_results..\n");
+        mx_log_err("mxq_job_fetch_results..");
         mysql_stmt_close(stmt);
         return -1;
     }
@@ -487,7 +488,7 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
     do {
         res = mxq_job_load_assigned(mysql, mxqjob, hostname, server_id);
         if(res < 0) {
-            MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_load_assigned: %m\n", group_id, mxqjob->job_id);
+            mx_log_err("  group_id=%lu job_id=%lu :: mxq_job_load_assigned: %m", group_id, mxqjob->job_id);
             return 0;
         }
         if(res == 1) {
@@ -502,9 +503,9 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
         res = mxq_job_update_status_assigned(mysql, mxqjob);
         if (res < 0) {
             if (errno == ENOENT) {
-                MXQ_LOG_WARNING("  group_id=%lu :: mxq_job_update_status_assigned(): No matching job found - maybe another server was a bit faster. ;)\n", group_id);
+                mx_log_warning("  group_id=%lu :: mxq_job_update_status_assigned(): No matching job found - maybe another server was a bit faster. ;)", group_id);
             } else {
-                MXQ_LOG_ERROR("  group_id=%lu :: mxq_job_update_status_assigned(): %m\n", group_id);
+                mx_log_err("  group_id=%lu :: mxq_job_update_status_assigned(): %m", group_id);
             }
             return 0;
         }
@@ -512,7 +513,7 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
 
     res = mxq_job_update_status_loaded(mysql, mxqjob);
     if (res < 0) {
-        MXQ_LOG_ERROR("  group_id=%lu job_id=%lu :: mxq_job_update_status_loaded(): %m\n", group_id, mxqjob->job_id);
+        mx_log_err("  group_id=%lu job_id=%lu :: mxq_job_update_status_loaded(): %m", group_id, mxqjob->job_id);
         return 0;
     }
 
