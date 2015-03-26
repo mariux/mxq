@@ -1,5 +1,6 @@
 bee_getopt.o
 mx_flock.o
+mx_log.o
 mx_util.o
 mxq_group.o
 mxqdump.o
@@ -11,6 +12,8 @@ mxqsub.o
 mxqkill.o
 mxq_util.o
 test_mx_util.o
+test_mx_log.o
+mxq_log.o
 
 mxqsub
 mxqdump
@@ -18,6 +21,7 @@ mxqkill
 mxq_job_dump
 mxqd
 test_mx_util
+test_mx_log
 
 doc/fairness.aux
 doc/fairness.log

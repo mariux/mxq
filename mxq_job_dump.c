@@ -8,6 +8,7 @@
 
 #include <mysql.h>
 
+#include "mx_log.h"
 #include "mxq_util.h"
 #include "mxq_mysql.h"
 
@@ -226,7 +227,7 @@ int mxq_group_load_jobs(MYSQL *mysql, struct mxq_job **mxq_job)
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, COL__END, NULL, result);
     if (!stmt) {
-        print_error("mxq_mysql_stmt_do_query(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)\n", mysql, query, COL__END, NULL, result);
+        mx_log_err("mxq_mysql_stmt_do_query(mysql=%p, stmt_str=\"%s\", field_count=%d, param=%p, result=%p)", mysql, query, COL__END, NULL, result);
         return 0;
     }
 

@@ -16,6 +16,7 @@
 
 #include <time.h>
 
+#include "mx_log.h"
 #include "mxq_mysql.h"
 #include "mxq_util.h"
 
@@ -48,7 +49,7 @@ MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql)
         if (mres == mysql)
             return mysql;
 
-        MXQ_LOG_ERROR("MAIN: Failed to connect to database (try=%d): Error: %s\n", try++, mysql_error(mysql));
+        mx_log_err("MAIN: Failed to connect to database (try=%d): Error: %s", try++, mysql_error(mysql));
         sleep(1);
     }
     return NULL;
@@ -103,15 +104,15 @@ MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
 
     res = mysql_real_query(mysql, query, len);
     if (res) {
-        MXQ_LOG_ERROR("mysql_real_query() failed. Error: %s\n", mysql_error(mysql));
-        MXQ_LOG_INFO("query was: %s\n", query);
+        mx_log_err("mysql_real_query() failed. Error: %s", mysql_error(mysql));
+        mx_log_info("query was: %s", query);
         return NULL;
     }
 
     mres = mysql_store_result(mysql);
     if (!mres) {
-        MXQ_LOG_ERROR("mysql_store_result() failed. Error: %s\n", mysql_error(mysql));
-        MXQ_LOG_INFO("query was: %s\n", query);
+        mx_log_err("mysql_store_result() failed. Error: %s", mysql_error(mysql));
+        mx_log_info("query was: %s", query);
         return NULL;
     }
 
@@ -131,21 +132,21 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
 
     stmt = mysql_stmt_init(mysql);
     if (!stmt) {
-        MXQ_LOG_ERROR("mysql_stmt_init(mysql=%p)\n", mysql);
+        mx_log_err("mysql_stmt_init(mysql=%p)", mysql);
         mxq_mysql_print_error(mysql);
         return NULL;
     }
 
     res = mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
     if (res) {
-        MXQ_LOG_ERROR("mysql_stmt_prepare(stmt=%p, stmt_str=\"%s\", length=%ld)\n", stmt, stmt_str, strlen(stmt_str));
+        mx_log_err("mysql_stmt_prepare(stmt=%p, stmt_str=\"%s\", length=%ld)", stmt, stmt_str, strlen(stmt_str));
         mxq_mysql_stmt_print_error(stmt);
         mysql_stmt_close(stmt);
         return NULL;
     }
 
     if (mysql_stmt_field_count(stmt) != field_count) {
-        MXQ_LOG_ERROR("mysql_stmt_field_count(stmt=%p) does not match requested field_count (=%d)\n", stmt, field_count);
+        mx_log_err("mysql_stmt_field_count(stmt=%p) does not match requested field_count (=%d)", stmt, field_count);
         mysql_stmt_close(stmt);
         return NULL;
     }
@@ -153,7 +154,7 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
     if (result) {
         res = mysql_stmt_bind_result(stmt, result);
         if (res) {
-            MXQ_LOG_ERROR("mysql_stmt_bind_result(stmt=%p)\n", stmt);
+            mx_log_err("mysql_stmt_bind_result(stmt=%p)", stmt);
             mxq_mysql_stmt_print_error(stmt);
             mysql_stmt_close(stmt);
             return NULL;
@@ -163,7 +164,7 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
     if (param) {
         res = mysql_stmt_bind_param(stmt, param);
         if (res) {
-            MXQ_LOG_ERROR("mysql_stmt_bind_param(stmt=%p)\n", stmt);
+            mx_log_err("mysql_stmt_bind_param(stmt=%p)", stmt);
             mxq_mysql_stmt_print_error(stmt);
             mysql_stmt_close(stmt);
             return NULL;
@@ -176,14 +177,14 @@ MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_coun
             break;
 
         if (mysql_stmt_errno(stmt) == ER_LOCK_DEADLOCK) {
-            MXQ_LOG_WARNING("MySQL recoverable error detected in mysql_stmt_execute(): ER_LOCK_DEADLOCK. (try %ld).\n", ++tries);
+            mx_log_warning("MySQL recoverable error detected in mysql_stmt_execute(): ER_LOCK_DEADLOCK. (try %ld).", ++tries);
             nsleep.tv_nsec = tries*1000000L;
             nanosleep(&nsleep, NULL);
             continue;
         }
 
         if (mysql_stmt_errno(stmt) == ER_LOCK_WAIT_TIMEOUT) {
-            MXQ_LOG_WARNING("MySQL recoverable error detected in mysql_stmt_execute(): ER_LOCK_WAIT_TIMEOUT. (try %ld).\n", ++tries);
+            mx_log_warning("MySQL recoverable error detected in mysql_stmt_execute(): ER_LOCK_WAIT_TIMEOUT. (try %ld).", ++tries);
             nsleep.tv_nsec = tries*1000000L;
             nanosleep(&nsleep, NULL);
             continue;
@@ -283,7 +284,7 @@ int mxq_mysql_do_update(MYSQL *mysql, char* query, MYSQL_BIND *param)
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, 0, param, NULL);
     if (!stmt) {
-        MXQ_LOG_ERROR("mxq_mysql_do_update: Failed to query database.\n");
+        mx_log_err("mxq_mysql_do_update: Failed to query database.");
         errno = EIO;
         return -1;
     }

@@ -211,7 +211,7 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
         q_job_command, g->job_threads, g->job_memory, g->job_time);
 
     if (!mres) {
-        log_msg(0, "mxq_mysql_select_next_job: Failed to query database: Error: %s\n", mysql_error(mysql));
+        mx_log_err("mxq_mysql_select_next_job: Failed to query database: Error: %s", mysql_error(mysql));
         sleep(10);
         return 0;
     }

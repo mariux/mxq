@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 
 #include <time.h>
+#include "mx_log.h"
 #include "mxq_util.h"
 
 
@@ -44,59 +45,6 @@ size_t timetag(char *buf, size_t max)
     }
 
     return strftime(buf, max, "%F %T %z", ltime);
-}
-
-int log_msg(int prio, const char *fmt, ...)
-{
-    va_list ap;
-    char *msg = NULL;
-    static char *lastmsg;
-    static int cnt = 0;
-    int res;
-    size_t len;
-    char timebuf[1024];
-
-    if (!fmt) {
-        free_null(lastmsg);
-        return 0;
-    }
-
-    va_start(ap, fmt);
-    len = vasprintf(&msg, fmt, ap);
-    va_end(ap);
-
-    if (len == -1)
-        return 0;
-
-    assert(len == strlen(msg));
-
-    if (lastmsg) {
-        res = strcmp(msg, lastmsg);
-        if (res == 0) {
-            cnt++;
-            free(msg);
-            return 2;
-        }
-    }
-
-    timetag(timebuf, sizeof(timebuf));
-
-    if (cnt > 1)
-        printf("%s %s[%d]: last message repeated %d times\n", timebuf, program_invocation_short_name, getpid(), cnt);
-    else if (cnt == 1)
-        printf("%s %s[%d]: %s", timebuf, program_invocation_short_name, getpid(), lastmsg);
-    cnt = 0;
-    fflush(stdout);
-
-    if (lastmsg) {
-        free(lastmsg);
-    }
-
-    lastmsg = msg;
-
-    printf("%s %s[%d]: %s", timebuf, program_invocation_short_name, getpid(), msg);
-    fflush(stdout);
-    return 1;
 }
 
 char *mxq_hostname(void)
@@ -494,7 +442,7 @@ int mxq_setenv(const char *name, const char *value)
 
     res = setenv(name, value, 1);
     if (res == -1) {
-        MXQ_LOG_ERROR("mxq_setenv(%s, %s) failed! (%s)\n", name, value, strerror(errno));
+        mx_log_err("mxq_setenv(%s, %s) failed! (%s)", name, value, strerror(errno));
         return 0;
     }
 
@@ -518,7 +466,7 @@ int mxq_setenvf(const char *name, char *fmt, ...)
     va_end(ap);
 
     if (len == -1) {
-        MXQ_LOG_ERROR("mxq_setenvf(%s, %s, ...) failed! (%s)\n", name, fmt, strerror(errno));
+        mx_log_err("mxq_setenvf(%s, %s, ...) failed! (%s)", name, fmt, strerror(errno));
         return 0;
     }
 
