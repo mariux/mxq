@@ -7,6 +7,8 @@ MXQ_VERSION = ${MXQ_VERSION_MAJOR}.${MXQ_VERSION_MINOR}.${MXQ_VERSION_PATCH}
 MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
 MXQ_VERSIONDATE = 2013-2015
 
+##############################################################################
+
 PREFIX     = /usr
 EPREFIX    = ${PREFIX}
 SBINDIR    = ${EPREFIX}/sbin
@@ -17,48 +19,38 @@ DATADIR    = ${PREFIX}/share
 MANDIR     = ${DATADIR}/man
 SYSCONFDIR = ${PREFIX}/etc
 
+DESTDIR=
 
-ifeq ($(USER),root)
-    USER_SUBMIT  = $(shell id --user  nobody)
-    GROUP_SUBMIT = $(shell id --group nobody)
+##############################################################################
 
-    USER_LIST    = $(shell id --user  nobody)
-    GROUP_LIST   = $(shell id --group nobody)
+UNPRIV_USER = nobody
 
-    USER_EXEC    = $(shell id --user  root)
-    GROUP_EXEC   = $(shell id --group root)
+##############################################################################
 
-    SUID_MODE    = 6755
-else
-    USER_SUBMIT  = $(shell id --user)
-    GROUP_SUBMIT = $(shell id --group)
-
-    USER_LIST    = $(shell id --user)
-    GROUP_LIST   = $(shell id --group)
-
-    USER_EXEC    = $(shell id --user)
-    GROUP_EXEC   = $(shell id --group)
-
-    SUID_MODE    = 0755
-endif
-
-# set sysconfdir /etc if prefix /usr
+### set sysconfdir /etc if prefix /usr
 ifeq (${PREFIX},/usr)
     SYSCONFDIR = /etc
 endif
 
-# strip /mxq from LIBEXECDIR if set
+### set sysconfdir /etc if prefix /usr/local
+ifeq (${PREFIX},/usr/local)
+    SYSCONFDIR = /etc
+endif
+
+##############################################################################
+
+### strip /mxq from LIBEXECDIR if set
 ifeq ($(notdir ${LIBEXECDIR}),mxq)
     override LIBEXECDIR := $(patsubst %/,%,$(dir ${LIBEXECDIR}))
 endif
 
-DESTDIR=
+##############################################################################
 
 MXQ_MYSQL_DEFAULT_FILE = ${SYSCONFDIR}/mxq/mysql.cnf
 MXQ_INITIAL_PATH = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 
 CFLAGS_MXQ_MYSQL_DEFAULT_FILE = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
-CFLAGS_MXQ_INITIAL_PATH = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
+CFLAGS_MXQ_INITIAL_PATH       = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 
 MYSQL_CONFIG = mysql_config
 
@@ -67,7 +59,27 @@ OS_RELEASE = $(shell ./os-release)
 # special defaults for mariux64
 ifeq (${OS_RELEASE}, mariux64)
    MXQ_INITIAL_PATH := ${MXQ_INITIAL_PATH}:/usr/local/package/bin
+
 endif
+
+##############################################################################
+
+UID_SERVER = $(shell id --user  $(USER))
+GID_SERVER = $(shell id --group $(USER))
+
+ifeq ($(USER),root)
+    UID_CLIENT = $(shell id --user  ${UNPRIV_USER})
+    GID_CLIENT = $(shell id --group ${UNPRIV_USER})
+
+    SUID_MODE    = 6755
+else
+    UID_CLIENT = $(shell id --user  $(USER))
+    GID_CLIENT = $(shell id --group $(USER))
+
+    SUID_MODE    = 0755
+endif
+
+##############################################################################
 
 CFLAGS_MYSQL += $(shell $(MYSQL_CONFIG) --cflags)
 LDLIBS_MYSQL += $(shell $(MYSQL_CONFIG) --libs)
@@ -99,9 +111,11 @@ quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4}
 ########################################################################
 
 .PHONY: all
+.PHONY: build
+
 all: build
 
-.PHONY: build
+########################################################################
 
 .PHONY: test
 test:
@@ -109,8 +123,6 @@ test:
 		echo "   TEST $$i" ; \
 		./$$i ; \
 	done
-
-
 
 ########################################################################
 
@@ -342,7 +354,7 @@ build: mxqd
 clean: CLEAN += mxqd
 
 install:: mxqd
-	$(call quiet-installforuser,0755,$(USER_EXEC),$(GROUP_EXEC),mxqd,${DESTDIR}${SBINDIR}/mxqd)
+	$(call quiet-installforuser,0755,$(UID_SERVER),$(GID_SERVER),mxqd,${DESTDIR}${SBINDIR}/mxqd)
 
 ### mxqsub ------------------------------------------------------------
 
@@ -358,7 +370,7 @@ build: mxqsub
 clean: CLEAN += mxqsub
 
 install:: mxqsub
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxqsub,${DESTDIR}${BINDIR}/mxqsub)
+	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqsub,${DESTDIR}${BINDIR}/mxqsub)
 
 ### mxqdump -----------------------------------------------------
 
@@ -374,7 +386,7 @@ build: mxqdump
 clean: CLEAN += mxqdump
 
 install:: mxqdump
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxqdump,${DESTDIR}${BINDIR}/mxqdump)
+	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqdump,${DESTDIR}${BINDIR}/mxqdump)
 
 ### mxqkill -----------------------------------------------------
 
@@ -392,7 +404,7 @@ build: mxqkill
 clean: CLEAN += mxqkill
 
 install:: mxqkill
-	$(call quiet-installforuser,$(SUID_MODE),$(USER_SUBMIT),$(GROUP_SUBMIT),mxqkill,${DESTDIR}${BINDIR}/mxqkill)
+	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqkill,${DESTDIR}${BINDIR}/mxqkill)
 
 ### mxq_job_dump -------------------------------------------------------
 
