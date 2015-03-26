@@ -142,7 +142,7 @@ fix:
 ########################################################################
 
 .PHONY: install
-install::
+install:: build
 	$(call quiet-installdir,0755,${DESTDIR}${BINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SBINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
