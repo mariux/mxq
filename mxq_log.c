@@ -10,7 +10,7 @@
 #include "mx_log.h"
 #ifndef mx_free_null
 #include <stdlib.h>
-#define mx_free_null(a) do { free((a)); (a) = NULL; } while(0);
+#define mx_free_null(a) do { free((a)); (a) = NULL; } while(0)
 #endif
 
 

@@ -36,7 +36,7 @@ void   strvec_free(char **strvec);
 
 #define streq(a, b) (strcmp((a), (b)) == 0)
 
-#define free_null(a) do { free((a)); (a) = NULL; } while(0);
+#define free_null(a) do { free((a)); (a) = NULL; } while(0)
 
 #define _cleanup_(x) __attribute__((cleanup(x)))
 

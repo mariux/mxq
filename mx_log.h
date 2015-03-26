@@ -8,7 +8,7 @@
 
 #ifndef mx_free_null
 #include <stdlib.h>
-#define mx_free_null(a) do { free((a)); (a) = NULL; } while(0);
+#define mx_free_null(a) do { free((a)); (a) = NULL; } while(0)
 #endif
 
 #define MX_LOG_NONE    0

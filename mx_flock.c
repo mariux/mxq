@@ -18,7 +18,7 @@
 #define FLOCK_MODE 0600
 
 #ifndef free_null
-#define free_null(a) do { free((a)); (a) = NULL; } while(0);
+#define free_null(a) do { free((a)); (a) = NULL; } while(0)
 #endif
 
 static inline int _flock_open(struct mx_flock *lock, mode_t mode)
