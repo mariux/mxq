@@ -80,6 +80,7 @@ int mx_log_print(char *msg, size_t len)
         mx_free_null(lastmsg);
 
     lastmsg = msg;
+    lastlen = len;
     cnt     = 0;
 
     printf("%s %s[%d]: %s\n", timebuf, program_invocation_short_name, getpid(), msg);
