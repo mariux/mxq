@@ -1486,6 +1486,8 @@ int main(int argc, char *argv[])
 
     /*** server init ***/
 
+    mx_log_level_set(MX_LOG_INFO);
+
     res = server_init(&server, argc, argv);
     if (res < 0) {
         mx_log_err("MXQ Server: Can't initialize server handle. Exiting.");
