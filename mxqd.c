@@ -438,7 +438,7 @@ void group_init(struct mxq_group_list *group)
        || group->jobs_max != jobs_max
        || group->slots_max != slots_max
        || group->memory_max != memory_max)
-        mx_log_info("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.\n",
+        mx_log_info("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.",
                     g->user_name, g->user_uid, g->group_id, jobs_max, slots_max, memory_max, slots_per_job,
                     group->orphaned?"re":"");
 
@@ -1069,7 +1069,7 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
             }
             prio = mxqgrp->group_priority;
         }
-        mx_log_info("  group=%s(%d):%lu slots_to_start=%ld slots_per_job=%lu :: trying to start job for group.\n",
+        mx_log_info("  group=%s(%d):%lu slots_to_start=%ld slots_per_job=%lu :: trying to start job for group.",
                 mxqgrp->user_name, mxqgrp->user_uid, mxqgrp->group_id, slots_to_start, group->slots_per_job);
 
         if (start_job(group)) {
@@ -1173,7 +1173,7 @@ int remove_orphaned_groups(struct mxq_server *server)
                 user->groups = gnext;
             }
 
-            mx_log_info("group=%s(%d):%lu : Removing orphaned group.\n", group->group.user_name, group->group.user_uid, group->group.group_id);
+            mx_log_info("group=%s(%d):%lu : Removing orphaned group.", group->group.user_name, group->group.user_uid, group->group.group_id);
 
             user->group_cnt--;
             server->group_cnt--;
@@ -1494,7 +1494,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    mx_log_info("mxqd - " MXQ_VERSIONFULL "\n");
+    mx_log_info("mxqd - " MXQ_VERSIONFULL);
     mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
     mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
