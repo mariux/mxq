@@ -117,19 +117,20 @@ void mxq_mysql_row_to_group(struct mxq_job *j, MYSQL_ROW row)
 
     r = 0;
 
-    safe_convert_string_to_ui64(row[r++], &g->group_id);
-    safe_convert_string_to_ui8(row[r++],  &g->group_status);
-    safe_convert_string_to_ui16(row[r++], &g->group_priority);
+    mx_strtou64(row[r++], &g->group_id);
 
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_running);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_finished);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_failed);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_cancelled);
+    mx_strtou8(row[r++],  &g->group_status);
+    mx_strtou16(row[r++], &g->group_priority);
 
-    safe_convert_string_to_ui64(row[r++], &g->group_slots_running);
+    mx_strtou64(row[r++], &g->group_jobs);
+    mx_strtou64(row[r++], &g->group_jobs_running);
+    mx_strtou64(row[r++], &g->group_jobs_finished);
+    mx_strtou64(row[r++], &g->group_jobs_failed);
+    mx_strtou64(row[r++], &g->group_jobs_cancelled);
+
+    mx_strtou64(row[r++], &g->group_slots_running);
     r++; /* mtime */
-    safe_convert_string_to_ui32(row[r++], &g->stats_max_maxrss);
+    mx_strtou32(row[r++], &g->stats_max_maxrss);
     r++; /* utime */
     r++; /* stime */
     r++; /* real */
@@ -225,7 +226,7 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
 
         row = mysql_fetch_row(mres);
         if (!row) {
-            fprintf(stderr, "mxq_mysql_select_next_job: Failed to fetch row: Error: %s\n", mysql_error(mysql));
+            mx_log_err("mxq_mysql_select_next_job: Failed to fetch row: Error: %s", mysql_error(mysql));
             mysql_free_result(mres);
             return 0;
         }
@@ -291,7 +292,7 @@ static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
                 q_command,
                 g->job_threads, g->job_memory, g->job_time);
     if (res) {
-        fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
+        mx_log_err("Failed to query database: Error: %s", mysql_error(mysql));
         return 0;
     }
 
@@ -355,7 +356,7 @@ static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job *j)
                 q_stdout, q_stderr,
                 j->job_umask, q_submit_host);
     if (res) {
-        fprintf(stderr, "Failed to query database: Error: %s\n", mysql_error(mysql));
+        mx_log_err("Failed to query database: Error: %s", mysql_error(mysql));
         return 0;
     }
 
@@ -502,13 +503,13 @@ int main(int argc, char *argv[])
 
             case 'p':
                 if (mx_strtou16(optctl.optarg, &arg_priority) < 0) {
-                    fprintf(stderr, "fatal error: --priority '%s': %m\n", optctl.optarg);
+                    mx_log_crit("--priority '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
                 break;
 
             case 1:
-                fprintf(stderr, "INFO: option --group_id is deprecated. please use --group-name instead.\n");
+                mx_log_warning("option --group_id is deprecated. please use --group-name instead.");
             case 'N':
                 arg_group_name = optctl.optarg;
                 break;
@@ -524,45 +525,45 @@ int main(int argc, char *argv[])
                 break;
 
             case 2:
-                fprintf(stderr, "INFO: option --group_priority is deprecated. please use --group-priority instead.\n");
+                mx_log_warning("option --group_priority is deprecated. please use --group-priority instead.");
             case 'P':
                 if (mx_strtou16(optctl.optarg, &arg_group_priority) < 0) {
-                    fprintf(stderr, "fatal error: --group-priority '%s': %m\n", optctl.optarg);
+                    mx_log_crit("--group-priority '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
                 break;
 
             case 3:
-                fprintf(stderr, "WARNING: option --group-id is deprecated (usage will change in next version). please use --group-name instead.\n");
+                mx_log_warning("option --group-id is deprecated (usage will change in next version). please use --group-name instead.");
                 arg_group_name = optctl.optarg;
                 break;
 
             case 'j':
                 if (mx_strtou16(optctl.optarg, &arg_threads) < 0) {
-                    fprintf(stderr, "fatal error: --threads '%s': %m\n", optctl.optarg);
+                    mx_log_crit("--threads '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
                 break;
 
             case 'm':
                 if (mx_strtou64(optctl.optarg, &arg_memory) < 0) {
-                    fprintf(stderr, "fatal error: --memory '%s': %m\n", optctl.optarg);
+                    mx_log_crit("--memory '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
                 break;
 
             case 4:
-                fprintf(stderr, "INFO: option --time is deprecated. please use --runtime instead.\n");
+                mx_log_warning("option --time is deprecated. please use --runtime instead.");
             case 't':
                 if (mx_strtou32(optctl.optarg, &arg_time) < 0) {
-                    fprintf(stderr, "fatal error: --runtime '%s': %m\n", optctl.optarg);
+                    mx_log_crit("--runtime '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
                 break;
 
             case 'w':
                 if (optctl.optarg[0] != '/') {
-                    fprintf(stderr, "fatal error: --workdir '%s': workdir is a relativ path. please use absolute path.\n",
+                    mx_log_crit("--workdir '%s': workdir is a relativ path. please use absolute path.",
                                 optctl.optarg);
                     exit(EX_CONFIG);
                 }
@@ -584,7 +585,7 @@ int main(int argc, char *argv[])
             }
             case 'u':
                 if (mx_strtou32(optctl.optarg, &arg_umask) < 0) {
-                    fprintf(stderr, "fatal error: --umask '%s': %m\n", optctl.optarg);
+                    mx_log_crit("--umask '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
                 break;
