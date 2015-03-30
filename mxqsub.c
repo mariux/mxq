@@ -117,19 +117,20 @@ void mxq_mysql_row_to_group(struct mxq_job *j, MYSQL_ROW row)
 
     r = 0;
 
-    safe_convert_string_to_ui64(row[r++], &g->group_id);
-    safe_convert_string_to_ui8(row[r++],  &g->group_status);
-    safe_convert_string_to_ui16(row[r++], &g->group_priority);
+    mx_strtou64(row[r++], &g->group_id);
 
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_running);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_finished);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_failed);
-    safe_convert_string_to_ui64(row[r++], &g->group_jobs_cancelled);
+    mx_strtou8(row[r++],  &g->group_status);
+    mx_strtou16(row[r++], &g->group_priority);
 
-    safe_convert_string_to_ui64(row[r++], &g->group_slots_running);
+    mx_strtou64(row[r++], &g->group_jobs);
+    mx_strtou64(row[r++], &g->group_jobs_running);
+    mx_strtou64(row[r++], &g->group_jobs_finished);
+    mx_strtou64(row[r++], &g->group_jobs_failed);
+    mx_strtou64(row[r++], &g->group_jobs_cancelled);
+
+    mx_strtou64(row[r++], &g->group_slots_running);
     r++; /* mtime */
-    safe_convert_string_to_ui32(row[r++], &g->stats_max_maxrss);
+    mx_strtou32(row[r++], &g->stats_max_maxrss);
     r++; /* utime */
     r++; /* stime */
     r++; /* real */
