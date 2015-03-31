@@ -81,8 +81,8 @@ endif
 
 ##############################################################################
 
-CFLAGS_MYSQL += $(shell $(MYSQL_CONFIG) --cflags)
-LDLIBS_MYSQL += $(shell $(MYSQL_CONFIG) --libs)
+CFLAGS_MYSQL := $(shell $(MYSQL_CONFIG) --cflags)
+LDLIBS_MYSQL := $(shell $(MYSQL_CONFIG) --libs)
 
 CFLAGS += -g
 CFLAGS += -Wall
