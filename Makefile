@@ -127,7 +127,6 @@ test:
 ########################################################################
 
 .PHONY: clean
-.NOTPARALLEL: clean
 clean:
 	@for i in $(CLEAN) ; do \
 	    if [ -e "$$i" ] ; then \
