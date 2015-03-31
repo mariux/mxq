@@ -64,17 +64,17 @@ endif
 
 ##############################################################################
 
-UID_SERVER = $(shell id --user  $(USER))
-GID_SERVER = $(shell id --group $(USER))
+UID_SERVER := $(shell id --user  $(USER))
+GID_SERVER := $(shell id --group $(USER))
 
 ifeq ($(USER),root)
-    UID_CLIENT = $(shell id --user  ${UNPRIV_USER})
-    GID_CLIENT = $(shell id --group ${UNPRIV_USER})
+    UID_CLIENT := $(shell id --user  ${UNPRIV_USER})
+    GID_CLIENT := $(shell id --group ${UNPRIV_USER})
 
     SUID_MODE    = 6755
 else
-    UID_CLIENT = $(shell id --user  $(USER))
-    GID_CLIENT = $(shell id --group $(USER))
+    UID_CLIENT := $(shell id --user  $(USER))
+    GID_CLIENT := $(shell id --group $(USER))
 
     SUID_MODE    = 0755
 endif
