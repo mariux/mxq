@@ -337,7 +337,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (arg_daemonize) {
         res = daemon(0, 1);
         if (res == -1) {
-            perror("daemon(0,1)");
+            mx_log_err("MAIN: daemon(0, 1) failed: %m. Exiting.");
             exit(EX_UNAVAILABLE);
         }
     }
