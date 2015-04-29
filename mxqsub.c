@@ -104,7 +104,7 @@ static void print_usage(void)
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
-    "  -M | --mysql-default-file [mysql-file]    (default: " MYSQL_DEFAULT_FILE ")\n"
+    "  -M | --mysql-default-file  [mysql-file]   (default: " MYSQL_DEFAULT_FILE ")\n"
     "  -S | --mysql-default-group [mysql-group]  (default: " MYSQL_DEFAULT_GROUP ")\n"
     "\n"
     "Environment:\n"
