@@ -223,7 +223,7 @@ int mxq_group_load_jobs(MYSQL *mysql, struct mxq_job **mxq_job)
 
     prepare_result_bindings(result, &g);
 
-    query = "SELECT " COLUMNS " FROM mxq_job";
+    query = "SELECT " COLUMNS " FROM mxq_job where job_status=200";
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, COL__END, NULL, result);
     if (!stmt) {
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
     int i;
 
     mmysql.default_file  = NULL;
-    mmysql.default_group = "mxq_submit";
+    mmysql.default_group = "mxq_job_dump";
 
     mysql = mxq_mysql_connect(&mmysql);
 
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 //    printf("cnt=%d\n", cnt);
 
     for (i=0;i<cnt; i++) {
-        printf("%ld\t%s\n", jobs[i].job_id, jobs[i].job_argv_str);
+        printf("job_id=%ld job_argv_str=%s\n", jobs[i].job_id, jobs[i].job_argv_str);
     }
 
     free(jobs);
