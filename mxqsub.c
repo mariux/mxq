@@ -96,6 +96,12 @@ static void print_usage(void)
     "  -N | --group-name <name>          set group name     (default: 'default')\n"
     "  -P | --group-priority <priority>  set group priority (default: 127)\n"
     "\n"
+    "Other options:\n"
+    "\n"
+    "  --debug    set debug log level (default: warning log level)\n"
+    "  --version  print version and exit\n"
+    "  --help     print this help and exit ;)\n"
+    "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
     "  -M | --mysql-default-file [mysql-file]    (default: " MYSQL_DEFAULT_FILE ")\n"
@@ -430,6 +436,8 @@ int main(int argc, char *argv[])
                 BEE_OPTION_REQUIRED_ARG("group-id",       3),
                 BEE_OPTION_REQUIRED_ARG("time",           4),
 
+                BEE_OPTION_NO_ARG("debug",                5),
+
                 BEE_OPTION_REQUIRED_ARG("group-name",     'N'),
                 BEE_OPTION_REQUIRED_ARG("group-priority", 'P'),
 
@@ -500,6 +508,10 @@ int main(int argc, char *argv[])
             case 'h':
                 print_usage();
                 exit(EX_USAGE);
+
+            case 5:
+                mx_log_level_set(MX_LOG_DEBUG);
+                break;
 
             case 'p':
                 if (mx_strtou16(optctl.optarg, &arg_priority) < 0) {
