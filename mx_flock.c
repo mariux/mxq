@@ -43,6 +43,8 @@ static inline int _flock_close(struct mx_flock *lock)
 {
     int res;
 
+    assert(lock);
+
     res = close(lock->fd);
     if (res < 0)
         mx_log_debug("close(): %m");
@@ -73,6 +75,8 @@ struct mx_flock *mx_flock(int operation, char *fmt, ...)
     char *fname;
     int res;
     struct stat s0, s1;
+
+    assert(fmt);
 
     lock = malloc(sizeof(*lock));
     if (!lock) {
@@ -132,9 +136,10 @@ int mx_funlock(struct mx_flock *lock)
 {
     int res;
 
+    assert(lock);
     assert(lock->fname);
     assert(lock->fd >= 0);
-    assert(lock->operation >=0);
+    assert(lock->operation >= 0);
     assert(lock->locked);
 
     res = unlink(lock->fname);
