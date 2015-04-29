@@ -117,6 +117,8 @@ int main(int argc, char *argv[])
 
     arg_group_id = 0;
 
+    mx_log_level_set(MX_LOG_INFO);
+
     bee_getopt_init(&optctl, argc-1, &argv[1], opts);
     optctl.flags = BEE_FLAG_STOPONUNKNOWN|BEE_FLAG_STOPONNOOPT;
 
