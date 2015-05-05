@@ -43,7 +43,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "bee_getopt.h"
+#include "mx_getopt.h"
 
 int bee_getopt_init(struct bee_getopt_ctl *ctl, int argc, char **argv, struct bee_option *optv)
 {

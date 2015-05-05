@@ -12,7 +12,7 @@
 
 #include "mxq_util.h"
 #include "mxq_mysql.h"
-#include "bee_getopt.h"
+#include "mx_getopt.h"
 
 #ifndef MXQ_VERSION
 #define MXQ_VERSION "0.00"

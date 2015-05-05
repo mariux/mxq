@@ -24,7 +24,7 @@
 #include "mxq_mysql.h"
 #include "mxq_util.h"
 #include "mx_util.h"
-#include "bee_getopt.h"
+#include "mx_getopt.h"
 
 
 #define MXQ_TASK_JOB_FORCE_APPEND  (1<<0)

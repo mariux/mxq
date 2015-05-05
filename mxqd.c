@@ -24,7 +24,7 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include "bee_getopt.h"
+#include "mx_getopt.h"
 
 #include "mx_flock.h"
 #include "mx_util.h"
