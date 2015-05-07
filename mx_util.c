@@ -15,6 +15,69 @@
 
 #include "mx_util.h"
 
+static inline int _mx_strbeginswith(char *str, const char *start, char **endptr, short ignore_case)
+{
+    size_t len;
+    int res;
+
+    assert(str);
+    assert(start);
+
+    len = strlen(start);
+    if (ignore_case)
+        res = strncasecmp(str, start, len);
+    else
+        res = strncmp(str, start, len);
+
+    if (res != 0 || !endptr)
+        return !res;
+
+    *endptr  = str + len;
+
+    return 1;
+}
+
+inline int mx_strbeginswith(char *str, const char *start, char **endptr)
+{
+    return _mx_strbeginswith(str, start, endptr, 0);
+}
+
+inline int mx_stribeginswith(char *str, const char *start, char **endptr)
+{
+    return _mx_strbeginswith(str, start, endptr, 1);
+}
+
+static inline int _mx_strbeginswithany(char *str, char **starts, char **endptr, short ignore_case)
+{
+    char **s;
+    char *end;
+    char *longestmatch = NULL;
+    int res;
+
+    for (s = starts; *s; s++) {
+        res = _mx_strbeginswith(str, *s, &end, ignore_case);
+        if (res && (!longestmatch || end > longestmatch))
+            longestmatch = end;
+    }
+
+    if (longestmatch) {
+        *endptr = longestmatch;
+        return 1;
+    }
+
+    return 0;
+}
+
+inline int mx_strbeginswithany(char *str, char **starts, char **endptr)
+{
+    return _mx_strbeginswithany(str, starts, endptr, 0);
+}
+
+inline int mx_stribeginswithany(char *str, char **starts, char **endptr)
+{
+    return _mx_strbeginswithany(str, starts, endptr, 1);
+}
+
 inline char *mx_strskipwhitespaces(char *str)
 {
     char *s;
