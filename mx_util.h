@@ -4,6 +4,12 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+int mx_strbeginswith(char *str, const char *start, char **endptr);
+int mx_stribeginswith(char *str, const char *start, char **endptr);
+int mx_strbeginswithany(char *str, char **starts, char **endptr);
+
+char *mx_strskipwhitespaces(char *str);
+
 int mx_strtoul(char *str,  unsigned long int *to);
 int mx_strtoull(char *str, unsigned long long int *to);
 

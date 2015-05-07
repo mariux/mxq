@@ -1,8 +1,23 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <string.h>
 
 #include "mx_util.h"
+
+static void test_mx_strskipwhitespaces(void)
+{
+   char *s;
+
+   assert(s = mx_strskipwhitespaces("     abc   "));
+   assert(strcmp(s, "abc   ") == 0);
+
+   assert(s = mx_strskipwhitespaces("abc   "));
+   assert(strcmp(s, "abc   ") == 0);
+
+   assert(s = mx_strskipwhitespaces(""));
+   assert(strcmp(s, "") == 0);
+}
 
 static void test_mx_strtoul(void)
 {
@@ -90,13 +105,91 @@ static void test_mx_strtoi8(void)
     assert(mx_strtoi8("-129", &u) == -ERANGE);
 }
 
+static void test_mx_strbeginswith(void)
+{
+    char *end = NULL;
+
+    assert(mx_strbeginswith("blahblubb", "", NULL));
+
+    assert(mx_strbeginswith("blahblubb", "", &end));
+    assert(strcmp(end, "blahblubb") == 0);
+
+    assert(mx_strbeginswith("BlahBlubb", "Blah", &end));
+    assert(strcmp(end, "Blubb") == 0);
+
+    assert(mx_strbeginswith("blahblubb", "blahblubb", &end));
+    assert(*end == 0);
+
+    end = NULL;
+
+    assert(mx_strbeginswith("blahblubb", "blubb", &end) == 0);
+    assert(end == NULL);
+
+    assert(mx_strbeginswith("blah", "blahblubb", &end) == 0);
+    assert(end == NULL);
+
+    assert(mx_strbeginswith("Blahblubb", "blah", &end) == 0);
+    assert(end == NULL);
+
+    assert(mx_strbeginswith("", "blah", &end) == 0);
+    assert(end == NULL);
+}
+
+static void test_mx_stribeginswith(void)
+{
+    char *end = NULL;
+
+    assert(mx_stribeginswith("blahblubb", "", NULL));
+
+    assert(mx_stribeginswith("blahblubb", "", &end));
+    assert(strcmp(end, "blahblubb") == 0);
+
+    assert(mx_stribeginswith("BlahBlubb", "Blah", &end));
+    assert(strcmp(end, "Blubb") == 0);
+
+    assert(mx_stribeginswith("BlahBlubb", "bLaH", &end));
+    assert(strcmp(end, "Blubb") == 0);
+
+
+    assert(mx_stribeginswith("blahblubb", "BlahBluBB", &end));
+    assert(*end == 0);
+
+    end = NULL;
+
+    assert(mx_stribeginswith("blahblubb", "blubb", &end) == 0);
+    assert(end == NULL);
+
+    assert(mx_stribeginswith("blah", "blahblubb", &end) == 0);
+    assert(end == NULL);
+
+    assert(mx_stribeginswith("", "blah", &end) == 0);
+    assert(end == NULL);
+}
+
+static void test_mx_strbeginswithany(void)
+{
+    char *end = NULL;
+
+    assert(mx_strbeginswithany("blahblubb", (char *[]){ "bla", "blah", NULL }, &end));
+    assert(strcmp(end, "blubb") == 0);
+
+    assert(mx_strbeginswithany("blablubb", (char *[]){ "bla", "blah", NULL }, &end));
+    assert(strcmp(end, "blubb") == 0);
+
+    end = NULL;
+    assert(mx_strbeginswithany("blubb", (char *[]){ "bla", "blah", NULL }, &end) == 0);
+    assert(end == NULL);
+}
 
 int main(int argc, char *argv[])
 {
+    test_mx_strskipwhitespaces();
     test_mx_strtoul();
     test_mx_strtoull();
     test_mx_strtou8();
     test_mx_strtoi8();
-
+    test_mx_strbeginswith();
+    test_mx_stribeginswith();
+    test_mx_strbeginswithany();
     return 0;
 }

@@ -15,12 +15,90 @@
 
 #include "mx_util.h"
 
+static inline int _mx_strbeginswith(char *str, const char *start, char **endptr, short ignore_case)
+{
+    size_t len;
+    int res;
+
+    assert(str);
+    assert(start);
+
+    len = strlen(start);
+    if (ignore_case)
+        res = strncasecmp(str, start, len);
+    else
+        res = strncmp(str, start, len);
+
+    if (res != 0 || !endptr)
+        return !res;
+
+    *endptr  = str + len;
+
+    return 1;
+}
+
+inline int mx_strbeginswith(char *str, const char *start, char **endptr)
+{
+    return _mx_strbeginswith(str, start, endptr, 0);
+}
+
+inline int mx_stribeginswith(char *str, const char *start, char **endptr)
+{
+    return _mx_strbeginswith(str, start, endptr, 1);
+}
+
+static inline int _mx_strbeginswithany(char *str, char **starts, char **endptr, short ignore_case)
+{
+    char **s;
+    char *end;
+    char *longestmatch = NULL;
+    int res;
+
+    for (s = starts; *s; s++) {
+        res = _mx_strbeginswith(str, *s, &end, ignore_case);
+        if (res && (!longestmatch || end > longestmatch))
+            longestmatch = end;
+    }
+
+    if (longestmatch) {
+        *endptr = longestmatch;
+        return 1;
+    }
+
+    return 0;
+}
+
+inline int mx_strbeginswithany(char *str, char **starts, char **endptr)
+{
+    return _mx_strbeginswithany(str, starts, endptr, 0);
+}
+
+inline int mx_stribeginswithany(char *str, char **starts, char **endptr)
+{
+    return _mx_strbeginswithany(str, starts, endptr, 1);
+}
+
+inline char *mx_strskipwhitespaces(char *str)
+{
+    char *s;
+
+    assert(str);
+
+    for (s = str; *s && *s == ' '; s++)
+        /* empty */;
+
+    return s;
+}
+
 /* wrapper unsigned */
 
 inline int mx_strtoul(char *str, unsigned long int *to)
 {
     unsigned long int ul;
     char *end;
+
+    assert(str);
+    assert(to);
 
     errno = 0;
 
@@ -29,8 +107,7 @@ inline int mx_strtoul(char *str, unsigned long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);
@@ -48,6 +125,9 @@ inline int mx_strtoull(char *str, unsigned long long int *to)
     unsigned long long int ull;
     char *end;
 
+    assert(str);
+    assert(to);
+
     errno = 0;
 
     ull = strtoull(str, &end, 0);
@@ -55,8 +135,7 @@ inline int mx_strtoull(char *str, unsigned long long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);
@@ -76,6 +155,9 @@ inline int mx_strtol(char *str, signed long int *to)
     long int l;
     char *end;
 
+    assert(str);
+    assert(to);
+
     errno = 0;
 
     l = strtoul(str, &end, 0);
@@ -83,8 +165,7 @@ inline int mx_strtol(char *str, signed long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);
@@ -99,6 +180,9 @@ inline int mx_strtoll(char *str, signed long long int *to)
     long long int ll;
     char *end;
 
+    assert(str);
+    assert(to);
+
     errno = 0;
 
     ll = strtoll(str, &end, 0);
@@ -106,8 +190,7 @@ inline int mx_strtoll(char *str, signed long long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);
@@ -124,6 +207,9 @@ int mx_strtoui(char *str, unsigned int *to)
     unsigned long int ul;
     char *end;
     int res;
+
+    assert(str);
+    assert(to);
 
     res = mx_strtoul(str, &ul);
     if (res < 0)
@@ -143,6 +229,9 @@ int mx_strtou8(char *str, uint8_t *to)
     char *end;
     int res;
 
+    assert(str);
+    assert(to);
+
     res = mx_strtoul(str, &ul);
     if (res < 0)
         return res;
@@ -160,6 +249,9 @@ int mx_strtou16(char *str, uint16_t *to)
     unsigned long int ul;
     char *end;
     int res;
+
+    assert(str);
+    assert(to);
 
     res = mx_strtoul(str, &ul);
     if (res < 0)
@@ -179,6 +271,9 @@ int mx_strtou32(char *str, uint32_t *to)
     char *end;
     int res;
 
+    assert(str);
+    assert(to);
+
     res = mx_strtoul(str, &ul);
     if (res < 0)
         return res;
@@ -196,6 +291,9 @@ int mx_strtou64(char *str, uint64_t *to)
     unsigned long long int ull;
     char *end;
     int res;
+
+    assert(str);
+    assert(to);
 
     res = mx_strtoull(str, &ull);
     if (res < 0)
@@ -217,6 +315,9 @@ int mx_strtoi(char *str, signed int *to)
     char *end;
     int res;
 
+    assert(str);
+    assert(to);
+
     res = mx_strtol(str, &l);
     if (res < 0)
         return res;
@@ -234,6 +335,9 @@ int mx_strtoi8(char *str, int8_t *to)
     signed long int l;
     char *end;
     int res;
+
+    assert(str);
+    assert(to);
 
     res = mx_strtol(str, &l);
     if (res < 0)
@@ -253,6 +357,9 @@ int mx_strtoi16(char *str, int16_t *to)
     char *end;
     int res;
 
+    assert(str);
+    assert(to);
+
     res = mx_strtol(str, &l);
     if (res < 0)
         return res;
@@ -271,6 +378,9 @@ int mx_strtoi32(char *str, int32_t *to)
     char *end;
     int res;
 
+    assert(str);
+    assert(to);
+
     res = mx_strtol(str, &l);
     if (res < 0)
         return res;
@@ -288,6 +398,9 @@ int mx_strtoi64(char *str, int64_t *to)
     signed long long int ll;
     char *end;
     int res;
+
+    assert(str);
+    assert(to);
 
     res = mx_strtoll(str, &ll);
     if (res < 0)
@@ -344,6 +457,7 @@ char *mx_dirname(char *path)
     char *result;
 
     assert(path);
+
     tmp = strdup(path);
     if (!tmp)
         return NULL;
@@ -362,6 +476,8 @@ char *mx_dirname(char *path)
 char *mx_dirname_forever(char *path)
 {
     char *dname;
+
+    assert(path);
 
     do {
         dname = mx_dirname(path);
