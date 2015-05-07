@@ -15,6 +15,18 @@
 
 #include "mx_util.h"
 
+inline char *mx_strskipwhitespaces(char *str)
+{
+    char *s;
+
+    assert(str);
+
+    for (s = str; *s && *s == ' '; s++)
+        /* empty */;
+
+    return s;
+}
+
 /* wrapper unsigned */
 
 inline int mx_strtoul(char *str, unsigned long int *to)
@@ -32,8 +44,7 @@ inline int mx_strtoul(char *str, unsigned long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);
@@ -61,8 +72,7 @@ inline int mx_strtoull(char *str, unsigned long long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);
@@ -92,8 +102,7 @@ inline int mx_strtol(char *str, signed long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);
@@ -118,8 +127,7 @@ inline int mx_strtoll(char *str, signed long long int *to)
     if (errno)
         return -errno;
 
-    for (;*end && *end == ' '; end++)
-        /* empty */;
+    end = mx_strskipwhitespaces(end);
 
     if (!end || str == end || *end)
         return -(errno=EINVAL);

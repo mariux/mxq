@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+char *mx_strskipwhitespaces(char *str);
+
 int mx_strtoul(char *str,  unsigned long int *to);
 int mx_strtoull(char *str, unsigned long long int *to);
 

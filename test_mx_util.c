@@ -1,8 +1,23 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <string.h>
 
 #include "mx_util.h"
+
+static void test_mx_strskipwhitespaces(void)
+{
+   char *s;
+
+   assert(s = mx_strskipwhitespaces("     abc   "));
+   assert(strcmp(s, "abc   ") == 0);
+
+   assert(s = mx_strskipwhitespaces("abc   "));
+   assert(strcmp(s, "abc   ") == 0);
+
+   assert(s = mx_strskipwhitespaces(""));
+   assert(strcmp(s, "") == 0);
+}
 
 static void test_mx_strtoul(void)
 {
@@ -93,6 +108,7 @@ static void test_mx_strtoi8(void)
 
 int main(int argc, char *argv[])
 {
+    test_mx_strskipwhitespaces();
     test_mx_strtoul();
     test_mx_strtoull();
     test_mx_strtou8();
