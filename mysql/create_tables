@@ -7,6 +7,10 @@ ALTER TABLE mxq_group
    ADD COLUMN group_jobs_cancelled INT8 UNSIGNED NOT NULL DEFAULT 0
    AFTER group_jobs_failed;
 
+ALTER TABLE mxq_group
+   ADD COLUMN group_jobs_unknown INT8 UNSIGNED NOT NULL DEFAULT 0
+   AFTER group_jobs_cancelled;
+
 DROP TRIGGER mxq_update_group;
 
 DROP TABLE mxq_group;
@@ -32,6 +36,7 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    group_jobs_finished  INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_jobs_failed    INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_jobs_cancelled INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_unknown   INT8 UNSIGNED NOT NULL DEFAULT 0,
 
    group_slots_running INT8 UNSIGNED NOT NULL DEFAULT 0,
 
@@ -135,6 +140,13 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
         ELSEIF NEW.job_status = 990 AND OLD.job_status = 0 THEN
             UPDATE mxq_group SET
                group_jobs_cancelled=group_jobs_cancelled+1,
+               group_mtime=NULL
+            WHERE group_id=NEW.group_id;
+        ELSEIF NEW.job_status = 999 AND OLD.job_status IN (200, 250) THEN
+            UPDATE mxq_group SET
+               group_slots_running=group_slots_running-NEW.host_slots,
+               group_jobs_running=group_jobs_running-1,
+               group_jobs_unknown=group_jobs_unknown+1,
                group_mtime=NULL
             WHERE group_id=NEW.group_id;
         ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (200, 250, 300, 350) THEN
