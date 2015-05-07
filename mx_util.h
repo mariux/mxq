@@ -43,4 +43,7 @@ int mx_setenvf_forever(const char *name, char *fmt, ...) __attribute__ ((format(
 
 int mx_open_newfile(char *fname);
 
+int mx_sleep(unsigned int seconds);
+int mx_sleep_nofail(unsigned int seconds);
+
 #endif
