@@ -1,5 +1,7 @@
 
-
+ALTER TABLE mxq_job
+   ADD COLUMN job_flags INT8 UNSIGNED NOT NULL DEFAULT 0
+   AFTER job_status;
 
 ALTER TABLE mxq_group
    ADD COLUMN group_jobs_cancelled INT8 UNSIGNED NOT NULL DEFAULT 0
@@ -49,6 +51,7 @@ DROP TABLE mxq_job;
 CREATE TABLE IF NOT EXISTS mxq_job (
    job_id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
    job_status     INT2 UNSIGNED   NOT NULL DEFAULT 0,
+   job_flags      INT8 UNSIGNED   NOT NULL DEFAULT 0,
    job_priority   INT2 UNSIGNED   NOT NULL DEFAULT 127,
 
    group_id       INT8 UNSIGNED   NOT NULL,

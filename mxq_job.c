@@ -20,6 +20,7 @@
 
 #define MXQ_JOB_FIELDS "job_id, " \
                 "job_status, " \
+                "job_flags, " \
                 "job_priority, " \
                 "group_id, " \
                 "job_workdir, " \
@@ -55,6 +56,7 @@
 enum mxq_job_columns {
     MXQ_JOB_COL_JOB_ID,
     MXQ_JOB_COL_JOB_STATUS,
+    MXQ_JOB_COL_JOB_FLAGS,
     MXQ_JOB_COL_JOB_PRIORITY,
     MXQ_JOB_COL_GROUP_ID,
     MXQ_JOB_COL_JOB_WORKDIR,
@@ -95,6 +97,7 @@ static inline int mxq_job_bind_results(MYSQL_BIND *bind, struct mxq_job *j)
 
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_JOB_COL_JOB_ID,       &j->job_id);
     MXQ_MYSQL_BIND_UINT16(bind, MXQ_JOB_COL_JOB_STATUS,   &j->job_status);
+    MXQ_MYSQL_BIND_UINT64(bind, MXQ_JOB_COL_JOB_FLAGS,    &j->job_flags);
     MXQ_MYSQL_BIND_UINT16(bind, MXQ_JOB_COL_JOB_PRIORITY, &j->job_priority);
 
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_JOB_COL_GROUP_ID, &j->group_id);
