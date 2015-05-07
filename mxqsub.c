@@ -426,38 +426,38 @@ int main(int argc, char *argv[])
     struct group  *grp;
 
     int opt;
-    struct bee_getopt_ctl optctl;
-    struct bee_option opts[] = {
-                BEE_OPTION_NO_ARG("help",                 'h'),
-                BEE_OPTION_NO_ARG("version",              'V'),
+    struct mx_getopt_ctl optctl;
+    struct mx_option opts[] = {
+                MX_OPTION_NO_ARG("help",                 'h'),
+                MX_OPTION_NO_ARG("version",              'V'),
 
-                BEE_OPTION_REQUIRED_ARG("group_id",       1),
-                BEE_OPTION_REQUIRED_ARG("group_priority", 2),
-                BEE_OPTION_REQUIRED_ARG("group-id",       3),
-                BEE_OPTION_REQUIRED_ARG("time",           4),
+                MX_OPTION_REQUIRED_ARG("group_id",       1),
+                MX_OPTION_REQUIRED_ARG("group_priority", 2),
+                MX_OPTION_REQUIRED_ARG("group-id",       3),
+                MX_OPTION_REQUIRED_ARG("time",           4),
 
-                BEE_OPTION_NO_ARG("debug",                5),
+                MX_OPTION_NO_ARG("debug",                5),
 
-                BEE_OPTION_REQUIRED_ARG("group-name",     'N'),
-                BEE_OPTION_REQUIRED_ARG("group-priority", 'P'),
+                MX_OPTION_REQUIRED_ARG("group-name",     'N'),
+                MX_OPTION_REQUIRED_ARG("group-priority", 'P'),
 
-                BEE_OPTION_REQUIRED_ARG("command-alias", 'a'),
+                MX_OPTION_REQUIRED_ARG("command-alias", 'a'),
 
-                BEE_OPTION_REQUIRED_ARG("workdir",      'w'),
-                BEE_OPTION_REQUIRED_ARG("stdout",       'o'),
-                BEE_OPTION_REQUIRED_ARG("stderr",       'e'),
-                BEE_OPTION_REQUIRED_ARG("umask",        'u'),
-                BEE_OPTION_REQUIRED_ARG("priority",     'p'),
+                MX_OPTION_REQUIRED_ARG("workdir",      'w'),
+                MX_OPTION_REQUIRED_ARG("stdout",       'o'),
+                MX_OPTION_REQUIRED_ARG("stderr",       'e'),
+                MX_OPTION_REQUIRED_ARG("umask",        'u'),
+                MX_OPTION_REQUIRED_ARG("priority",     'p'),
 
-                BEE_OPTION_REQUIRED_ARG("threads",      'j'),
-                BEE_OPTION_REQUIRED_ARG("memory",       'm'),
-                BEE_OPTION_REQUIRED_ARG("runtime",      't'),
+                MX_OPTION_REQUIRED_ARG("threads",      'j'),
+                MX_OPTION_REQUIRED_ARG("memory",       'm'),
+                MX_OPTION_REQUIRED_ARG("runtime",      't'),
 
-                BEE_OPTION_REQUIRED_ARG("define",       'D'),
+                MX_OPTION_REQUIRED_ARG("define",       'D'),
 
-                BEE_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
-                BEE_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
-                BEE_OPTION_END
+                MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
+                MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
+                MX_OPTION_END
     };
 
 
@@ -492,11 +492,11 @@ int main(int argc, char *argv[])
 
     /******************************************************************/
 
-    bee_getopt_init(&optctl, argc-1, &argv[1], opts);
-    optctl.flags = BEE_FLAG_STOPONUNKNOWN|BEE_FLAG_STOPONNOOPT;
+    mx_getopt_init(&optctl, argc-1, &argv[1], opts);
+    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
 
-    while ((opt=bee_getopt(&optctl, &i)) != BEE_GETOPT_END) {
-        if (opt == BEE_GETOPT_ERROR) {
+    while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
+        if (opt == MX_GETOPT_ERROR) {
             exit(EX_USAGE);
         }
 
@@ -613,7 +613,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    BEE_GETOPT_FINISH(optctl, argc, argv);
+    MX_GETOPT_FINISH(optctl, argc, argv);
     if (argc < 1) {
         print_usage();
         exit(EX_USAGE);

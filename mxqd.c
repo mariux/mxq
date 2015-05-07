@@ -209,20 +209,20 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     unsigned long memory_max   = 0;
     int i;
 
-    struct bee_getopt_ctl optctl;
-    struct bee_option opts[] = {
-                BEE_OPTION_NO_ARG("help",               'h'),
-                BEE_OPTION_NO_ARG("version",            'V'),
-                BEE_OPTION_NO_ARG("daemonize",            1),
-                BEE_OPTION_NO_ARG("no-log",               3),
-                BEE_OPTION_REQUIRED_ARG("pid-file",       2),
-                BEE_OPTION_REQUIRED_ARG("slots",        'j'),
-                BEE_OPTION_REQUIRED_ARG("memory",       'm'),
-                BEE_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
-                BEE_OPTION_REQUIRED_ARG("server-id",    'N'),
-                BEE_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
-                BEE_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
-                BEE_OPTION_END
+    struct mx_getopt_ctl optctl;
+    struct mx_option opts[] = {
+                MX_OPTION_NO_ARG("help",               'h'),
+                MX_OPTION_NO_ARG("version",            'V'),
+                MX_OPTION_NO_ARG("daemonize",            1),
+                MX_OPTION_NO_ARG("no-log",               3),
+                MX_OPTION_REQUIRED_ARG("pid-file",       2),
+                MX_OPTION_REQUIRED_ARG("slots",        'j'),
+                MX_OPTION_REQUIRED_ARG("memory",       'm'),
+                MX_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
+                MX_OPTION_REQUIRED_ARG("server-id",    'N'),
+                MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
+                MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
+                MX_OPTION_END
     };
 
     arg_server_id = "main";
@@ -235,13 +235,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (!arg_mysql_default_file)
         arg_mysql_default_file = MYSQL_DEFAULT_FILE;
 
-    bee_getopt_init(&optctl, argc-1, &argv[1], opts);
+    mx_getopt_init(&optctl, argc-1, &argv[1], opts);
 
-    optctl.flags = BEE_FLAG_STOPONUNKNOWN|BEE_FLAG_STOPONNOOPT;
-//    optctl.flags = BEE_FLAG_STOPONUNKNOWN;
+    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
+//    optctl.flags = MX_FLAG_STOPONUNKNOWN;
 
-    while ((opt=bee_getopt(&optctl, &i)) != BEE_GETOPT_END) {
-        if (opt == BEE_GETOPT_ERROR) {
+    while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
+        if (opt == MX_GETOPT_ERROR) {
             exit(EX_USAGE);
         }
 
@@ -305,7 +305,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
     }
 
-    BEE_GETOPT_FINISH(optctl, argc, argv);
+    MX_GETOPT_FINISH(optctl, argc, argv);
 
     if (arg_daemonize && arg_nolog) {
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");

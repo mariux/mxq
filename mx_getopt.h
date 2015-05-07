@@ -21,125 +21,125 @@
 ** along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef BEE_GETOPT_H
-#define BEE_GETOPT_H 1
+#ifndef MX_GETOPT_H
+#define MX_GETOPT_H 1
 
-#define BEE_TYPE_STRING     1
-#define BEE_TYPE_INTEGER    2
-#define BEE_TYPE_FLOAT      3
-#define BEE_TYPE_FLAG       4
-#define BEE_TYPE_NO         5
-#define BEE_TYPE_ENABLE     6
-#define BEE_TYPE_WITH       7
-#define BEE_TYPE_TOGGLE     8
-#define BEE_TYPE_COUNT      9
+#define MX_TYPE_STRING     1
+#define MX_TYPE_INTEGER    2
+#define MX_TYPE_FLOAT      3
+#define MX_TYPE_FLAG       4
+#define MX_TYPE_NO         5
+#define MX_TYPE_ENABLE     6
+#define MX_TYPE_WITH       7
+#define MX_TYPE_TOGGLE     8
+#define MX_TYPE_COUNT      9
 
-#define BEE_FLAG_SKIPUNKNOWN   (1<<0)
-#define BEE_FLAG_STOPONNOOPT   (1<<1)
-#define BEE_FLAG_STOPONUNKNOWN (1<<2)
-#define BEE_FLAG_KEEPOPTIONEND (1<<3)
+#define MX_FLAG_SKIPUNKNOWN   (1<<0)
+#define MX_FLAG_STOPONNOOPT   (1<<1)
+#define MX_FLAG_STOPONUNKNOWN (1<<2)
+#define MX_FLAG_KEEPOPTIONEND (1<<3)
 
-#define BEE_OPT_LONG(name)     .long_opt      = (name)
-#define BEE_OPT_SHORT(short)   .short_opt     = (short)
-#define BEE_OPT_VALUE(v)       .value         = (v)
-#define BEE_OPT_FLAG(f)        .flag          = (f)
-#define BEE_OPT_TYPE(t)        .type          = (t)
-#define BEE_OPT_OPTIONAL(args) .optional_args = (args)
-#define BEE_OPT_REQUIRED(args) .required_args = (args)
-#define _BEE_OPT_LEN(l)        ._long_len     = (l)
+#define MX_OPT_LONG(name)     .long_opt      = (name)
+#define MX_OPT_SHORT(short)   .short_opt     = (short)
+#define MX_OPT_VALUE(v)       .value         = (v)
+#define MX_OPT_FLAG(f)        .flag          = (f)
+#define MX_OPT_TYPE(t)        .type          = (t)
+#define MX_OPT_OPTIONAL(args) .optional_args = (args)
+#define MX_OPT_REQUIRED(args) .required_args = (args)
+#define _MX_OPT_LEN(l)        ._long_len     = (l)
 
-#define BEE_GETOPT_END        -1
-#define BEE_GETOPT_ERROR      -2
-#define BEE_GETOPT_NOVALUE    -3
-#define BEE_GETOPT_NOOPT      -4
-#define BEE_GETOPT_AMBIGUOUS  -5
-#define BEE_GETOPT_OPTUNKNOWN -6
-#define BEE_GETOPT_NOARG      -7
-#define BEE_GETOPT_NOARGS     -8
+#define MX_GETOPT_END        -1
+#define MX_GETOPT_ERROR      -2
+#define MX_GETOPT_NOVALUE    -3
+#define MX_GETOPT_NOOPT      -4
+#define MX_GETOPT_AMBIGUOUS  -5
+#define MX_GETOPT_OPTUNKNOWN -6
+#define MX_GETOPT_NOARG      -7
+#define MX_GETOPT_NOARGS     -8
 
-#define BEE_OPTION_DEFAULTS \
-            BEE_OPT_LONG(NULL), \
-            BEE_OPT_SHORT(0), \
-            BEE_OPT_VALUE(BEE_GETOPT_NOVALUE), \
-            BEE_OPT_FLAG(NULL), \
-            BEE_OPT_TYPE(BEE_TYPE_FLAG), \
-            BEE_OPT_OPTIONAL(0), \
-            BEE_OPT_REQUIRED(0), \
-            _BEE_OPT_LEN(0)
+#define MX_OPTION_DEFAULTS \
+            MX_OPT_LONG(NULL), \
+            MX_OPT_SHORT(0), \
+            MX_OPT_VALUE(MX_GETOPT_NOVALUE), \
+            MX_OPT_FLAG(NULL), \
+            MX_OPT_TYPE(MX_TYPE_FLAG), \
+            MX_OPT_OPTIONAL(0), \
+            MX_OPT_REQUIRED(0), \
+            _MX_OPT_LEN(0)
 
 
-#define BEE_INIT_OPTION_DEFAULTS(opt) \
+#define MX_INIT_OPTION_DEFAULTS(opt) \
             (opt)->long_opt  = NULL; \
             (opt)->short_opt = 0; \
-            (opt)->value = BEE_GETOPT_NOVALUE; \
+            (opt)->value = MX_GETOPT_NOVALUE; \
             (opt)->flag = NULL; \
-            (opt)->type = BEE_TYPE_FLAG; \
+            (opt)->type = MX_TYPE_FLAG; \
             (opt)->optional_args = 0; \
             (opt)->required_args = 0; \
             (opt)->_long_len = 0
 
 
-#define BEE_INIT_OPTION_END(opt) BEE_INIT_OPTION_DEFAULTS((opt))
+#define MX_INIT_OPTION_END(opt) MX_INIT_OPTION_DEFAULTS((opt))
 
 
-#define BEE_OPTION_END { BEE_OPT_LONG(NULL), BEE_OPT_SHORT(0) }
+#define MX_OPTION_END { MX_OPT_LONG(NULL), MX_OPT_SHORT(0) }
 
-#define BEE_OPTION(...) { BEE_OPTION_DEFAULTS, ## __VA_ARGS__ }
+#define MX_OPTION(...) { MX_OPTION_DEFAULTS, ## __VA_ARGS__ }
 
-#define BEE_OPTION_NO_ARG(name, short, ...) \
-            BEE_OPTION(BEE_OPT_LONG(name), \
-                       BEE_OPT_SHORT(short), \
-                       BEE_OPT_VALUE(short), \
+#define MX_OPTION_NO_ARG(name, short, ...) \
+            MX_OPTION(MX_OPT_LONG(name), \
+                       MX_OPT_SHORT(short), \
+                       MX_OPT_VALUE(short), \
                        ## __VA_ARGS__)
 
-#define BEE_OPTION_REQUIRED_ARG(name, short, ...) \
-            BEE_OPTION(BEE_OPT_LONG(name), \
-                       BEE_OPT_SHORT(short), \
-                       BEE_OPT_VALUE(short), \
-                       BEE_OPT_TYPE(BEE_TYPE_STRING), \
-                       BEE_OPT_REQUIRED(1), \
+#define MX_OPTION_REQUIRED_ARG(name, short, ...) \
+            MX_OPTION(MX_OPT_LONG(name), \
+                       MX_OPT_SHORT(short), \
+                       MX_OPT_VALUE(short), \
+                       MX_OPT_TYPE(MX_TYPE_STRING), \
+                       MX_OPT_REQUIRED(1), \
                        ## __VA_ARGS__ )
 
-#define BEE_OPTION_REQUIRED_ARGS(name, short, n, ...) \
-            BEE_OPTION(BEE_OPT_LONG(name), \
-                       BEE_OPT_SHORT(short), \
-                       BEE_OPT_VALUE(short), \
-                       BEE_OPT_TYPE(BEE_TYPE_STRING), \
-                       BEE_OPT_REQUIRED(n), \
+#define MX_OPTION_REQUIRED_ARGS(name, short, n, ...) \
+            MX_OPTION(MX_OPT_LONG(name), \
+                       MX_OPT_SHORT(short), \
+                       MX_OPT_VALUE(short), \
+                       MX_OPT_TYPE(MX_TYPE_STRING), \
+                       MX_OPT_REQUIRED(n), \
                        ## __VA_ARGS__ )
 
-#define BEE_OPTION_OPTIONAL_ARG(name, short, ...) \
-            BEE_OPTION(BEE_OPT_LONG(name), \
-                       BEE_OPT_SHORT(short), \
-                       BEE_OPT_VALUE(short), \
-                       BEE_OPT_TYPE(BEE_TYPE_STRING), \
-                       BEE_OPT_OPTIONAL(1), \
+#define MX_OPTION_OPTIONAL_ARG(name, short, ...) \
+            MX_OPTION(MX_OPT_LONG(name), \
+                       MX_OPT_SHORT(short), \
+                       MX_OPT_VALUE(short), \
+                       MX_OPT_TYPE(MX_TYPE_STRING), \
+                       MX_OPT_OPTIONAL(1), \
                        ## __VA_ARGS__ )
 
-#define BEE_OPTION_OPTIONAL_ARGS(name, short, n, ...) \
-            BEE_OPTION(BEE_OPT_LONG(name), \
-                       BEE_OPT_SHORT(short), \
-                       BEE_OPT_VALUE(short), \
-                       BEE_OPT_TYPE(BEE_TYPE_STRING), \
-                       BEE_OPT_OPTIONAL(n), \
+#define MX_OPTION_OPTIONAL_ARGS(name, short, n, ...) \
+            MX_OPTION(MX_OPT_LONG(name), \
+                       MX_OPT_SHORT(short), \
+                       MX_OPT_VALUE(short), \
+                       MX_OPT_TYPE(MX_TYPE_STRING), \
+                       MX_OPT_OPTIONAL(n), \
                        ## __VA_ARGS__ )
 
-#define BEE_OPTION_ARGS(name, short, opt, req, ...) \
-            BEE_OPTION(BEE_OPT_LONG(name), \
-                       BEE_OPT_SHORT(short), \
-                       BEE_OPT_VALUE(short), \
-                       BEE_OPT_TYPE(BEE_TYPE_STRING), \
-                       BEE_OPT_OPTIONAL(opt), \
-                       BEE_OPT_REQUIRED(req), \
+#define MX_OPTION_ARGS(name, short, opt, req, ...) \
+            MX_OPTION(MX_OPT_LONG(name), \
+                       MX_OPT_SHORT(short), \
+                       MX_OPT_VALUE(short), \
+                       MX_OPT_TYPE(MX_TYPE_STRING), \
+                       MX_OPT_OPTIONAL(opt), \
+                       MX_OPT_REQUIRED(req), \
                        ## __VA_ARGS__ )
 
-#define BEE_GETOPT_FINISH(optctl, argc, argv) \
+#define MX_GETOPT_FINISH(optctl, argc, argv) \
              do { \
                  (argv) = &(optctl).argv[(optctl).optind]; \
                  (argc) = (optctl).argc - (optctl).optind; \
              } while(0)
 
-struct bee_option {
+struct mx_option {
     char *long_opt;
     char  short_opt;
 
@@ -154,7 +154,7 @@ struct bee_option {
     int  _long_len;
 };
 
-struct bee_getopt_ctl {
+struct mx_getopt_ctl {
     int    optind;
 
     char  *program;
@@ -167,7 +167,7 @@ struct bee_getopt_ctl {
     int    argc;
     char **argv;
 
-    struct bee_option *options;
+    struct mx_option *options;
 
     int   _argc;
     int   _optcnt;
@@ -176,12 +176,12 @@ struct bee_getopt_ctl {
     int flags;
 };
 
-void bee_getopt_pop_current_argument(struct bee_getopt_ctl *optctl);
+void mx_getopt_pop_current_argument(struct mx_getopt_ctl *optctl);
 
-int bee_getopt_init(struct bee_getopt_ctl *ctl, int argc, char **argv, struct bee_option *optv);
-int bee_getopt_long(struct bee_getopt_ctl *optctl, int *optindex);
-int bee_getopt(struct bee_getopt_ctl *optctl, int *optindex);
+int mx_getopt_init(struct mx_getopt_ctl *ctl, int argc, char **argv, struct mx_option *optv);
+int mx_getopt_long(struct mx_getopt_ctl *optctl, int *optindex);
+int mx_getopt(struct mx_getopt_ctl *optctl, int *optindex);
 
-void bee_getopt_print_quoted(char *s);
+void mx_getopt_print_quoted(char *s);
 
 #endif

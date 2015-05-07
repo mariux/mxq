@@ -76,14 +76,14 @@ int main(int argc, char *argv[])
     char *arg_mysql_default_file;
 
     int opt;
-    struct bee_getopt_ctl optctl;
-    struct bee_option opts[] = {
-                BEE_OPTION_NO_ARG("help",                 'h'),
-                BEE_OPTION_NO_ARG("version",              'V'),
+    struct mx_getopt_ctl optctl;
+    struct mx_option opts[] = {
+                MX_OPTION_NO_ARG("help",                 'h'),
+                MX_OPTION_NO_ARG("version",              'V'),
 
-                BEE_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
-                BEE_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
-                BEE_OPTION_END
+                MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
+                MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
+                MX_OPTION_END
     };
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
@@ -95,11 +95,11 @@ int main(int argc, char *argv[])
         arg_mysql_default_file = MYSQL_DEFAULT_FILE;
 
 
-    bee_getopt_init(&optctl, argc-1, &argv[1], opts);
-    optctl.flags = BEE_FLAG_STOPONUNKNOWN|BEE_FLAG_STOPONNOOPT;
+    mx_getopt_init(&optctl, argc-1, &argv[1], opts);
+    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
 
-    while ((opt=bee_getopt(&optctl, &i)) != BEE_GETOPT_END) {
-        if (opt == BEE_GETOPT_ERROR) {
+    while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
+        if (opt == MX_GETOPT_ERROR) {
             exit(EX_USAGE);
         }
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    BEE_GETOPT_FINISH(optctl, argc, argv);
+    MX_GETOPT_FINISH(optctl, argc, argv);
 
     mmysql.default_file  = arg_mysql_default_file;
     mmysql.default_group = arg_mysql_default_group;
