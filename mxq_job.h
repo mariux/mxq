@@ -8,7 +8,7 @@
 
 struct mxq_job {
     uint64_t  job_id;
-    uint16_t   job_status;
+    uint16_t  job_status;
     uint64_t  job_flags;
     uint16_t  job_priority;
 
