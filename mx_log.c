@@ -124,6 +124,7 @@ static int log_log(int level, int loglevel, char *file, unsigned long line, cons
             break;
         case MX_LOG_DEBUG:
             prefix = "DEBUG: ";
+            break;
         default:
             return -(errno=EINVAL);
     }
