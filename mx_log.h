@@ -6,9 +6,9 @@
 #define MX_LOG_SYSLOG_TO_MXLOG(x)    ((x)+1)
 #define MX_LOG_MXLOG_TO_SYSLOG(x)    ((x)-1)
 
-#ifndef mx_free_null
-#include <stdlib.h>
-#define mx_free_null(a) do { free((a)); (a) = NULL; } while(0)
+#if !defined mx_free_null
+#   include <stdlib.h>
+#   define mx_free_null(a) do { free((a)); (a) = NULL; } while(0)
 #endif
 
 #define MX_LOG_NONE    0
