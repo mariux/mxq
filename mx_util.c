@@ -594,3 +594,16 @@ int mx_open_newfile(char *fname)
 
     return fh;
 }
+
+int mx_sleep(unsigned int seconds)
+{
+    if (seconds)
+        return sleep(seconds);
+    return 0;
+}
+
+int mx_sleep_nofail(unsigned int seconds)
+{
+    mx_sleep(seconds);
+    return 1;
+}
