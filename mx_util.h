@@ -33,6 +33,8 @@
             } while (0)
 #endif
 
+#define mx_debug_value(fmt, v)  mx_log_debug("mx_debug_value: " #v " = " fmt, v)
+
 #undef mx_free_null
 #define mx_free_null(a) do { free(a); (a) = NULL; } while(0)
 
