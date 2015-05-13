@@ -1,8 +1,12 @@
 #ifndef __MX_UTIL_H__
 #define __MX_UTIL_H__ 1
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdarg.h>
+
+#undef mx_free_null
+#define mx_free_null(a) do { free(a); (a) = NULL; } while(0)
 
 int mx_strbeginswith(char *str, const char *start, char **endptr);
 int mx_stribeginswith(char *str, const char *start, char **endptr);
