@@ -5,6 +5,34 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+#include "mx_log.h"
+
+#ifdef MX_NDEBUG
+#   include <assert.h>
+#   define mx_assert_return_minus_errno(test, eno) \
+        assert(test)
+#   define mx_assert_return_NULL(test, eno) \
+        assert(test)
+#else
+#   define mx_assert_return_minus_errno(test, eno) \
+            do {\
+                if (!(test)) {\
+                    errno=(eno);\
+                    mx_log_debug("Assertion '" #test "' failed. Returning -(errno=" #eno ") [%d]: %m", -errno);\
+                    return -errno;\
+                }\
+            } while (0)
+
+#   define mx_assert_return_NULL(test, eno) \
+            do {\
+                if (!(test)) {\
+                    errno=(eno);\
+                    mx_log_debug("Assertion '" #test "' failed. Setting errno=" #eno " [%d] and returning NULL: %m", errno);\
+                    return NULL;\
+                }\
+            } while (0)
+#endif
+
 #undef mx_free_null
 #define mx_free_null(a) do { free(a); (a) = NULL; } while(0)
 
