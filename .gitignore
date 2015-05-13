@@ -1,4 +1,4 @@
-bee_getopt.o
+mx_getopt.o
 mx_flock.o
 mx_log.o
 mx_util.o

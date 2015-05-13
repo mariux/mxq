@@ -43,9 +43,9 @@
 #include <string.h>
 #include <assert.h>
 
-#include "bee_getopt.h"
+#include "mx_getopt.h"
 
-int bee_getopt_init(struct bee_getopt_ctl *ctl, int argc, char **argv, struct bee_option *optv)
+int mx_getopt_init(struct mx_getopt_ctl *ctl, int argc, char **argv, struct mx_option *optv)
 {
     int err = 0;
 
@@ -67,8 +67,8 @@ int bee_getopt_init(struct bee_getopt_ctl *ctl, int argc, char **argv, struct be
     for(ctl->_optcnt=0; optv[ctl->_optcnt].long_opt || optv[ctl->_optcnt].short_opt; ctl->_optcnt++) {
         if(optv[ctl->_optcnt].long_opt)
             optv[ctl->_optcnt]._long_len = strlen(optv[ctl->_optcnt].long_opt);
-        if(optv[ctl->_optcnt].value < 0 && optv[ctl->_optcnt].value != BEE_GETOPT_NOVALUE) {
-            fprintf(stderr, "*** bee_getopt_init() ERROR: negative value (%d) set for opt %d (long: %s, short: %c)\n", ctl->_optcnt, optv[ctl->_optcnt].value, optv[ctl->_optcnt].long_opt, optv[ctl->_optcnt].short_opt);
+        if(optv[ctl->_optcnt].value < 0 && optv[ctl->_optcnt].value != MX_GETOPT_NOVALUE) {
+            fprintf(stderr, "*** mx_getopt_init() ERROR: negative value (%d) set for opt %d (long: %s, short: %c)\n", ctl->_optcnt, optv[ctl->_optcnt].value, optv[ctl->_optcnt].long_opt, optv[ctl->_optcnt].short_opt);
             err++;
         }
     }
@@ -81,7 +81,7 @@ int bee_getopt_init(struct bee_getopt_ctl *ctl, int argc, char **argv, struct be
     return err?0:1;
 }
 
-static int find_long_option_by_name(struct bee_option *options, char *name, char **optarg)
+static int find_long_option_by_name(struct mx_option *options, char *name, char **optarg)
 {
     int i = 0;
 
@@ -114,10 +114,10 @@ static int find_long_option_by_name(struct bee_option *options, char *name, char
     }
 
     /* not match found */
-    return BEE_GETOPT_OPTUNKNOWN;
+    return MX_GETOPT_OPTUNKNOWN;
 }
 
-static int find_short_option(struct bee_option *options, char **name, char **optarg)
+static int find_short_option(struct mx_option *options, char **name, char **optarg)
 {
    char short_opt;
    int i;
@@ -144,7 +144,7 @@ static int find_short_option(struct bee_option *options, char **name, char **opt
     if (idx == -1) {
         /* reset unhandled options */
         *name = NULL;
-        return BEE_GETOPT_OPTUNKNOWN;
+        return MX_GETOPT_OPTUNKNOWN;
     }
 
     /* skip this short option */
@@ -162,7 +162,7 @@ static int find_short_option(struct bee_option *options, char **name, char **opt
     return idx;
 }
 
-static int find_long_option_by_subname(struct bee_option *options, char *name, char **optarg)
+static int find_long_option_by_subname(struct mx_option *options, char *name, char **optarg)
 {
     int   i;
     int   l;
@@ -197,7 +197,7 @@ static int find_long_option_by_subname(struct bee_option *options, char *name, c
 
         if (idx >= 0) {
             if (options[i].value != options[idx].value)
-                return BEE_GETOPT_AMBIGUOUS;
+                return MX_GETOPT_AMBIGUOUS;
         } else {
             idx = i;
         }
@@ -205,7 +205,7 @@ static int find_long_option_by_subname(struct bee_option *options, char *name, c
 
     /* return error if option was not found */
     if (idx == -1)
-        return BEE_GETOPT_OPTUNKNOWN;
+        return MX_GETOPT_OPTUNKNOWN;
 
     /* set optarg if assigned */
     if (s && optarg)
@@ -214,9 +214,9 @@ static int find_long_option_by_subname(struct bee_option *options, char *name, c
     return idx;
 }
 
-static int handle_option(struct bee_getopt_ctl *ctl, const int index)
+static int handle_option(struct mx_getopt_ctl *ctl, const int index)
 {
-    struct bee_option *o = &(ctl->options[index]);
+    struct mx_option *o = &(ctl->options[index]);
     int argc;
 
     ctl->optargc = 0;
@@ -232,7 +232,7 @@ static int handle_option(struct bee_getopt_ctl *ctl, const int index)
         if (!ctl->optarg) {
             /* no optarg and no more arguments -> required argument missing */
             if (ctl->optind == ctl->_argc)
-                return (o->required_args == 1)?BEE_GETOPT_NOARG:BEE_GETOPT_NOARGS;
+                return (o->required_args == 1)?MX_GETOPT_NOARG:MX_GETOPT_NOARGS;
 
             /* set optarg to this argument and skip it */
             ctl->optarg = ctl->argv[ctl->optind++];
@@ -249,7 +249,7 @@ static int handle_option(struct bee_getopt_ctl *ctl, const int index)
         if (ctl->optind+argc > ctl->_argc) {
             /* on error: set optargc to number of args available */
             ctl->optargc = ctl->optind - ctl->_argc;
-            return BEE_GETOPT_NOARGS;
+            return MX_GETOPT_NOARGS;
         }
 
         /* all required args are available */
@@ -299,7 +299,7 @@ static int handle_option(struct bee_getopt_ctl *ctl, const int index)
     return o->value;
 }
 
-void bee_getopt_pop_current_argument(struct bee_getopt_ctl *optctl)
+void mx_getopt_pop_current_argument(struct mx_getopt_ctl *optctl)
 {
     int i;
 
@@ -316,13 +316,13 @@ void bee_getopt_pop_current_argument(struct bee_getopt_ctl *optctl)
     optctl->_argc--;
 }
 
-void bee_getopt_pop_all_arguments(struct bee_getopt_ctl *optctl)
+void mx_getopt_pop_all_arguments(struct mx_getopt_ctl *optctl)
 {
     while(optctl->optind < optctl->_argc)
-        bee_getopt_pop_current_argument(optctl);
+        mx_getopt_pop_current_argument(optctl);
 }
 
-static int _bee_getopt_long(struct bee_getopt_ctl *optctl, int *optindex)
+static int _mx_getopt_long(struct mx_getopt_ctl *optctl, int *optindex)
 {
     int this;
 
@@ -332,7 +332,7 @@ static int _bee_getopt_long(struct bee_getopt_ctl *optctl, int *optindex)
     int idx;
 
     if(optctl->optind == optctl->_argc)
-        return BEE_GETOPT_END;
+        return MX_GETOPT_END;
 
     assert(optctl->optind < optctl->_argc);
 
@@ -352,17 +352,17 @@ static int _bee_getopt_long(struct bee_getopt_ctl *optctl, int *optindex)
     /* not an option: pop arguement */
 
     if(!maybe_option) {
-        bee_getopt_pop_current_argument(optctl);
-        return BEE_GETOPT_NOOPT;
+        mx_getopt_pop_current_argument(optctl);
+        return MX_GETOPT_NOOPT;
     }
 
     /* match & skip '--' and pop all remaining arguments */
 
     if(maybe_long && (optctl->argv[this][2] == '\0')) {
-        if(!(optctl->flags & BEE_FLAG_KEEPOPTIONEND))
+        if(!(optctl->flags & MX_FLAG_KEEPOPTIONEND))
             optctl->optind++;
-        bee_getopt_pop_all_arguments(optctl);
-        return BEE_GETOPT_END;
+        mx_getopt_pop_all_arguments(optctl);
+        return MX_GETOPT_END;
     }
 
     /* match long option */
@@ -396,56 +396,56 @@ static int _bee_getopt_long(struct bee_getopt_ctl *optctl, int *optindex)
     return handle_option(optctl, idx);
 }
 
-int bee_getopt_long(struct bee_getopt_ctl *optctl, int *optindex)
+int mx_getopt_long(struct mx_getopt_ctl *optctl, int *optindex)
 {
-    return _bee_getopt_long(optctl, optindex);
+    return _mx_getopt_long(optctl, optindex);
 }
 
-int bee_getopt(struct bee_getopt_ctl *optctl, int *optindex)
+int mx_getopt(struct mx_getopt_ctl *optctl, int *optindex)
 {
     int opt;
 
-    while((opt = _bee_getopt_long(optctl, optindex)) != BEE_GETOPT_END) {
+    while((opt = _mx_getopt_long(optctl, optindex)) != MX_GETOPT_END) {
         switch(opt) {
-            case BEE_GETOPT_NOVALUE:
-                return BEE_GETOPT_NOVALUE;
+            case MX_GETOPT_NOVALUE:
+                return MX_GETOPT_NOVALUE;
 
-            case BEE_GETOPT_NOOPT:
-                if (optctl->flags & BEE_FLAG_STOPONNOOPT) {
-                    bee_getopt_pop_all_arguments(optctl);
-                    return BEE_GETOPT_END;
+            case MX_GETOPT_NOOPT:
+                if (optctl->flags & MX_FLAG_STOPONNOOPT) {
+                    mx_getopt_pop_all_arguments(optctl);
+                    return MX_GETOPT_END;
                 }
                 break;
 
-            case BEE_GETOPT_AMBIGUOUS:
+            case MX_GETOPT_AMBIGUOUS:
                 if (optctl->program)
                     fprintf(stderr, "%s: ", optctl->program);
                 fprintf(stderr, "option '%s' is ambiguous.\n", optctl->argv[optctl->optind]);
-                return BEE_GETOPT_ERROR;
+                return MX_GETOPT_ERROR;
 
-            case BEE_GETOPT_OPTUNKNOWN:
-                if (optctl->flags & BEE_FLAG_STOPONUNKNOWN) {
-                    bee_getopt_pop_all_arguments(optctl);
-                    return BEE_GETOPT_END;
+            case MX_GETOPT_OPTUNKNOWN:
+                if (optctl->flags & MX_FLAG_STOPONUNKNOWN) {
+                    mx_getopt_pop_all_arguments(optctl);
+                    return MX_GETOPT_END;
                 }
-                if (!(optctl->flags & BEE_FLAG_SKIPUNKNOWN)) {
+                if (!(optctl->flags & MX_FLAG_SKIPUNKNOWN)) {
                     if (optctl->program)
                         fprintf(stderr, "%s: ", optctl->program);
                     fprintf(stderr, "unrecognized option '%s'.\n", optctl->argv[optctl->optind]);
-                    return BEE_GETOPT_ERROR;
+                    return MX_GETOPT_ERROR;
                 }
-                bee_getopt_pop_current_argument(optctl);
+                mx_getopt_pop_current_argument(optctl);
                 break;
 
-            case BEE_GETOPT_NOARG:
-            case BEE_GETOPT_NOARGS:
+            case MX_GETOPT_NOARG:
+            case MX_GETOPT_NOARGS:
                 if (optctl->program)
                     fprintf(stderr, "%s: ", optctl->program);
                 if (optctl->options[*optindex].long_opt)
                     fprintf(stderr, "option '--%s' requires an argument.\n", optctl->options[*optindex].long_opt);
                 else
                     fprintf(stderr, "option '-%c' requires an argument.\n", optctl->options[*optindex].short_opt);
-                return BEE_GETOPT_ERROR;
+                return MX_GETOPT_ERROR;
 
             default:
                 assert(opt >= 0);
@@ -456,7 +456,7 @@ int bee_getopt(struct bee_getopt_ctl *optctl, int *optindex)
     return opt;
 }
 
-void bee_getopt_print_quoted(char *s)
+void mx_getopt_print_quoted(char *s)
 {
     putchar('\'');
     while (*s) {
