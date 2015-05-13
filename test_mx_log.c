@@ -64,7 +64,7 @@ static void test_mx_log_level_mxlog_to_syslog(void)
 {
     errno=0;
     assert(mx_log_level_mxlog_to_syslog(MX_LOG_NONE) == -EINVAL);
-    assert(errno == EINVAL);
+    assert(errno == 0);
     assert(mx_log_level_mxlog_to_syslog(MX_LOG_EMERG) == LOG_EMERG);
     assert(mx_log_level_mxlog_to_syslog(MX_LOG_ALERT) == LOG_ALERT);
     assert(mx_log_level_mxlog_to_syslog(MX_LOG_CRIT) == LOG_CRIT);
@@ -79,10 +79,10 @@ static void test_mx_log_level_syslog_to_mxlog(void)
 {
     errno=0;
     assert(mx_log_level_syslog_to_mxlog(LOG_EMERG-1) == -EINVAL);
-    assert(errno == EINVAL);
+    assert(errno == 0);
     errno=0;
     assert(mx_log_level_syslog_to_mxlog(LOG_DEBUG+1) == -EINVAL);
-    assert(errno == EINVAL);
+    assert(errno == 0);
     assert(mx_log_level_syslog_to_mxlog(LOG_EMERG) == MX_LOG_EMERG);
     assert(mx_log_level_syslog_to_mxlog(LOG_ALERT) == MX_LOG_ALERT);
     assert(mx_log_level_syslog_to_mxlog(LOG_CRIT) == MX_LOG_CRIT);
