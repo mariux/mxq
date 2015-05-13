@@ -8,6 +8,8 @@
 
 #define MX_LOG_GET (MX_LOG_NONE-1)
 
+int mx_log_errno = 0;
+
 int mx_log_level_set(int level)
 {
     static int loglevel = MX_LOG_WARNING;
@@ -30,7 +32,7 @@ int mx_log_level_set(int level)
             return oldloglevel;
     }
 
-    return -(errno=EINVAL);
+    return -(mx_log_errno=EINVAL);
 }
 
 int mx_log_level_mxlog_to_syslog(int level)
@@ -38,7 +40,7 @@ int mx_log_level_mxlog_to_syslog(int level)
     level = MX_LOG_MXLOG_TO_SYSLOG(level);
 
     if (level < LOG_EMERG || level > LOG_DEBUG)
-        return -(errno=EINVAL);
+        return -(mx_log_errno=EINVAL);
 
     return level;
 }
@@ -46,7 +48,7 @@ int mx_log_level_mxlog_to_syslog(int level)
 int mx_log_level_syslog_to_mxlog(int level)
 {
     if (level < LOG_EMERG || level > LOG_DEBUG)
-        return -(errno=EINVAL);
+        return -(mx_log_errno=EINVAL);
 
     level = MX_LOG_SYSLOG_TO_MXLOG(level);
 
@@ -71,7 +73,7 @@ int mx_log_printf(const char *fmt, ...)
     va_end(ap);
 
     if (len == -1)
-        return -(errno=ENOMEM);
+        return -(mx_log_errno=ENOMEM);
 
     if (mx_log_print)
         return mx_log_print(msg, len);
@@ -126,7 +128,7 @@ static int log_log(int level, int loglevel, char *file, unsigned long line, cons
             prefix = "DEBUG: ";
             break;
         default:
-            return -(errno=EINVAL);
+            return -(mx_log_errno=EINVAL);
     }
 
     if (loglevel >= MX_LOG_DEBUG)
@@ -142,18 +144,23 @@ int mx_log_do(int level, char *file, unsigned long line, const char *func, const
     char *msg = NULL;
     va_list ap;
     int res;
+    int preserved_errno = errno;
 
     loglevel = mx_log_level_get();
 
-    if (level > loglevel)
+    if (level > loglevel) {
+        errno = preserved_errno;
         return 0;
+    }
 
     va_start(ap, fmt);
     len = vasprintf(&msg, fmt, ap);
     va_end(ap);
 
-    if (len == -1)
-        return -(errno=ENOMEM);
+    if (len == -1) {
+        errno = preserved_errno;
+        return -(mx_log_errno=ENOMEM);
+    }
 
     if (mx_log_log)
         res = mx_log_log(level, loglevel, file, line, func, msg);
@@ -161,6 +168,8 @@ int mx_log_do(int level, char *file, unsigned long line, const char *func, const
         res = log_log(level, loglevel, file, line, func, msg);
 
     mx_free_null(msg);
+
+    errno = preserved_errno;
     return res;
 }
 
