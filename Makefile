@@ -172,6 +172,11 @@ mx_util.h += mx_util.h
 
 mx_flock.h += mx_flock.h
 
+### mx_mysql.h ---------------------------------------------------------
+
+mx_mysql.h += mx_mysql.h
+mx_mysql.h += $(mx_util.h)
+
 ### mxq.h --------------------------------------------------------------
 
 mxq.h += mxq.h
@@ -228,6 +233,16 @@ clean: CLEAN += mx_util.o
 mx_flock.o: $(mx_flock.h)
 
 clean: CLEAN += mx_flock.o
+
+### mx_mysql.o ---------------------------------------------------------
+
+mx_mysql.o: $(mx_mysql.h)
+mx_mysql.o: $(mx_util.h)
+mx_mysql.o: $(mx_log.h)
+mx_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
+mx_mysql.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+
+clean: CLEAN += mx_mysql.o
 
 ### mxq_log.o ----------------------------------------------------------
 
@@ -438,3 +453,12 @@ test_mx_log: mx_log.o
 clean: CLEAN += test_mx_log
 
 test: test_mx_log
+
+test_mx_mysql.o: $(mx_mysql.h)
+clean: CLEAN += test_mx_mysql.o
+
+test_mx_mysql: mx_mysql.o
+test_mx_mysql: mx_log.o
+test_mx_mysql: mx_util.o
+test_mx_mysql: LDLIBS += $(LDLIBS_MYSQL)
+clean: CLEAN += test_mx_mysql
