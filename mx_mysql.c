@@ -504,11 +504,22 @@ int mx_mysql_init(struct mx_mysql **mysql)
 
     m = mx_calloc_forever(1, sizeof(*m));
 
-    res = mx__mysql_init(m);
-    if (res == 0)
-        *mysql = m;
+    do {
+        res = mx__mysql_init(m);
+        if (res == 0)
+            break;
 
-    return res;
+        if (res != -ENOMEM)
+            return res;
+
+        mx_log_debug("mx__mysql_init() failed: %m - retrying (forever) in %d second(s).", MX_CALLOC_FAIL_WAIT_DEFAULT);
+        mx_sleep(MX_CALLOC_FAIL_WAIT_DEFAULT);
+
+    } while (1);
+
+    *mysql = m;
+
+    return 0;
 }
 
 int mx_mysql_option_set_default_file(struct mx_mysql *mysql, char *fname)
@@ -696,9 +707,17 @@ int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt)
     s->param.type  = MX_MYSQL_BIND_TYPE_PARAM;
     s->result.type = MX_MYSQL_BIND_TYPE_RESULT;
 
-    res = mx__mysql_stmt_init(s);
-    if (res < 0)
-        return res;
+    do {
+        res = mx__mysql_stmt_init(s);
+        if (res == 0)
+            break;
+
+        if (res != -ENOMEM)
+            return res;
+
+        mx_log_debug("mx__mysql_stmt_init() failed: %m - retrying (forever) in %d second(s).", MX_CALLOC_FAIL_WAIT_DEFAULT);
+        mx_sleep(MX_CALLOC_FAIL_WAIT_DEFAULT);
+    } while (1);
 
     *stmt = s;
 
