@@ -153,10 +153,10 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
     unsigned int num_rows;
     unsigned int num_fields;
 
-    _cleanup_free_ char *q_group_name  = NULL;
-    _cleanup_free_ char *q_user_name   = NULL;
-    _cleanup_free_ char *q_user_group  = NULL;
-    _cleanup_free_ char *q_job_command = NULL;
+    _mx_cleanup_free_ char *q_group_name  = NULL;
+    _mx_cleanup_free_ char *q_user_name   = NULL;
+    _mx_cleanup_free_ char *q_user_group  = NULL;
+    _mx_cleanup_free_ char *q_job_command = NULL;
 
     struct mxq_group *g;
 
@@ -247,10 +247,10 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
 
 static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
 {
-    _cleanup_free_ char *q_group_name  = NULL;
-    _cleanup_free_ char *q_user        = NULL;
-    _cleanup_free_ char *q_group       = NULL;
-    _cleanup_free_ char *q_command     = NULL;
+    _mx_cleanup_free_ char *q_group_name  = NULL;
+    _mx_cleanup_free_ char *q_user        = NULL;
+    _mx_cleanup_free_ char *q_group       = NULL;
+    _mx_cleanup_free_ char *q_command     = NULL;
 
     int   len;
     int   res;
@@ -310,11 +310,11 @@ static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
 
 static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job *j)
 {
-    _cleanup_free_ char *q_workdir     = NULL;
-    _cleanup_free_ char *q_argv        = NULL;
-    _cleanup_free_ char *q_stdout      = NULL;
-    _cleanup_free_ char *q_stderr      = NULL;
-    _cleanup_free_ char *q_submit_host = NULL;
+    _mx_cleanup_free_ char *q_workdir     = NULL;
+    _mx_cleanup_free_ char *q_argv        = NULL;
+    _mx_cleanup_free_ char *q_stdout      = NULL;
+    _mx_cleanup_free_ char *q_stderr      = NULL;
+    _mx_cleanup_free_ char *q_submit_host = NULL;
 
     int   len;
     int   res;
@@ -411,10 +411,10 @@ int main(int argc, char *argv[])
     char      *arg_mysql_default_file;
     char      *arg_mysql_default_group;
 
-    _cleanup_free_ char *current_workdir = NULL;
-    _cleanup_free_ char *arg_stdout_absolute = NULL;
-    _cleanup_free_ char *arg_stderr_absolute = NULL;
-    _cleanup_free_ char *arg_args = NULL;
+    _mx_cleanup_free_ char *current_workdir = NULL;
+    _mx_cleanup_free_ char *arg_stdout_absolute = NULL;
+    _mx_cleanup_free_ char *arg_stderr_absolute = NULL;
+    _mx_cleanup_free_ char *arg_args = NULL;
 
     int flags = 0;
 
