@@ -414,7 +414,7 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
     int res;
 
     if (!streq(j->job_stdout, "/dev/null")) {
-        _cleanup_free_ char *dir = NULL;
+        _mx_cleanup_free_ char *dir = NULL;
 
         dir = mx_dirname_forever(j->job_stdout);
 
@@ -424,7 +424,7 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
     }
 
     if (!streq(j->job_stderr, "/dev/null")) {
-        _cleanup_free_ char *dir = NULL;
+        _mx_cleanup_free_ char *dir = NULL;
 
         if (streq(j->job_stderr, j->job_stdout)) {
             j->tmp_stderr = j->tmp_stdout;
