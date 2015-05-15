@@ -96,4 +96,12 @@ int mx_open_newfile(char *fname);
 int mx_sleep(unsigned int seconds);
 int mx_sleep_nofail(unsigned int seconds);
 
+#ifndef MX_CALLOC_FAIL_WAIT_DEFAULT
+#   define MX_CALLOC_FAIL_WAIT_DEFAULT 1
+#endif
+
+#define mx_calloc_forever(n, s) mx_calloc_forever_sec((n), (s), MX_CALLOC_FAIL_WAIT_DEFAULT)
+
+void *mx_calloc_forever_sec(size_t nmemb, size_t size, unsigned int time);
+
 #endif
