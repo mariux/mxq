@@ -20,8 +20,6 @@
 #include "mx_util.h"
 #include "mx_log.h"
 
-#include "mxq_util.h"
-
 /**********************************************************************/
 
 static inline int mx__mysql_errno(struct mx_mysql *mysql)
@@ -689,7 +687,7 @@ int mx_mysql_queryf(struct mx_mysql *mysql, const char *fmt, ...)
     mx_assert_return_minus_errno(mysql->mysql, EBADF);
 
     va_list ap;
-    _cleanup_free_ char *query = NULL;
+    _mx_cleanup_free_ char *query = NULL;
     int res;
     size_t len;
 
