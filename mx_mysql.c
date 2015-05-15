@@ -502,11 +502,7 @@ int mx_mysql_init(struct mx_mysql **mysql)
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(!(*mysql), EUCLEAN);
 
-    m = calloc(1, sizeof(*m));
-    if (!m) {
-        mx_log_debug("calloc() failed: %m");
-        return -errno;
-    }
+    m = mx_calloc_forever(1, sizeof(*m));
 
     res = mx__mysql_init(m);
     if (res == 0)
@@ -694,11 +690,7 @@ int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt)
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(!(*stmt), EUCLEAN);
 
-    s = calloc(1, sizeof(*s));
-    if (!s) {
-        mx_log_debug("calloc() failed: %m");
-        return -(errno=ENOMEM);
-    }
+    s = mx_calloc_forever(1, sizeof(*s));
 
     s->mysql       = mysql;
     s->param.type  = MX_MYSQL_BIND_TYPE_PARAM;
@@ -787,10 +779,7 @@ int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
             continue;
 
         if (r->bind[col].buffer_type == MYSQL_TYPE_STRING) {
-
-            str = calloc(r->data[col].length + 1, sizeof(*str));
-            if (!str)
-                return -errno;
+            str = mx_calloc_forever(r->data[col].length + 1, sizeof(*str));
 
             *(r->data[col].string_ptr) = str;
             r->bind[col].buffer        = *(r->data[col].string_ptr);
@@ -899,14 +888,8 @@ int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count)
         return 0;
 
     bind->count = count;
-
-    bind->bind   = calloc(bind->count, sizeof(*bind->bind));
-    bind->data   = calloc(bind->count, sizeof(*bind->data));
-
-    if (!bind->bind || !bind->data) {
-        mx_mysql_bind_cleanup(bind);
-        return -(errno=ENOMEM);
-    }
+    bind->bind  = mx_calloc_forever(bind->count, sizeof(*bind->bind));
+    bind->data  = mx_calloc_forever(bind->count, sizeof(*bind->data));
 
     return 0;
 }
