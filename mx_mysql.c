@@ -477,24 +477,6 @@ static inline int _mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int in
     return 0;
 }
 
-/*
-#define MXQ_MYSQL_BIND_VARSTR(b, c, v) \
-    do { \
-        (b)[(c)].buffer_type = MYSQL_TYPE_STRING; \
-        (b)[(c)].buffer = 0; \
-        (b)[(c)].buffer_length = 0; \
-        (b)[(c)].length = (v); \
-    } while (0)
-
-#define MXQ_MYSQL_BIND_STRING(b, c, v) \
-    do { \
-        (b)[(c)].buffer_type = MYSQL_TYPE_STRING; \
-        (b)[(c)].buffer = (v); \
-        (b)[(c)].buffer_length = strlen((v)); \
-        (b)[(c)].length = &((b)[(c)].buffer_length); \
-    } while (0)
-*/
-
 static inline int _mx_mysql_bind_validate(struct mx_mysql_bind *b)
 {
     int i;
