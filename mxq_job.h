@@ -63,7 +63,7 @@ struct mxq_job {
 #define MXQ_JOB_STATUS_LOADED       150
 #define MXQ_JOB_STATUS_RUNNING      200
 
-#define MXQ_JOB_STATUS_UNKNOWN      250
+#define MXQ_JOB_STATUS_UNKNOWN_RUN  250
 #define MXQ_JOB_STATUS_EXTRUNNING   300
 #define MXQ_JOB_STATUS_STOPPED      350
 
@@ -71,6 +71,7 @@ struct mxq_job {
 #define MXQ_JOB_STATUS_KILLED       400
 #define MXQ_JOB_STATUS_FAILED       750
 #define MXQ_JOB_STATUS_CANCELLED    990
+#define MXQ_JOB_STATUS_UNKNOWN      999
 #define MXQ_JOB_STATUS_FINISHED    1000
 
 #define _to_string(s) #s
