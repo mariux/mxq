@@ -27,6 +27,7 @@
                 "group_jobs_finished," \
                 "group_jobs_failed," \
                 "group_jobs_cancelled," \
+                "group_jobs_unknown," \
                 "group_slots_running," \
                 "stats_max_maxrss," \
                 "stats_max_utime_sec," \
@@ -51,6 +52,7 @@ enum mxq_group_columns {
     MXQ_GROUP_COL_GROUP_JOBS_FINISHED,
     MXQ_GROUP_COL_GROUP_JOBS_FAILED,
     MXQ_GROUP_COL_GROUP_JOBS_CANCELLED,
+    MXQ_GROUP_COL_GROUP_JOBS_UNKNOWN,
     MXQ_GROUP_COL_GROUP_SLOTS_RUNNING,
     MXQ_GROUP_COL_STATS_MAX_MAXRSS,
     MXQ_GROUP_COL_STATS_MAX_UTIME_SEC,
@@ -84,6 +86,7 @@ static inline int mxq_group_bind_results(MYSQL_BIND *bind, struct mxq_group *g)
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_GROUP_COL_GROUP_JOBS_FINISHED,  &g->group_jobs_finished);
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_GROUP_COL_GROUP_JOBS_FAILED,    &g->group_jobs_failed);
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_GROUP_COL_GROUP_JOBS_CANCELLED, &g->group_jobs_cancelled);
+    MXQ_MYSQL_BIND_UINT64(bind, MXQ_GROUP_COL_GROUP_JOBS_UNKNOWN,   &g->group_jobs_unknown);
 
     MXQ_MYSQL_BIND_UINT64(bind, MXQ_GROUP_COL_GROUP_SLOTS_RUNNING, &g->group_slots_running);
 
@@ -144,6 +147,7 @@ inline uint64_t mxq_group_jobs_done(struct mxq_group *g)
     done += g->group_jobs_finished;
     done += g->group_jobs_failed;
     done += g->group_jobs_cancelled;
+    done += g->group_jobs_unknown;
 
     return done;
 }
@@ -185,7 +189,7 @@ int mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group)
 
     query = "SELECT " MXQ_GROUP_FIELDS
             " FROM mxq_group"
-            " WHERE group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled > 0"
+            " WHERE group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0"
             " ORDER BY user_uid, group_priority DESC";
 
     stmt = mxq_mysql_stmt_do_query(mysql, query, MXQ_GROUP_COL__END, NULL, result);
@@ -226,7 +230,7 @@ int mxq_group_update_status_cancelled(MYSQL *mysql, struct mxq_group *group)
             " AND group_status = " status_str(MXQ_GROUP_STATUS_OK)
             " AND user_uid = ?"
             " AND user_name = ?"
-            " AND group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled > 0";
+            " AND group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0";
 
     MXQ_MYSQL_BIND_UINT64(param, 0, &group->group_id);
     MXQ_MYSQL_BIND_UINT32(param, 1, &group->user_uid);

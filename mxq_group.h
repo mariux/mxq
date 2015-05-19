@@ -33,6 +33,7 @@ struct mxq_group {
    uint64_t  group_jobs_finished;
    uint64_t  group_jobs_failed;
    uint64_t  group_jobs_cancelled;
+   uint64_t  group_jobs_unknown;
 
    uint64_t  group_slots_running;
 
