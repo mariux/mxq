@@ -106,5 +106,7 @@ int main(int argc, char *argv[])
     res = mx_mysql_end();
     assert(res == 0);
 
+    mx_free_null(group_name);
+
     return 0;
 }
