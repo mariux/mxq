@@ -107,6 +107,8 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    INDEX (server_id(767))
 );
 
+
+LOCK TABLES mxq_job WRITE, mxq_group WRITE;
 DELIMITER |
 DROP TRIGGER mxq_add_job|
 CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
@@ -172,6 +174,14 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
     END;
 |
 DELIMITER ;
+UNLOCK TABLES;
+
+
+
+
+
+
+
 
 
 DROP TABLE mxq_server;
