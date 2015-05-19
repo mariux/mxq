@@ -292,6 +292,22 @@ static int mx__mysql_stmt_store_result(struct mx_mysql_stmt *stmt)
     mx_log_debug("ERROR: mysql_stmt_store_result() returned undefined error: %s", mx__mysql_stmt_error(stmt));
     return -(errno=EBADE);
 }
+
+static int mx__mysql_stmt_free_result(struct mx_mysql_stmt *stmt)
+{
+    int res;
+
+    mx_assert_return_minus_errno(stmt, EINVAL);
+    mx_assert_return_minus_errno(stmt->stmt, EBADF);
+
+    res = (int)mysql_stmt_free_result(stmt->stmt);
+    if (res == 0)
+        return 0;
+
+    mx_log_debug("ERROR: mysql_stmt_free_result() failed: %s", mx__mysql_stmt_error(stmt));
+    return -(errno=EBADE);
+}
+
 static int mx__mysql_stmt_fetch(struct mx_mysql_stmt *stmt)
 {
     int res;
@@ -952,6 +968,7 @@ int mx_mysql_statement_close(struct mx_mysql_stmt **stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(*stmt, EINVAL);
 
+    mx__mysql_stmt_free_result(*stmt);
     mx__mysql_stmt_close(*stmt);
 
     mx_mysql_bind_cleanup(&(*stmt)->param);
