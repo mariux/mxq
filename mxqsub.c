@@ -133,6 +133,7 @@ void mxq_mysql_row_to_group(struct mxq_job *j, MYSQL_ROW row)
     mx_strtou64(row[r++], &g->group_jobs_finished);
     mx_strtou64(row[r++], &g->group_jobs_failed);
     mx_strtou64(row[r++], &g->group_jobs_cancelled);
+    mx_strtou64(row[r++], &g->group_jobs_unknown);
 
     mx_strtou64(row[r++], &g->group_slots_running);
     r++; /* mtime */
@@ -191,6 +192,7 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
         "group_jobs_finished,"
         "group_jobs_failed,"
         "group_jobs_cancelled,"
+        "group_jobs_unknown,"
 
         "group_slots_running,"
 
