@@ -704,6 +704,28 @@ int mx_mysql_free(struct mx_mysql **mysql)
     return 0;
 }
 
+int mx_mysql_finish(struct mx_mysql **mysql)
+{
+    int res = 0;
+    int res1 = 0, res2 = 0, res3 = 0;
+
+    if (mysql && *mysql) {
+        res1 = mx_mysql_disconnect(*mysql);
+        if (res1 < 0)
+            res = res1;
+
+        res2 = mx_mysql_free(mysql);
+        if (!res && res2 < 0)
+            res = res2;
+    }
+    res3 = mx_mysql_end();
+    if (!res && res3 < 0)
+        res = res3;
+
+    return res;
+}
+
+
 int mx_mysql_ping(struct mx_mysql *mysql)
 {
     mx_assert_return_minus_errno(mysql, EINVAL);

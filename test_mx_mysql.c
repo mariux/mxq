@@ -89,19 +89,10 @@ int main(int argc, char *argv[])
     res = mx_mysql_statement_fetch(stmt);
     assert(res == 0);
 
-
-
-
     res = mx_mysql_statement_close(&stmt);
     assert(res == 0);
 
-    res = mx_mysql_disconnect(mysql);
-    assert(res == 0);
-
-    res = mx_mysql_free(&mysql);
-    assert(res == 0);
-
-    res = mx_mysql_end();
+    res = mx_mysql_finish(&mysql);
     assert(res == 0);
 
     mx_free_null(group_name);
