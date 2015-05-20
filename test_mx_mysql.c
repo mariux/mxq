@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     uint64_t group_id1 = 1234;
     uint64_t group_id2 = 123;
     char *group_name = NULL;
+    unsigned long long int count;
 
     int res;
 
@@ -42,7 +43,7 @@ int main(int argc, char *argv[])
     res = mx_mysql_statement_param_bind(stmt, 0, uint64, &group_id);
     assert(res == 0);
 
-    res = mx_mysql_statement_execute(stmt);
+    res = mx_mysql_statement_execute(stmt, &count);
     assert(res == 0);
 
     res = mx_mysql_statement_result_bind(stmt, 0, uint64, &group_id1);

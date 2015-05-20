@@ -398,6 +398,20 @@ static int mx__mysql_stmt_field_count(struct mx_mysql_stmt *stmt)
     return (int)count;
 }
 
+static int mx__mysql_stmt_num_rows(struct mx_mysql_stmt *stmt, unsigned long long *count)
+{
+    my_ulonglong c;
+
+    mx_assert_return_minus_errno(stmt,       EINVAL);
+    mx_assert_return_minus_errno(stmt->stmt, EBADF);
+
+    c = mysql_stmt_num_rows(stmt->stmt);
+
+    *count = (unsigned long long)c;
+
+    return 0;
+}
+
 static int mx__mysql_stmt_close(struct mx_mysql_stmt *stmt)
 {
     my_bool res;
@@ -749,7 +763,7 @@ int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt)
     return 0;
 }
 
-int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt)
+int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *count)
 {
     struct mx_mysql_stmt *s;
     int res;
@@ -779,6 +793,14 @@ int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt)
     if (res < 0) {
         mx_log_debug("ERROR: mx__mysql_stmt_store_result: %m");
         return res;
+    }
+
+    if (count) {
+        res = mx__mysql_stmt_num_rows(stmt, count);
+        if (res < 0) {
+            mx_log_debug("ERROR: mx__mysql_stmt_num_rows(): %m");
+            return res;
+        }
     }
 
     return 0;
