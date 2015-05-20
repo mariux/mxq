@@ -154,6 +154,9 @@ int mx_mysql_finish(struct mx_mysql **mysql);
 int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt);
 int mx_mysql_statement_prepare(struct mx_mysql_stmt *stmt, char *statement);
 int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *count);
+
+int mx_mysql_statement_num_rows(struct mx_mysql_stmt *stmt, unsigned long long int *count);
+
 int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt);
 
 int mx_mysql_statement_field_count(struct mx_mysql_stmt *stmt);

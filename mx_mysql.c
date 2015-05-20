@@ -833,6 +833,10 @@ int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *c
     return 0;
 }
 
+int mx_mysql_statement_num_rows(struct mx_mysql_stmt *stmt, unsigned long long int *count) {
+    return mx__mysql_stmt_num_rows(stmt, count);
+}
+
 int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
 {
     struct mx_mysql_stmt *s;
