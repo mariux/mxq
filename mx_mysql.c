@@ -566,7 +566,7 @@ int mx_mysql_option_set_default_file(struct mx_mysql *mysql, char *fname)
     mx_assert_return_minus_errno(mysql, EINVAL);
 
     if (fname && (*fname == '/') && (euidaccess(fname, R_OK) != 0)) {
-        mx_log_debug("euidaccess(\"%s\", R_OK) failed: %m", fname);
+        mx_log_debug("ignoring MySQL defaults file: euidaccess(\"%s\", R_OK) failed: %m", fname);
         return -errno;
     }
 
