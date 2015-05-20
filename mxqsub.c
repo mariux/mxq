@@ -230,7 +230,7 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
 
     if (num_rows == 1) {
         num_fields = mysql_num_fields(mres);
-        assert(num_fields == 14);
+        assert(num_fields == 15);
 
         row = mysql_fetch_row(mres);
         if (!row) {
