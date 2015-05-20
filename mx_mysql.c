@@ -426,6 +426,20 @@ static int mx__mysql_stmt_affected_rows(struct mx_mysql_stmt *stmt, unsigned lon
     return 0;
 }
 
+static int mx__mysql_stmt_insert_id(struct mx_mysql_stmt *stmt, unsigned long long *count)
+{
+    my_ulonglong c;
+
+    mx_assert_return_minus_errno(stmt,       EINVAL);
+    mx_assert_return_minus_errno(stmt->stmt, EBADF);
+
+    c = mysql_stmt_insert_id(stmt->stmt);
+
+    *count = (unsigned long long)c;
+
+    return 0;
+}
+
 static int mx__mysql_stmt_close(struct mx_mysql_stmt *stmt)
 {
     my_bool res;
@@ -845,6 +859,10 @@ int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *c
     }
 
     return 0;
+}
+
+int mx_mysql_statement_insert_id(struct mx_mysql_stmt *stmt, unsigned long long int *id) {
+    return mx__mysql_stmt_insert_id(stmt, id);
 }
 
 int mx_mysql_statement_affected_rows(struct mx_mysql_stmt *stmt, unsigned long long int *count) {
