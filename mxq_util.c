@@ -15,6 +15,8 @@
 
 #include <time.h>
 #include "mx_log.h"
+#include "mx_util.h"
+
 #include "mxq_util.h"
 
 
@@ -370,7 +372,7 @@ int mxq_setenv(const char *name, const char *value)
 int mxq_setenvf(const char *name, char *fmt, ...)
 {
     va_list ap;
-    _cleanup_free_ char *value = NULL;
+    _mx_cleanup_free_ char *value = NULL;
     size_t len;
     int res;
 

@@ -17,6 +17,7 @@
 #include <time.h>
 
 #include "mx_log.h"
+#include "mx_util.h"
 #include "mxq_mysql.h"
 #include "mxq_util.h"
 
@@ -63,7 +64,7 @@ void mxq_mysql_close(MYSQL *mysql) {
 int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...)
 {
     va_list ap;
-    _cleanup_free_ char *query = NULL;
+    _mx_cleanup_free_ char *query = NULL;
     int res;
     size_t len;
 
@@ -86,7 +87,7 @@ int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...)
 MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
 {
     va_list ap;
-    _cleanup_free_ char *query = NULL;
+    _mx_cleanup_free_ char *query = NULL;
     MYSQL_RES *mres;
     size_t len;
     int res;
@@ -260,7 +261,7 @@ char *mxq_mysql_escape_str(MYSQL *mysql, char *s)
 char *mxq_mysql_escape_strvec(MYSQL *mysql, char **sv)
 {
     char *quoted = NULL;
-    _cleanup_free_ char *s = NULL;
+    _mx_cleanup_free_ char *s = NULL;
     size_t len;
 
     s = strvec_to_str(sv);

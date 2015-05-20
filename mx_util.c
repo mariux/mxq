@@ -607,3 +607,20 @@ int mx_sleep_nofail(unsigned int seconds)
     mx_sleep(seconds);
     return 1;
 }
+
+void *mx_calloc_forever_sec(size_t nmemb, size_t size, unsigned int time)
+{
+    void *ptr;
+
+    while (1) {
+        ptr = calloc(nmemb, size);
+        if (ptr)
+            break;
+
+        mx_log_debug("calloc() failed: %m - retrying (forever) in %d second(s).", time);
+        if (time)
+            mx_sleep(time);
+    }
+
+    return ptr;
+}
