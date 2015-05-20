@@ -480,9 +480,6 @@ int main(int argc, char *argv[])
     arg_stdout         = "/dev/null";
     arg_stderr         = "stdout";
     arg_umask          = getumask();
-    arg_env            = strvec_new();
-
-    assert(arg_env);
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -592,11 +589,6 @@ int main(int argc, char *argv[])
                 arg_stderr = optctl.optarg;
                 break;
 
-            case 'D': {
-                char *arg_env_str;
-                assert(strvec_push_str(&arg_env, optctl.optarg));
-                break;
-            }
             case 'u':
                 if (mx_strtou32(optctl.optarg, &arg_umask) < 0) {
                     mx_log_crit("--umask '%s': %m", optctl.optarg);
