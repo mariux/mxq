@@ -1,5 +1,5 @@
-#ifndef __MXQ_MYSQL_H__
-#define __MXQ_MYSQL_H__ 1
+#ifndef __MX_MYSQL_H__
+#define __MX_MYSQL_H__ 1
 
 #include <sys/resource.h>
 #include <mysql.h>
@@ -119,13 +119,13 @@ static inline void mx_mysql_bind_string3(struct mx_mysql_bind *b, int index, cha
     } while (0)
 */
 
-#define mxq_mysql_print_error(mysql) \
+#define mx_mysql_print_error(mysql) \
     mx_log_err("MySQL: ERROR %u (%s): %s\n", \
     mysql_errno(mysql), \
     mysql_sqlstate(mysql), \
     mysql_error(mysql))
 
-#define mxq_mysql_stmt_print_error(stmt) \
+#define mx_mysql_stmt_print_error(stmt) \
         mx_log_err("MySQL: ERROR %u (%s): %s\n", \
             mysql_stmt_errno(stmt), \
             mysql_stmt_sqlstate(stmt), \
