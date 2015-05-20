@@ -137,7 +137,8 @@ static inline void mx_mysql_bind_string3(struct mx_mysql_bind *b, int index, cha
 int mx_mysql_init(struct mx_mysql **);
 int mx_mysql_free(struct mx_mysql **mysql);
 
-int mx_mysql_connect(struct mx_mysql *mysql);
+int mx_mysql_connect(struct mx_mysql **mysql);
+int mx_mysql_connect_forever(struct mx_mysql **mysql, unsigned int seconds);
 int mx_mysql_disconnect(struct mx_mysql *mysql);
 
 int mx_mysql_end(void);

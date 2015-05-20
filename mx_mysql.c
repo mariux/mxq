@@ -655,18 +655,23 @@ static int mx_mysql_real_connect(struct mx_mysql *mysql, const char *host, const
     return res;
 }
 
-int mx_mysql_connect(struct mx_mysql *mysql)
+int mx_mysql_connect(struct mx_mysql **mysql)
 {
     int res;
 
     mx_assert_return_minus_errno(mysql, EINVAL);
-    mx_assert_return_minus_errno(mysql->mysql, EBADF);
 
-    res = mx_mysql_real_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, 0);
+    if (!(*mysql)) {
+        res = mx_mysql_init(mysql);
+        if (res < 0)
+            return res;
+    }
+
+    res = mx_mysql_real_connect(*mysql, NULL, NULL, NULL, NULL, 0, NULL, 0);
     return res;
 }
 
-int mx_mysql_connect_forever(struct mx_mysql *mysql, unsigned int seconds)
+int mx_mysql_connect_forever(struct mx_mysql **mysql, unsigned int seconds)
 {
     int res;
 

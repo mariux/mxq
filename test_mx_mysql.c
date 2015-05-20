@@ -22,10 +22,7 @@ int main(int argc, char *argv[])
     mx_log_debug("group_id = %d", group_id);
     mx_log_debug("group_id2 = %d", group_id2);
 
-    res = mx_mysql_init(&mysql);
-    assert(res == 0);
-
-    res = mx_mysql_connect(mysql);
+    res = mx_mysql_connect(&mysql);
     assert(res == 0);
 
     //res = mx_mysql_connect(mysql);
