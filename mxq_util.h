@@ -31,17 +31,6 @@ void   strvec_free(char **strvec);
 
 #define free_null(a) do { free((a)); (a) = NULL; } while(0)
 
-#define _cleanup_(x) __attribute__((cleanup(x)))
-
-static inline void freep(void *p) {
-    free(*(void**) p);
-}
-
-#define _cleanup_free_ _cleanup_(freep)
-
-#define likely(x)       __builtin_expect((x),1)
-#define unlikely(x)     __builtin_expect((x),0)
-
 int mxq_setenv(const char *name, const char *value);
 int mxq_setenvf(const char *name, char *fmt, ...);
 

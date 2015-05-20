@@ -38,6 +38,22 @@
 #undef mx_free_null
 #define mx_free_null(a) do { free(a); (a) = NULL; } while(0)
 
+#undef _mx_cleanup_
+#define _mx_cleanup_(x) __attribute__((cleanup(x)))
+
+static inline void __mx_free(void *ptr) {
+    free(*(void **)ptr);
+}
+
+#undef _mx_cleanup_free_
+#define _mx_cleanup_free_ _mx_cleanup_(__mx_free)
+
+#undef likely
+#define likely(x)       __builtin_expect((x),1)
+
+#undef unlikely
+#define unlikely(x)     __builtin_expect((x),0)
+
 int mx_strbeginswith(char *str, const char *start, char **endptr);
 int mx_stribeginswith(char *str, const char *start, char **endptr);
 int mx_strbeginswithany(char *str, char **starts, char **endptr);
@@ -79,5 +95,13 @@ int mx_open_newfile(char *fname);
 
 int mx_sleep(unsigned int seconds);
 int mx_sleep_nofail(unsigned int seconds);
+
+#ifndef MX_CALLOC_FAIL_WAIT_DEFAULT
+#   define MX_CALLOC_FAIL_WAIT_DEFAULT 1
+#endif
+
+#define mx_calloc_forever(n, s) mx_calloc_forever_sec((n), (s), MX_CALLOC_FAIL_WAIT_DEFAULT)
+
+void *mx_calloc_forever_sec(size_t nmemb, size_t size, unsigned int time);
 
 #endif
