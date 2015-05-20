@@ -405,12 +405,21 @@ static int mx__mysql_stmt_close(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
 
     res = mysql_stmt_close(stmt->stmt);
-    if (!res)
-        return -(errno=EIO);
+    if (res == 0) {
+        stmt->stmt = NULL;
+        return 0;
+    }
 
-    stmt->stmt = NULL;
+    switch (mx__mysql_stmt_errno(stmt)) {
+        case CR_SERVER_GONE_ERROR:
+            return -(errno=ECONNABORTED);
 
-    return 0;
+        case CR_UNKNOWN_ERROR :
+            return -(errno=EIO);
+    }
+
+    mx_log_debug("ERROR: mysql_stmt_close() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    return -(errno=EBADE);
 }
 
 static int mx__mysql_close(struct mx_mysql *mysql) {
