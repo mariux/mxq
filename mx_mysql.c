@@ -368,7 +368,7 @@ static int mx__mysql_stmt_fetch_column(struct mx_mysql_stmt *stmt, unsigned int 
         case CR_NO_DATA:
             return -(errno=ENOENT);
     }
-    mx_log_debug("ERROR: mx__mysql_stmt_fetch_column() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx_log_debug("ERROR: mysql_stmt_fetch_column() returned undefined error: %s", mx__mysql_stmt_error(stmt));
     return -(errno=EBADE);
 }
 
