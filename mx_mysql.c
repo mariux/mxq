@@ -820,7 +820,6 @@ int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt)
 
 int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *count)
 {
-    struct mx_mysql_stmt *s;
     int res;
 
     mx_assert_return_minus_errno(stmt, EINVAL);
@@ -875,7 +874,6 @@ int mx_mysql_statement_num_rows(struct mx_mysql_stmt *stmt, unsigned long long i
 
 int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
 {
-    struct mx_mysql_stmt *s;
     struct mx_mysql_bind *r;
     int res;
     int col;
@@ -948,8 +946,6 @@ int mx_mysql_statement_field_count(struct mx_mysql_stmt *stmt)
 
 inline int mx_mysql_stmt_field_count_set(struct mx_mysql_stmt *stmt)
 {
-    unsigned long count;
-
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
@@ -1006,9 +1002,6 @@ int mx_mysql_bind_cleanup(struct mx_mysql_bind *bind)
 
 int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count)
 {
-    unsigned long *l;
-    char *f;
-
     mx_assert_return_minus_errno(bind, EINVAL);
 
     mx_assert_return_minus_errno(bind->type != MX_MYSQL_BIND_TYPE_UNKNOWN, EBADF);
