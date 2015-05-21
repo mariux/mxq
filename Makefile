@@ -194,6 +194,7 @@ mxq_mysql.h += $(mxq_util.h)
 ### mxq_util.h ---------------------------------------------------------
 
 mxq_util.h += mxq_util.h
+mxq_util.h += $(mx_log.h)
 mxq_util.h += $(mxq.h)
 
 ### mxq_group.h --------------------------------------------------------
@@ -228,6 +229,8 @@ mx_log.o: $(mx_log.h)
 clean: CLEAN += mx_log.o
 
 ### mx_util.o ----------------------------------------------------------
+
+mx_util.o: $(mx_log.h)
 
 clean: CLEAN += mx_util.o
 
@@ -448,6 +451,7 @@ test_mx_util.o: $(mx_util.h)
 clean: CLEAN += test_mx_util.o
 
 test_mx_util: mx_util.o
+test_mx_util: mx_log.o
 clean: CLEAN += test_mx_util
 
 test: test_mx_util

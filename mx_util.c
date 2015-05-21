@@ -13,6 +13,7 @@
 //#include <sys/stat.h>
 #include <fcntl.h>
 
+#include "mx_log.h"
 #include "mx_util.h"
 
 static inline int _mx_strbeginswith(char *str, const char *start, char **endptr, short ignore_case)
