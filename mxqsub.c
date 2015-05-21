@@ -23,6 +23,7 @@
 
 #include "mxq_util.h"
 
+#include "mx_log.h"
 #include "mx_util.h"
 #include "mx_getopt.h"
 #include "mx_mysql.h"
