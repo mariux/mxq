@@ -21,7 +21,15 @@
 
 #include <inttypes.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#include <string.h>
+
 #include "mxq_util.h"
+
+#include "mxq_group.h"
+#include "mxq_job.h"
 
 #include "mx_log.h"
 #include "mx_util.h"

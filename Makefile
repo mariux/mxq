@@ -339,10 +339,12 @@ clean: CLEAN += mxqd.o
 ### mxqsub.o -------------------------------------------------------
 
 mxqsub.o: $(mx_getopt.h)
-mxqsub.o: $(mxq_util.h)
 mxqsub.o: $(mx_util.h)
 mxqsub.o: $(mx_log.h)
 mxqsub.o: $(mx_mysql.h)
+mxqsub.o: $(mxq_group.h)
+mxqsub.o: $(mxq_job.h)
+mxqsub.o: $(mxq_util.h)
 mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
