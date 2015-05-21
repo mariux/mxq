@@ -99,9 +99,10 @@ static void print_usage(void)
     "\n"
     "Other options:\n"
     "\n"
-    "  --debug    set debug log level (default: warning log level)\n"
-    "  --version  print version and exit\n"
-    "  --help     print this help and exit ;)\n"
+    "  -v | --verbose   be more verbose\n"
+    "  --debug          set debug log level (default: warning log level)\n"
+    "  --version        print version and exit\n"
+    "  --help           print this help and exit ;)\n"
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
@@ -395,6 +396,7 @@ int main(int argc, char *argv[])
     mode_t     arg_umask;
     char      *arg_mysql_default_file;
     char      *arg_mysql_default_group;
+    char       arg_debug;
 
     _mx_cleanup_free_ char *current_workdir = NULL;
     _mx_cleanup_free_ char *arg_stdout_absolute = NULL;
@@ -424,6 +426,7 @@ int main(int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("time",           4),
 
                 MX_OPTION_NO_ARG("debug",                5),
+                MX_OPTION_NO_ARG("verbose",              'v'),
 
                 MX_OPTION_REQUIRED_ARG("group-name",     'N'),
                 MX_OPTION_REQUIRED_ARG("group-priority", 'P'),
@@ -465,6 +468,7 @@ int main(int argc, char *argv[])
     arg_stdout         = "/dev/null";
     arg_stderr         = "stdout";
     arg_umask          = getumask();
+    arg_debug          = 0;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -494,7 +498,13 @@ int main(int argc, char *argv[])
                 exit(EX_USAGE);
 
             case 5:
+                arg_debug = 1;
                 mx_log_level_set(MX_LOG_DEBUG);
+                break;
+
+            case 'v':
+                if (!arg_debug)
+                    mx_log_level_set(MX_LOG_INFO);
                 break;
 
             case 'p':
@@ -711,7 +721,7 @@ int main(int argc, char *argv[])
     mx_mysql_finish(&mysql);
 
     if (res < 0) {
-        mx_log_err("mxq_submit_task() failed: %m");
+        mx_log_err("Job submission failed: %m");
         return 1;
     }
 
