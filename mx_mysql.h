@@ -4,8 +4,6 @@
 #include <sys/resource.h>
 #include <mysql.h>
 
-//#include "mxq_util.h"
-
 #include "mx_util.h"
 
 #ifdef MX_NDEBUG_MYSQL
@@ -30,7 +28,6 @@
             assert(errno != EUCLEAN); \
         } \
     } while (0)
-
 
 struct mx_mysql {
     MYSQL *mysql;
@@ -86,42 +83,6 @@ struct mx_mysql_stmt {
     struct mx_mysql_bind param;
 };
 
-/*
-#include <string.h>
-static inline void mx_mysql_bind_string2(struct mx_mysql_bind *b, int index)
-{
-    assert(index < b->count);
-    b->bind[index].buffer_type = MYSQL_TYPE_STRING;
-    b->bind[index].buffer = 0;
-    b->bind[index].buffer_length = 0;
-    b->bind[index].length = &(b->length[index]);
-}
-
-static inline void mx_mysql_bind_string3(struct mx_mysql_bind *b, int index, char *value)
-{
-    assert(index < b->count);
-    b->bind[index].buffer_type = MYSQL_TYPE_STRING;
-    b->bind[index].buffer = value;
-    b->bind[index].buffer_length = strlen(value);
-    b->bind[index].length = &(b->bind[index].buffer_length);
-}
-
-#define MXQ_MYSQL_BIND_VARSTR(b, c, v) \
-    do { \
-        (b)[(c)].buffer_type = MYSQL_TYPE_STRING; \
-        (b)[(c)].buffer = 0; \
-        (b)[(c)].buffer_length = 0; \
-        (b)[(c)].length = (v); \
-    } while (0)
-
-#define MXQ_MYSQL_BIND_STRING(b, c, v) \
-    do { \
-        (b)[(c)].buffer_type = MYSQL_TYPE_STRING; \
-        (b)[(c)].buffer = (v); \
-        (b)[(c)].buffer_length = strlen((v)); \
-        (b)[(c)].length = &((b)[(c)].buffer_length); \
-    } while (0)
-*/
 #ifndef MX_MYSQL_FAIL_WAIT_DEFAULT
 #   ifdef MX_CALLOC_FAIL_WAIT_DEFAULT
 #       define MX_MYSQL_FAIL_WAIT_DEFAULT MX_CALLOC_FAIL_WAIT_DEFAULT
@@ -168,7 +129,6 @@ int mx_mysql_statement_close(struct mx_mysql_stmt **stmt);
 
 #define mx_mysql_statement_param_bind(s, i, t, p) mx_mysql_bind_##t(&((s)->param), (i), (p))
 
-//int mx_mysql_bind_validate(struct mx_mysql_bind *b);
 int mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value);
 
 int mx_mysql_bind_int8(struct mx_mysql_bind *b, unsigned int index, int8_t *value);
@@ -180,7 +140,5 @@ int mx_mysql_bind_uint8(struct mx_mysql_bind *b, unsigned int index, uint8_t *va
 int mx_mysql_bind_uint16(struct mx_mysql_bind *b, unsigned int index, uint16_t *value);
 int mx_mysql_bind_uint32(struct mx_mysql_bind *b, unsigned int index, uint32_t *value);
 int mx_mysql_bind_uint64(struct mx_mysql_bind *b, unsigned int index, uint64_t *value);
-
-
 
 #endif
