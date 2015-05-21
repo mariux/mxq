@@ -57,10 +57,6 @@ struct mxq_job_full {
     struct rusage  stats_rusage;
 };
 
-#ifndef MXQ_MYSQL_DEFAULT_FILE
-#define MXQ_MYSQL_DEFAULT_FILE NULL
-#endif
-
 struct mxq_job_full_list {
     struct mxq_job_full_list_item *first;
     struct mxq_job_full_list_item *last;

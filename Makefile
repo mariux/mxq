@@ -46,11 +46,14 @@ endif
 
 ##############################################################################
 
-MXQ_MYSQL_DEFAULT_FILE = ${SYSCONFDIR}/mxq/mysql.cnf
+MXQ_MYSQL_DEFAULT_FILE  = ${SYSCONFDIR}/mxq/mysql.cnf
+MXQ_MYSQL_DEFAULT_GROUP = mxqclient
+
 MXQ_INITIAL_PATH = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 
-CFLAGS_MXQ_MYSQL_DEFAULT_FILE = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
-CFLAGS_MXQ_INITIAL_PATH       = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
+CFLAGS_MXQ_MYSQL_DEFAULT_FILE  = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
+CFLAGS_MXQ_MYSQL_DEFAULT_GROUP = -DMXQ_MYSQL_DEFAULT_GROUP=\"$(MXQ_MYSQL_DEFAULT_GROUP)\"
+CFLAGS_MXQ_INITIAL_PATH        = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 
 MYSQL_CONFIG = mysql_config
 
@@ -347,6 +350,7 @@ mxqsub.o: $(mxq_job.h)
 mxqsub.o: $(mxq_util.h)
 mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_GROUP)
 
 clean: CLEAN += mxqsub.o
 
