@@ -18,7 +18,7 @@
             do {\
                 if (!(test)) {\
                     errno=(eno);\
-                    mx_log_debug("Assertion '" #test "' failed. Returning -(errno=" #eno ") [%d]: %m", -errno);\
+                    mx_log_emerg("Assertion '" #test "' failed. Returning -(errno=" #eno ") [%d]: %m", -errno);\
                     return -errno;\
                 }\
             } while (0)
@@ -27,7 +27,7 @@
             do {\
                 if (!(test)) {\
                     errno=(eno);\
-                    mx_log_debug("Assertion '" #test "' failed. Setting errno=" #eno " [%d] and returning NULL: %m", errno);\
+                    mx_log_emerg("Assertion '" #test "' failed. Setting errno=" #eno " [%d] and returning NULL: %m", errno);\
                     return NULL;\
                 }\
             } while (0)
