@@ -699,7 +699,7 @@ int mx_mysql_connect(struct mx_mysql **mysql)
     return res;
 }
 
-int mx_mysql_connect_forever(struct mx_mysql **mysql, unsigned int seconds)
+int mx_mysql_connect_forever_sec(struct mx_mysql **mysql, unsigned int seconds)
 {
     int res;
 
