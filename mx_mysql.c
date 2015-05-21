@@ -20,6 +20,30 @@
 #include "mx_util.h"
 #include "mx_log.h"
 
+#define mx__mysql_log(lvl, mysql) \
+        mx_log_ ## lvl("MySQL %s(): ERROR %u (%s): %s", \
+            (mysql)->func, \
+            mx__mysql_errno(mysql), \
+            mx__mysql_sqlstate(mysql), \
+            mx__mysql_error(mysql))
+
+#define mx__mysql_stmt_log(lvl, stmt) \
+        mx_log_ ## lvl("MySQL %s(): ERROR %u (%s): %s", \
+            (stmt)->func, \
+            mx__mysql_stmt_errno(stmt), \
+            mx__mysql_stmt_sqlstate(stmt), \
+            mx__mysql_stmt_error(stmt))
+
+#define mx__mysql_log_emerg(mysql) mx__mysql_log(emerg, (mysql))
+#define mx__mysql_log_err(mysql)   mx__mysql_log(err,   (mysql))
+#define mx__mysql_log_info(mysql)  mx__mysql_log(info,  (mysql))
+#define mx__mysql_log_debug(mysql) mx__mysql_log(debug, (mysql))
+
+#define mx__mysql_stmt_log_emerg(stmt) mx__mysql_stmt_log(emerg, (stmt))
+#define mx__mysql_stmt_log_err(stmt)   mx__mysql_stmt_log(err,   (stmt))
+#define mx__mysql_stmt_log_info(stmt)  mx__mysql_stmt_log(info,  (stmt))
+#define mx__mysql_stmt_log_debug(stmt) mx__mysql_stmt_log(debug, (stmt))
+
 /**********************************************************************/
 
 static inline int mx__mysql_errno(struct mx_mysql *mysql)
@@ -43,6 +67,14 @@ inline const char *mx__mysql_error(struct mx_mysql *mysql)
     return mysql_error(mysql->mysql);
 }
 
+inline const char *mx__mysql_sqlstate(struct mx_mysql *mysql)
+{
+    mx_assert_return_NULL(mysql, EINVAL);
+    mx_assert_return_NULL(mysql->mysql, EBADF);
+
+    return mysql_sqlstate(mysql->mysql);
+}
+
 static inline int mx__mysql_stmt_errno(struct mx_mysql_stmt *stmt)
 {
     unsigned int error;
@@ -64,16 +96,29 @@ static inline const char *mx__mysql_stmt_error(struct mx_mysql_stmt *stmt)
     return mysql_stmt_error(stmt->stmt);
 }
 
+static inline const char *mx__mysql_stmt_sqlstate(struct mx_mysql_stmt *stmt)
+{
+    mx_assert_return_NULL(stmt, EINVAL);
+    mx_assert_return_NULL(stmt->stmt, EBADF);
+
+    return mysql_stmt_sqlstate(stmt->stmt);
+}
+
 static inline int mx__mysql_init(struct mx_mysql *mysql)
 {
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(!mysql->mysql, EUCLEAN);
 
+    mysql->func = "mysql_init";
     mysql->mysql = mysql_init(NULL);
+    if (mysql->mysql)
+        return 0;
 
-    mx_assert_return_minus_errno(mysql->mysql, ENOMEM);
+    errno = ENOMEM;
 
-    return 0;
+    mx_log_debug("Error: MySQL mysql_init(): %m");
+
+    return -errno;
 }
 
 static inline int mx__mysql_options(struct mx_mysql *mysql, enum mysql_option option, const void *arg)
@@ -83,10 +128,13 @@ static inline int mx__mysql_options(struct mx_mysql *mysql, enum mysql_option op
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(mysql->mysql, EBADF);
 
+    mysql->func = "mysql_options";
     res = mysql_options(mysql->mysql, option, arg);
-    mx_assert_return_minus_errno(res == 0, EINVAL);
+    if (res == 0)
+        return 0;
 
-    return 0;
+    mx__mysql_log_emerg(mysql);
+    return -(errno=EBADE);
 }
 
 static int mx__mysql_real_connect(struct mx_mysql *mysql, const char *host, const char *user, const char *passwd, const char *db, unsigned int port, const char *unix_socket, unsigned long client_flag)
@@ -96,9 +144,12 @@ static int mx__mysql_real_connect(struct mx_mysql *mysql, const char *host, cons
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(mysql->mysql, EBADF);
 
+    mysql->func = "mysql_real_connect";
     m = mysql_real_connect(mysql->mysql, host, user, passwd, db, port, unix_socket, client_flag);
     if (m == mysql->mysql)
         return 0;
+
+    mx__mysql_log_debug(mysql);
 
     if (mx__mysql_errno(mysql) == CR_ALREADY_CONNECTED) {
         return -(errno=EALREADY);
@@ -112,6 +163,7 @@ static inline int mx__mysql_ping(struct mx_mysql *mysql)
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(mysql->mysql, EBADF);
 
+    mysql->func = "mysql_ping";
     return mysql_ping(mysql->mysql);
 }
 
@@ -128,6 +180,7 @@ static int mx__mysql_real_query(struct mx_mysql *mysql, const char *stmt_str, un
     if (!length)
         length = strlen(stmt_str);
 
+    mysql->func = "mysql_real_query";
     res = mysql_real_query(mysql->mysql, stmt_str, length);
 
     return res;
@@ -139,14 +192,17 @@ static int mx__mysql_stmt_init(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(!stmt->stmt, EUCLEAN);
     mx_assert_return_minus_errno(stmt->mysql, EBADF);
 
+    stmt->mysql->func = "mysql_stmt_init";
     stmt->stmt = mysql_stmt_init(stmt->mysql->mysql);
     if (stmt->stmt)
         return 0;
 
+    mx__mysql_log_debug(stmt->mysql);
+
     if (mx__mysql_errno(stmt->mysql) == CR_OUT_OF_MEMORY)
         return -(errno=ENOMEM);
 
-    mx_log_debug("ERROR: mysql_stmt_init() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_log_emerg(stmt->mysql);
     return -(errno=EBADE);
 }
 
@@ -163,11 +219,14 @@ static int mx__mysql_stmt_prepare(struct mx_mysql_stmt *stmt, char *statement)
     mx_assert_return_minus_errno(stmt->mysql, EBADF);
     mx_assert_return_minus_errno(stmt->stmt,  EBADF);
 
+    stmt->func = "mysql_stmt_prepare";
     res = mysql_stmt_prepare(stmt->stmt, statement, strlen(statement));
     if (res == 0) {
         stmt->statement = statement;
         return 0;
     }
+    mx__mysql_stmt_log_debug(stmt);
+
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_OUT_OF_MEMORY:
             return -(errno=ENOMEM);
@@ -177,7 +236,7 @@ static int mx__mysql_stmt_prepare(struct mx_mysql_stmt *stmt, char *statement)
             return -(errno=EAGAIN);
     }
 
-    mx_log_debug("ERROR: mysql_stmt_prepare() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -188,9 +247,12 @@ static int mx__mysql_stmt_bind_param(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_bind_param";
     res = (int)mysql_stmt_bind_param(stmt->stmt, stmt->param.bind);
     if (res == 0)
         return 0;
+
+    mx__mysql_stmt_log_debug(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_OUT_OF_MEMORY:
@@ -203,7 +265,7 @@ static int mx__mysql_stmt_bind_param(struct mx_mysql_stmt *stmt)
             return -(errno=EIO);
     }
 
-    mx_log_debug("ERROR: mysql_stmt_bind_param() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -214,9 +276,12 @@ static int mx__mysql_stmt_bind_result(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_bind_result";
     res = (int)mysql_stmt_bind_result(stmt->stmt, stmt->result.bind);
     if (res == 0)
         return 0;
+
+    mx__mysql_stmt_log_debug(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_OUT_OF_MEMORY:
@@ -228,8 +293,7 @@ static int mx__mysql_stmt_bind_result(struct mx_mysql_stmt *stmt)
         case CR_UNKNOWN_ERROR:
             return -(errno=EIO);
     }
-
-    mx_log_debug("ERROR: mysql_stmt_bind_result() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -240,9 +304,12 @@ static int mx__mysql_stmt_execute(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_execute";
     res = mysql_stmt_execute(stmt->stmt);
     if (res == 0)
         return 0;
+
+    mx__mysql_stmt_log_debug(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_COMMANDS_OUT_OF_SYNC:
@@ -258,8 +325,7 @@ static int mx__mysql_stmt_execute(struct mx_mysql_stmt *stmt)
         case CR_UNKNOWN_ERROR:
             return -(errno=EIO);
     }
-
-    mx_log_debug("ERROR: mysql_stmt_execute() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -270,9 +336,12 @@ static int mx__mysql_stmt_store_result(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_store_result";
     res = mysql_stmt_store_result(stmt->stmt);
     if (res == 0)
         return 0;
+
+    mx__mysql_stmt_log_debug(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_COMMANDS_OUT_OF_SYNC:
@@ -289,7 +358,7 @@ static int mx__mysql_stmt_store_result(struct mx_mysql_stmt *stmt)
             return -(errno=EIO);
     }
 
-    mx_log_debug("ERROR: mysql_stmt_store_result() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -300,11 +369,12 @@ static int mx__mysql_stmt_free_result(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_free_result";
     res = (int)mysql_stmt_free_result(stmt->stmt);
     if (res == 0)
         return 0;
 
-    mx_log_debug("ERROR: mysql_stmt_free_result() failed: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -315,11 +385,14 @@ static int mx__mysql_stmt_fetch(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_fetch";
     res = mysql_stmt_fetch(stmt->stmt);
     if (res == 0)
         return 0;
 
     if (res == 1) {
+        mx__mysql_stmt_log_debug(stmt);
+
         switch (mx__mysql_stmt_errno(stmt)) {
             case CR_COMMANDS_OUT_OF_SYNC:
                 return -(errno=EPROTO);
@@ -334,7 +407,7 @@ static int mx__mysql_stmt_fetch(struct mx_mysql_stmt *stmt)
             case CR_UNKNOWN_ERROR:
                 return -(errno=EIO);
         }
-        mx_log_debug("ERROR: mysql_stmt_fetch() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+        mx__mysql_stmt_log_emerg(stmt);
         return -(errno=EBADE);
     }
 
@@ -346,7 +419,8 @@ static int mx__mysql_stmt_fetch(struct mx_mysql_stmt *stmt)
             return -(errno=ERANGE);
     }
 
-    mx_log_debug("ERROR: mysql_stmt_fetch() returned undefined result code: %d", res);
+    mx__mysql_stmt_log_emerg(stmt);
+    mx_log_emerg("ERROR: mysql_stmt_fetch() returned undefined result code: %d", res);
     return -(errno=EBADE);
 }
 
@@ -357,9 +431,11 @@ static int mx__mysql_stmt_fetch_column(struct mx_mysql_stmt *stmt, unsigned int 
     mx_assert_return_minus_errno(stmt, EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_fetch_column";
     res = mysql_stmt_fetch_column(stmt->stmt, &(stmt->result.bind[column]), column, offset);
     if (res == 0)
         return 0;
+    mx__mysql_stmt_log_debug(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_INVALID_PARAMETER_NO:
@@ -368,7 +444,8 @@ static int mx__mysql_stmt_fetch_column(struct mx_mysql_stmt *stmt, unsigned int 
         case CR_NO_DATA:
             return -(errno=ENOENT);
     }
-    mx_log_debug("ERROR: mysql_stmt_fetch_column() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -379,6 +456,7 @@ static int mx__mysql_stmt_param_count(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_param_count";
     count = mysql_stmt_param_count(stmt->stmt);
     mx_assert_return_minus_errno((unsigned long)(int)count == count, ERANGE);
 
@@ -392,6 +470,7 @@ static int mx__mysql_stmt_field_count(struct mx_mysql_stmt *stmt)
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_field_count";
     count = mysql_stmt_field_count(stmt->stmt);
     mx_assert_return_minus_errno((unsigned long)(int)count == count, ERANGE);
 
@@ -405,6 +484,7 @@ static int mx__mysql_stmt_num_rows(struct mx_mysql_stmt *stmt, unsigned long lon
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_num_rows";
     c = mysql_stmt_num_rows(stmt->stmt);
 
     *count = (unsigned long long)c;
@@ -419,6 +499,7 @@ static int mx__mysql_stmt_affected_rows(struct mx_mysql_stmt *stmt, unsigned lon
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_affected_rows";
     c = mysql_stmt_affected_rows(stmt->stmt);
 
     *count = (unsigned long long)c;
@@ -433,6 +514,7 @@ static int mx__mysql_stmt_insert_id(struct mx_mysql_stmt *stmt, unsigned long lo
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
 
+    stmt->func = "mysql_stmt_insert_id";
     c = mysql_stmt_insert_id(stmt->stmt);
 
     *count = (unsigned long long)c;
@@ -446,11 +528,14 @@ static int mx__mysql_stmt_close(struct mx_mysql_stmt *stmt)
 
     mx_assert_return_minus_errno(stmt, EINVAL);
 
+    stmt->func = "mysql_stmt_close";
     res = mysql_stmt_close(stmt->stmt);
     if (res == 0) {
         stmt->stmt = NULL;
         return 0;
     }
+
+    mx__mysql_stmt_log_debug(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_SERVER_GONE_ERROR:
@@ -460,7 +545,7 @@ static int mx__mysql_stmt_close(struct mx_mysql_stmt *stmt)
             return -(errno=EIO);
     }
 
-    mx_log_debug("ERROR: mysql_stmt_close() returned undefined error: %s", mx__mysql_stmt_error(stmt));
+    mx__mysql_stmt_log_emerg(stmt);
     return -(errno=EBADE);
 }
 
@@ -468,6 +553,7 @@ static int mx__mysql_close(struct mx_mysql *mysql) {
     mx_assert_return_minus_errno(mysql, EINVAL);
 
     if (mysql->mysql) {
+        mysql->func = "mysql_close";
         mysql_close(mysql->mysql);
         mysql->mysql = NULL;
     }
@@ -594,7 +680,7 @@ int mx_mysql_option_set_default_file(struct mx_mysql *mysql, char *fname)
     mx_assert_return_minus_errno(mysql, EINVAL);
 
     if (fname && (*fname == '/') && (euidaccess(fname, R_OK) != 0)) {
-        mx_log_debug("ignoring MySQL defaults file: euidaccess(\"%s\", R_OK) failed: %m", fname);
+        mx_log_info("MySQL ignoring defaults file: euidaccess(\"%s\", R_OK) failed: %m", fname);
         return -errno;
     }
 
@@ -679,7 +765,6 @@ static int mx_mysql_real_connect(struct mx_mysql *mysql, const char *host, const
         return 0;
     }
 
-    mx_log_debug("ERROR: mysql_real_connect(): %s", mx__mysql_error(mysql));
     return res;
 }
 
@@ -699,11 +784,12 @@ int mx_mysql_connect(struct mx_mysql **mysql)
     return res;
 }
 
-int mx_mysql_connect_forever(struct mx_mysql **mysql, unsigned int seconds)
+int mx_mysql_connect_forever_sec(struct mx_mysql **mysql, unsigned int seconds)
 {
     int res;
 
     while ((res = mx_mysql_connect(mysql)) < 0) {
+        mx__mysql_log_info(*mysql);
         mx_mysql_assert_usage_ok(res);
         mx_sleep(seconds);
     }
