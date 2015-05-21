@@ -21,8 +21,17 @@
 
 #include <inttypes.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#include <string.h>
+
 #include "mxq_util.h"
 
+#include "mxq_group.h"
+#include "mxq_job.h"
+
+#include "mx_log.h"
 #include "mx_util.h"
 #include "mx_getopt.h"
 #include "mx_mysql.h"
@@ -45,8 +54,18 @@
 #define MXQ_VERSIONDATE "2015"
 #endif
 
-#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
-#define MYSQL_DEFAULT_GROUP    "mxqsub"
+#ifndef MXQ_MYSQL_DEFAULT_FILE
+#   define MXQ_MYSQL_DEFAULT_FILE NULL
+#   define MXQ_MYSQL_DEFAULT_FILE_STR "\"MySQL defaults\""
+#else
+#   define MXQ_MYSQL_DEFAULT_FILE_STR MXQ_MYSQL_DEFAULT_FILE
+#endif
+
+#ifndef MXQ_MYSQL_DEFAULT_GROUP
+#   define MXQ_MYSQL_DEFAULT_GROUP     program_invocation_short_name
+#endif
+#define MXQ_MYSQL_DEFAULT_GROUP_STR MXQ_MYSQL_DEFAULT_GROUP
+
 
 static void print_version(void)
 {
@@ -63,7 +82,7 @@ static void print_usage(void)
     printf(
     "\n"
     "Usage:\n"
-    "  mxqsub [mxqsub-options] <command> [command options and arguments ..]\n"
+    "  %s [mxqsub-options] <command> [command options and arguments ..]\n"
     "\n"
     "Synopsis:\n"
     "  queue a job to be executed on a cluster node.\n"
@@ -106,13 +125,16 @@ static void print_usage(void)
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
-    "  -M | --mysql-default-file  [mysql-file]   (default: " MYSQL_DEFAULT_FILE ")\n"
-    "  -S | --mysql-default-group [mysql-group]  (default: " MYSQL_DEFAULT_GROUP ")\n"
+    "  -M | --mysql-default-file  [mysql-file]   (default: %s)\n"
+    "  -S | --mysql-default-group [mysql-group]  (default: %s)\n"
     "\n"
     "Environment:\n"
     "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
     "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
-    "\n"
+    "\n",
+        program_invocation_short_name,
+        MXQ_MYSQL_DEFAULT_FILE_STR,
+        MXQ_MYSQL_DEFAULT_GROUP_STR
     );
 }
 
@@ -472,11 +494,11 @@ int main(int argc, char *argv[])
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
+        arg_mysql_default_group = MXQ_MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     /******************************************************************/
 
