@@ -180,12 +180,6 @@ mx_flock.h += mx_flock.h
 mx_mysql.h += mx_mysql.h
 mx_mysql.h += $(mx_util.h)
 
-### mxq.h --------------------------------------------------------------
-
-mxq.h += mxq.h
-mxq.h += $(mxq_group.h)
-mxq.h += $(mxq_job.h)
-
 ### mxq_mysql.h --------------------------------------------------------
 
 mxq_mysql.h += mxq_mysql.h
@@ -195,7 +189,6 @@ mxq_mysql.h += $(mxq_util.h)
 
 mxq_util.h += mxq_util.h
 mxq_util.h += $(mx_log.h)
-mxq_util.h += $(mxq.h)
 
 ### mxq_group.h --------------------------------------------------------
 
@@ -317,7 +310,6 @@ clean: CLEAN += mxq_group.o
 
 mxq_job.o: $(mx_util.h)
 mxq_job.o: $(mx_log.h)
-mxq_job.o: $(mxq.h)
 mxq_job.o: $(mxq_job.h)
 mxq_job.o: $(mxq_group.h)
 mxq_job.o: $(mxq_mysql.h)

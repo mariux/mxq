@@ -6,11 +6,7 @@
 #include <string.h>
 #include <mysql.h>
 
-#include "mxq.h"
-
 char *mxq_hostname(void);
-
-void mxq_free_job(struct mxq_job_full *job);
 
 char **stringtostringvec(int argc, char *s);
 char *stringvectostring(int argc, char *argv[]);

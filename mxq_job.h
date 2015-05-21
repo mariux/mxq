@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <mysql.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include "mxq_group.h"
 
 struct mxq_job {

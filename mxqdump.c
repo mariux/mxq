@@ -14,6 +14,8 @@
 #include "mxq_mysql.h"
 #include "mx_getopt.h"
 
+#include "mxq_group.h"
+
 #ifndef MXQ_VERSION
 #define MXQ_VERSION "0.00"
 #endif

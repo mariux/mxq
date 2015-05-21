@@ -8,6 +8,7 @@
 #include "mx_log.h"
 
 #include "mxq_group.h"
+#include "mxq_job.h"
 #include "mxq_mysql.h"
 
 #define MXQ_GROUP_FIELDS "group_id," \
