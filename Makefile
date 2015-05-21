@@ -191,6 +191,7 @@ mxq_mysql.h += $(mxq_util.h)
 ### mxq_util.h ---------------------------------------------------------
 
 mxq_util.h += mxq_util.h
+mxq_util.h += $(mx_log.h)
 mxq_util.h += $(mxq.h)
 
 ### mxq_group.h --------------------------------------------------------
@@ -225,6 +226,8 @@ mx_log.o: $(mx_log.h)
 clean: CLEAN += mx_log.o
 
 ### mx_util.o ----------------------------------------------------------
+
+mx_util.o: $(mx_log.h)
 
 clean: CLEAN += mx_util.o
 
@@ -343,6 +346,7 @@ mxqsub.o: $(mxq_util.h)
 mxqsub.o: $(mx_util.h)
 mxqsub.o: $(mx_log.h)
 mxqsub.o: $(mxq_mysql.h)
+mxqsub.o: $(mx_mysql.h)
 mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
@@ -377,6 +381,7 @@ mxqsub: mxq_mysql.o
 mxqsub: mxq_util.o
 mxqsub: mx_util.o
 mxqsub: mx_log.o
+mxqsub: mx_mysql.o
 mxqsub: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqsub
@@ -442,6 +447,7 @@ test_mx_util.o: $(mx_util.h)
 clean: CLEAN += test_mx_util.o
 
 test_mx_util: mx_util.o
+test_mx_util: mx_log.o
 clean: CLEAN += test_mx_util
 
 test: test_mx_util
