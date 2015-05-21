@@ -410,6 +410,7 @@ int main(int argc, char *argv[])
 
     struct passwd *passwd;
     struct group  *grp;
+    char *p;
 
     int opt;
     struct mx_getopt_ctl optctl;
@@ -504,19 +505,28 @@ int main(int argc, char *argv[])
                 break;
 
             case 1:
-                mx_log_warning("option --group_id is deprecated. please use --group-name instead.");
+            case 3:
+                if (opt == 3)
+                    mx_log_warning("option --group-id is deprecated (usage will change in next version). Using --group-name instead.");
+                else
+                    mx_log_warning("option --group_id is deprecated. Using --group-name instead.");
             case 'N':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--group-name '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 arg_group_name = optctl.optarg;
                 break;
 
             case 'a':
-                if (*optctl.optarg) {
-                    char *p;
-                    arg_program_name = optctl.optarg;
-                    p = strchr(arg_program_name, ' ');
-                    if (p)
-                        *p = 0;
+                p = strchr(optctl.optarg, ' ');
+                if (p)
+                    *p = 0;
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--command-alias '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
+                arg_program_name = optctl.optarg;
                 break;
 
             case 2:
@@ -526,11 +536,6 @@ int main(int argc, char *argv[])
                     mx_log_crit("--group-priority '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
-                break;
-
-            case 3:
-                mx_log_warning("option --group-id is deprecated (usage will change in next version). please use --group-name instead.");
-                arg_group_name = optctl.optarg;
                 break;
 
             case 'j':
@@ -557,6 +562,10 @@ int main(int argc, char *argv[])
                 break;
 
             case 'w':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--workdir '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 if (optctl.optarg[0] != '/') {
                     mx_log_crit("--workdir '%s': workdir is a relativ path. please use absolute path.",
                                 optctl.optarg);
@@ -566,10 +575,18 @@ int main(int argc, char *argv[])
                 break;
 
             case 'o':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--stdout '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 arg_stdout = optctl.optarg;
                 break;
 
             case 'e':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--stderr '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 arg_stderr = optctl.optarg;
                 break;
 
@@ -601,6 +618,11 @@ int main(int argc, char *argv[])
 
     if (!arg_program_name)
         arg_program_name = argv[0];
+
+    if (!(*arg_program_name)) {
+        mx_log_crit("<command> is empty. Please check usage with '%s --help'.", program_invocation_short_name);
+        exit(EX_CONFIG);
+    }
 
     /******************************************************************/
 
@@ -681,7 +703,7 @@ int main(int argc, char *argv[])
     mx_mysql_option_set_default_file(mysql, arg_mysql_default_file);
     mx_mysql_option_set_default_group(mysql, arg_mysql_default_group);
 
-    res = mx_mysql_connect(&mysql);
+    res = mx_mysql_connect_forever(&mysql);
     assert(res == 0);
 
     res = mxq_submit_task(mysql, &job, flags);
