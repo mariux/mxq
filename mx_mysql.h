@@ -118,6 +118,13 @@ static inline void mx_mysql_bind_string3(struct mx_mysql_bind *b, int index, cha
         (b)[(c)].length = &((b)[(c)].buffer_length); \
     } while (0)
 */
+#ifndef MX_MYSQL_FAIL_WAIT_DEFAULT
+#   ifdef MX_CALLOC_FAIL_WAIT_DEFAULT
+#       define MX_MYSQL_FAIL_WAIT_DEFAULT MX_CALLOC_FAIL_WAIT_DEFAULT
+#   else
+#       define MX_MYSQL_FAIL_WAIT_DEFAULT 5
+#   endif
+#endif
 
 #define mx_mysql_print_error(mysql) \
     mx_log_err("MySQL: ERROR %u (%s): %s\n", \
@@ -144,7 +151,9 @@ char *mx_mysql_option_get_default_file(struct mx_mysql *mysql);
 char *mx_mysql_option_get_default_group(struct mx_mysql *mysql);
 
 int mx_mysql_connect(struct mx_mysql **mysql);
-int mx_mysql_connect_forever(struct mx_mysql **mysql, unsigned int seconds);
+int mx_mysql_connect_forever_sec(struct mx_mysql **mysql, unsigned int seconds);
+#define mx_mysql_connect_forever(m) mx_mysql_connect_forever_sec((m), MX_MYSQL_FAIL_WAIT_DEFAULT)
+
 int mx_mysql_disconnect(struct mx_mysql *mysql);
 
 int mx_mysql_end(void);
