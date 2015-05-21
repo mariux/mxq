@@ -765,7 +765,6 @@ static int mx_mysql_real_connect(struct mx_mysql *mysql, const char *host, const
         return 0;
     }
 
-    mx_log_debug("ERROR: mysql_real_connect(): %s", mx__mysql_error(mysql));
     return res;
 }
 
