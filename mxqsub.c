@@ -378,6 +378,11 @@ static int mxq_submit_task(struct mx_mysql *mysql, struct mxq_job *j, int flags)
             mx_log_err("Failed to add new group.");
             return -(errno=EIO);
         }
+
+        mx_log_info("The new job will be added to new group with group_id=%lu", g->group_id);
+
+    } else {
+        mx_log_info("The new job will be attached to existing group with group_id=%lu", g->group_id);
     }
 
     assert(g->group_id);
@@ -392,6 +397,8 @@ static int mxq_submit_task(struct mx_mysql *mysql, struct mxq_job *j, int flags)
         mx_log_err("Failed to add job group.");
         return -(errno=EIO);
     }
+
+    mx_log_info("The new job has been queued successfully with job_id=%lu in group with group_id=%lu", j->job_id, g->group_id);
 
     assert(j->job_id);
 
@@ -738,9 +745,13 @@ int main(int argc, char *argv[])
     res = mx_mysql_connect_forever(&mysql);
     assert(res == 0);
 
+    mx_log_info("MySQL: Connection to database established.");
+
     res = mxq_submit_task(mysql, &job, flags);
 
     mx_mysql_finish(&mysql);
+
+    mx_log_info("MySQL: Connection to database closed.");
 
     if (res < 0) {
         mx_log_err("Job submission failed: %m");
