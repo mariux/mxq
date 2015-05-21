@@ -35,6 +35,8 @@
 struct mx_mysql {
     MYSQL *mysql;
 
+    const char *func;
+
     char *default_file;
     char *default_group;
     my_bool reconnect;
@@ -74,6 +76,8 @@ struct mx_mysql_stmt {
     char *statement;
 
     MYSQL_STMT *stmt;
+
+    const char *func;
 
     unsigned long field_count;
     unsigned long param_count;
@@ -125,18 +129,6 @@ static inline void mx_mysql_bind_string3(struct mx_mysql_bind *b, int index, cha
 #       define MX_MYSQL_FAIL_WAIT_DEFAULT 5
 #   endif
 #endif
-
-#define mx_mysql_print_error(mysql) \
-    mx_log_err("MySQL: ERROR %u (%s): %s\n", \
-    mysql_errno(mysql), \
-    mysql_sqlstate(mysql), \
-    mysql_error(mysql))
-
-#define mx_mysql_stmt_print_error(stmt) \
-        mx_log_err("MySQL: ERROR %u (%s): %s\n", \
-            mysql_stmt_errno(stmt), \
-            mysql_stmt_sqlstate(stmt), \
-            mysql_stmt_error(stmt))
 
 #define mx_mysql_statement_param_bind(s, i, t, p)  mx_mysql_bind_##t(&((s)->param), (i), (p))
 #define mx_mysql_statement_result_bind(s, i, t, p) mx_mysql_bind_##t(&((s)->result), (i), (p))
