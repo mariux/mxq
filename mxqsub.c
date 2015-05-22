@@ -173,6 +173,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
     assert(num_rows <= 1);
@@ -183,11 +184,12 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
         res = mx_mysql_statement_fetch(stmt);
         if (res < 0) {
             mx_log_err("mx_mysql_statement_fetch(): %m");
+            mx_mysql_statement_close(&stmt);
             return res;
         }
     }
 
-    res = mx_mysql_statement_close(&stmt);
+    mx_mysql_statement_close(&stmt);
 
     return (int)num_rows;
 }
@@ -245,6 +247,7 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
 
@@ -254,7 +257,7 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
 
     g->group_id = insert_id;
 
-    res = mx_mysql_statement_close(&stmt);
+    mx_mysql_statement_close(&stmt);
 
     return (int)num_rows;
 }
