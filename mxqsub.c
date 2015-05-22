@@ -106,6 +106,15 @@ static void print_usage(void)
     "  -m | --memory   <size>    set amount of memory in MiB (default: 2048)\n"
     "  -t | --time     <minutes> set runtime in minutes      (default: 15)\n"
     "\n"
+    "Job handling:\n"
+    "  Define what to do if something bad happens.\n"
+    "\n"
+    "  -r | --restart [restartmode]  restart job on system failure (default: 'never')\n"
+    "\n"
+    "  available [restartmode]s:\n"
+    "      'samehost'  only restart if running on the same host.\n"
+    "      'always'    always restart or requeue. (default)\n"
+    "\n"
     "Job grouping:\n"
     "  Grouping is done by default based on the jobs resource\n"
     "  and priority information, so that jobs using the same\n"
@@ -322,7 +331,10 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
 
                 " job_umask = ?,"
 
-                " host_submit = ?");
+                " host_submit = ?,"
+
+                " job_flags = ?"
+                );
     if (res < 0) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
         return res;
@@ -340,6 +352,7 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
     mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
     mx_mysql_statement_param_bind(stmt, 7, uint32, &(j->job_umask));
     mx_mysql_statement_param_bind(stmt, 8, string, &(j->host_submit));
+    mx_mysql_statement_param_bind(stmt, 9, uint64, &(j->job_flags));
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
@@ -426,6 +439,7 @@ int main(int argc, char *argv[])
     char      *arg_mysql_default_file;
     char      *arg_mysql_default_group;
     char       arg_debug;
+    char       arg_jobflags;
 
     _mx_cleanup_free_ char *current_workdir = NULL;
     _mx_cleanup_free_ char *arg_stdout_absolute = NULL;
@@ -456,6 +470,8 @@ int main(int argc, char *argv[])
 
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("verbose",              'v'),
+
+                MX_OPTION_OPTIONAL_ARG("restartable",    'r'),
 
                 MX_OPTION_REQUIRED_ARG("group-name",     'N'),
                 MX_OPTION_REQUIRED_ARG("group-priority", 'P'),
@@ -498,6 +514,7 @@ int main(int argc, char *argv[])
     arg_stderr         = "stdout";
     arg_umask          = getumask();
     arg_debug          = 0;
+    arg_jobflags       = 0;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -534,6 +551,20 @@ int main(int argc, char *argv[])
             case 'v':
                 if (!arg_debug)
                     mx_log_level_set(MX_LOG_INFO);
+                break;
+
+            case 'r':
+                if (!optctl.optarg || streq(optctl.optarg, "always")) {
+                    arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
+                    arg_jobflags |= MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL;
+                } else if (streq(optctl.optarg, "samehost")) {
+                    arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
+                } else if (streq(optctl.optarg, "never")) {
+                    arg_jobflags &= ~(MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL|MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL);
+                } else {
+                    mx_log_crit("--restart '%s': restartmode unknown.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 break;
 
             case 'p':
@@ -700,6 +731,7 @@ int main(int argc, char *argv[])
     group.job_memory     = arg_memory;
     group.job_time       = arg_time;
 
+    job.job_flags      = arg_jobflags;
     job.job_priority   = arg_priority;
     job.job_workdir    = arg_workdir;
     job.job_stdout     = arg_stdout;
