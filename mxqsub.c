@@ -190,19 +190,17 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
         return res;
     }
 
-    assert(mx_mysql_statement_field_count(stmt) ==  1);
-    assert(mx_mysql_statement_param_count(stmt) == 10);
-
-    mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
-    mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
-    mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
-    mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
-    mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
-    mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
-    mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
-    mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
-    mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
-    mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
+    res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
+    res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
@@ -264,19 +262,17 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
         return res;
     }
 
-    assert(mx_mysql_statement_field_count(stmt) ==  0);
-    assert(mx_mysql_statement_param_count(stmt) == 10);
-
-    mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
-    mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
-    mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
-    mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
-    mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
-    mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
-    mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
-    mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
-    mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
-    mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
+    res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
+    res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    assert(res ==0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
@@ -341,19 +337,17 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
         return res;
     }
 
-    assert(mx_mysql_statement_field_count(stmt) == 0);
-    assert(mx_mysql_statement_param_count(stmt) == 9);
-
-    mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
-    mx_mysql_statement_param_bind(stmt, 1, uint64, &(j->group_id));
-    mx_mysql_statement_param_bind(stmt, 2, string, &(j->job_workdir));
-    mx_mysql_statement_param_bind(stmt, 3, uint16, &(j->job_argc));
-    mx_mysql_statement_param_bind(stmt, 4, string, &(j->job_argv_str));
-    mx_mysql_statement_param_bind(stmt, 5, string, &(j->job_stdout));
-    mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
-    mx_mysql_statement_param_bind(stmt, 7, uint32, &(j->job_umask));
-    mx_mysql_statement_param_bind(stmt, 8, string, &(j->host_submit));
-    mx_mysql_statement_param_bind(stmt, 9, uint64, &(j->job_flags));
+    res  = mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(j->group_id));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(j->job_workdir));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint16, &(j->job_argc));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(j->job_argv_str));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(j->job_stdout));
+    res += mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint32, &(j->job_umask));
+    res += mx_mysql_statement_param_bind(stmt, 8, string, &(j->host_submit));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint64, &(j->job_flags));
+    assert(res ==0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
