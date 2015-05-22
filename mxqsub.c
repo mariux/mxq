@@ -242,7 +242,7 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
     res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
     res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
-    assert(res ==0);
+    assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
@@ -253,7 +253,6 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
 
     assert(num_rows == 1);
     mx_mysql_statement_insert_id(stmt, &insert_id);
-    assert(insert_id > 0);
 
     g->group_id = insert_id;
 
