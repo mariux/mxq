@@ -132,11 +132,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     assert(g->job_command); assert(*g->job_command);
     assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    if (res < 0)
-        return res;
-
-    res = mx_mysql_statement_prepare(stmt,
+    stmt = mx_mysql_statement_prepare(mysql,
             "SELECT"
                 " group_id"
             " FROM mxq_group "
@@ -153,9 +149,9 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
                 " AND group_status = 0"
             " ORDER BY group_id "
             " LIMIT 1");
-    if (res < 0) {
+    if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
-        return res;
+        return -errno;
     }
 
     res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
@@ -208,11 +204,7 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
     assert(g->job_command); assert(*g->job_command);
     assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    if (res < 0)
-        return res;
-
-    res = mx_mysql_statement_prepare(stmt,
+    stmt = mx_mysql_statement_prepare(mysql,
             "INSERT INTO mxq_group SET"
                 " group_name = ?,"
 
@@ -227,9 +219,9 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
                 " job_memory = ?,"
                 " job_time = ?,"
                 " group_priority = ?");
-    if (res < 0) {
+    if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
-        return res;
+        return -errno;
     }
 
     res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
@@ -278,11 +270,7 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
     assert(j->job_umask);
     assert(j->host_submit); assert(*j->host_submit);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    if (res < 0)
-        return res;
-
-    res = mx_mysql_statement_prepare(stmt,
+    stmt = mx_mysql_statement_prepare(mysql,
             "INSERT INTO mxq_job SET"
                 " job_priority = ?,"
 
@@ -301,10 +289,10 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
 
                 " job_flags = ?"
                 );
-    if (res < 0) {
+    if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
         mx_mysql_statement_close(&stmt);
-        return res;
+        return -errno;
     }
 
     res  = mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
