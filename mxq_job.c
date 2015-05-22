@@ -16,7 +16,6 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mxq_mysql.h"
-#include "mxq.h"
 
 #define MXQ_JOB_FIELDS "job_id, " \
                 "job_status, " \

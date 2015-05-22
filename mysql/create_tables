@@ -1,5 +1,9 @@
 
 ALTER TABLE mxq_job
+   ADD COLUMN job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL
+   AFTER date_end;
+
+ALTER TABLE mxq_job
    ADD COLUMN job_flags INT8 UNSIGNED NOT NULL DEFAULT 0
    AFTER job_status;
 
@@ -81,6 +85,8 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    date_submit  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
    date_start   TIMESTAMP NOT NULL DEFAULT 0,
    date_end     TIMESTAMP NOT NULL DEFAULT 0,
+
+   job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL,
 
    stats_status   INT4 UNSIGNED NOT NULL DEFAULT 0,
 

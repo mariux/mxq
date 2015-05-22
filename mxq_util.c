@@ -94,14 +94,6 @@ void *realloc_forever(void *ptr, size_t size)
     } while (1);
 }
 
-void mxq_free_job(struct mxq_job_full *job)
-{
-    if (!job)
-        return;
-
-    free(job);
-}
-
 char **strvec_new(void)
 {
     char **strvec;
