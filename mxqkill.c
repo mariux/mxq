@@ -43,6 +43,8 @@ static void print_usage(void)
     "\n"
     "  -g | --group-id <group-id>    cancel/kill group <group-id>\n"
     "\n"
+    "  -v | --verbose   be more verbose\n"
+    "       --debug     set debug log level (default: warning log level)\n"
     "  -V | --version\n"
     "  -h | --help\n"
     "\n"
@@ -157,9 +159,11 @@ int main(int argc, char *argv[])
 
     uid_t ruid, euid, suid;
     struct passwd *passwd;
-    uint64_t arg_group_id;
 
     int res;
+
+    uint64_t arg_group_id;
+    char     arg_debug;
 
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
@@ -170,6 +174,9 @@ int main(int argc, char *argv[])
     struct mx_option opts[] = {
                 MX_OPTION_NO_ARG("help",                 'h'),
                 MX_OPTION_NO_ARG("version",              'V'),
+
+                MX_OPTION_NO_ARG("debug",                5),
+                MX_OPTION_NO_ARG("verbose",              'v'),
 
                 MX_OPTION_REQUIRED_ARG("group-id", 'g'),
 
@@ -187,6 +194,7 @@ int main(int argc, char *argv[])
         arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     arg_group_id = 0;
+    arg_debug    = 0;
 
     mx_log_level_set(MX_LOG_NOTICE);
 
@@ -206,6 +214,16 @@ int main(int argc, char *argv[])
             case 'h':
                 print_usage();
                 exit(EX_USAGE);
+
+            case 5:
+                arg_debug = 1;
+                mx_log_level_set(MX_LOG_DEBUG);
+                break;
+
+            case 'v':
+                if (!arg_debug)
+                    mx_log_level_set(MX_LOG_INFO);
+                break;
 
             case 'g':
                 if (mx_strtou64(optctl.optarg, &arg_group_id) < 0 || !arg_group_id) {
