@@ -61,65 +61,6 @@ void mxq_mysql_close(MYSQL *mysql) {
     mysql_library_end();
 }
 
-int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...)
-{
-    va_list ap;
-    _mx_cleanup_free_ char *query = NULL;
-    int res;
-    size_t len;
-
-    va_start(ap, fmt);
-    len = vasprintf(&query, fmt, ap);
-    va_end(ap);
-
-    if (len == -1)
-        return 0;
-
-    assert(len == strlen(query));
-
-    //printf("QUERY(%d): %s;\n", (int)len, query);
-
-    res = mysql_real_query(mysql, query, len);
-
-    return res;
-}
-
-MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...)
-{
-    va_list ap;
-    _mx_cleanup_free_ char *query = NULL;
-    MYSQL_RES *mres;
-    size_t len;
-    int res;
-
-    va_start(ap, fmt);
-    len = vasprintf(&query, fmt, ap);
-    va_end(ap);
-
-    if (len == -1)
-        return 0;
-
-    assert(len == strlen(query));
-
-    //printf("QUERY(%d): %s;\n", (int)len, query);
-
-    res = mysql_real_query(mysql, query, len);
-    if (res) {
-        mx_log_err("mysql_real_query() failed. Error: %s", mysql_error(mysql));
-        mx_log_info("query was: %s", query);
-        return NULL;
-    }
-
-    mres = mysql_store_result(mysql);
-    if (!mres) {
-        mx_log_err("mysql_store_result() failed. Error: %s", mysql_error(mysql));
-        mx_log_info("query was: %s", query);
-        return NULL;
-    }
-
-    return mres;
-}
-
 MYSQL_STMT *mxq_mysql_stmt_do_query(MYSQL *mysql, char *stmt_str, int field_count, MYSQL_BIND *param, MYSQL_BIND *result)
 {
     MYSQL_STMT *stmt;
@@ -242,42 +183,6 @@ int mxq_mysql_stmt_fetch_row(MYSQL_STMT *stmt)
     return 1;
 }
 
-
-char *mxq_mysql_escape_str(MYSQL *mysql, char *s)
-{
-    char *quoted = NULL;
-    size_t len;
-
-    len    = strlen(s);
-    quoted = malloc(len*2 + 1);
-    if (!quoted)
-       return NULL;
-
-    mysql_real_escape_string(mysql, quoted, s,  len);
-
-    return quoted;
-}
-
-char *mxq_mysql_escape_strvec(MYSQL *mysql, char **sv)
-{
-    char *quoted = NULL;
-    _mx_cleanup_free_ char *s = NULL;
-    size_t len;
-
-    s = strvec_to_str(sv);
-    if (!s)
-        return NULL;
-
-    len    = strlen(s);
-    quoted = malloc(len*2 + 1);
-    if (!quoted)
-       return NULL;
-
-    mysql_real_escape_string(mysql, quoted, s,  len);
-
-    return quoted;
-}
-
 int mxq_mysql_do_update(MYSQL *mysql, char* query, MYSQL_BIND *param)
 {
     MYSQL_STMT *stmt;
@@ -299,10 +204,4 @@ int mxq_mysql_do_update(MYSQL *mysql, char* query, MYSQL_BIND *param)
     }
 
     return res;
-}
-
-
-char *mxq_mysql_escape_string(MYSQL *mysql, char *s)
-{
-    return mxq_mysql_escape_str(mysql, s);
 }
