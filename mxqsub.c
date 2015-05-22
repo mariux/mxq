@@ -36,49 +36,17 @@
 #include "mx_getopt.h"
 #include "mx_mysql.h"
 
+#include "mxq.h"
 
 #define MXQ_TASK_JOB_FORCE_APPEND  (1<<0)
 #define MXQ_TASK_JOB_FORCE_NEW     (1<<1)
 
 #define MXQ_JOB_STATUS_ACTIVE      (1)
 
-#ifndef MXQ_VERSION
-#define MXQ_VERSION "0.00"
-#endif
-
-#ifndef MXQ_VERSIONFULL
-#define MXQ_VERSIONFULL "MXQ v0.00 super alpha 0"
-#endif
-
-#ifndef MXQ_VERSIONDATE
-#define MXQ_VERSIONDATE "2015"
-#endif
-
-#ifndef MXQ_MYSQL_DEFAULT_FILE
-#   define MXQ_MYSQL_DEFAULT_FILE NULL
-#   define MXQ_MYSQL_DEFAULT_FILE_STR "\"MySQL defaults\""
-#else
-#   define MXQ_MYSQL_DEFAULT_FILE_STR MXQ_MYSQL_DEFAULT_FILE
-#endif
-
-#ifndef MXQ_MYSQL_DEFAULT_GROUP
-#   define MXQ_MYSQL_DEFAULT_GROUP     program_invocation_short_name
-#endif
-#define MXQ_MYSQL_DEFAULT_GROUP_STR MXQ_MYSQL_DEFAULT_GROUP
-
-
-static void print_version(void)
-{
-    printf(
-    "mxqsub - " MXQ_VERSIONFULL "\n"
-    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
-    "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
-    );
-}
 
 static void print_usage(void)
 {
-    print_version();
+    mxq_print_generic_version();
     printf(
     "\n"
     "Usage:\n"
@@ -532,7 +500,7 @@ int main(int argc, char *argv[])
 
         switch (opt) {
             case 'V':
-                print_version();
+                mxq_print_generic_version();
                 exit(EX_USAGE);
 
             case 'h':
