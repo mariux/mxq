@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 
     arg_group_id = 0;
 
-    mx_log_level_set(MX_LOG_INFO);
+    mx_log_level_set(MX_LOG_NOTICE);
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
     optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
             mx_log_info("MySQL: Connection to database closed.");
 
             if (res == 0)
-                mx_log_err("no active group with group_id=%lu found for user=%s(%d)",
+                mx_log_warning("no active group with group_id=%lu found for user=%s(%d)",
                         group.group_id, group.user_name, group.user_uid);
             else
                 mx_log_err("cancelling group failed: %m");
@@ -283,11 +283,11 @@ int main(int argc, char *argv[])
             res=0;
 
         if (res >= 0) {
-            mx_log_info("cancelled %d jobs in group with group_id=%lu",
+            mx_log_notice("cancelled %d jobs in group with group_id=%lu",
                     res, group.group_id);
-            mx_log_info("marked all running jobs in group with group_id=%lu to be killed by executing servers.",
+            mx_log_notice("marked all running jobs in group with group_id=%lu to be killed by executing servers.",
                     group.group_id);
-            mx_log_info("deactivated group with group_id=%lu",
+            mx_log_notice("deactivated group with group_id=%lu",
                     group.group_id);
             return 0;
         } else {
