@@ -337,6 +337,7 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
                 );
     if (res < 0) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
 
@@ -357,6 +358,7 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
 
