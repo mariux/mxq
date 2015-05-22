@@ -28,11 +28,8 @@ int main(int argc, char *argv[])
     //res = mx_mysql_connect(mysql);
     //assert(res == 0);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    assert(res == 0);
-
-    res = mx_mysql_statement_prepare(stmt, "SELECT group_id, group_id, group_name FROM mxq_group where group_id = ?");
-    assert(res == 0);
+    stmt = mx_mysql_statement_prepare(mysql, "SELECT group_id, group_id, group_name FROM mxq_group where group_id = ?");
+    assert(stmt);
     mx_log_debug("field_count = %d", mx_mysql_statement_field_count(stmt));
     mx_log_debug("param_count = %d", mx_mysql_statement_param_count(stmt));
 
