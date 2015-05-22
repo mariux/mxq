@@ -1110,38 +1110,46 @@ int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count)
     return 0;
 }
 
-int mx_mysql_statement_prepare(struct mx_mysql_stmt *stmt, char *statement)
+struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement)
 {
     int res;
+    struct mx_mysql_stmt *stmt = NULL;
 
-    mx_assert_return_minus_errno(stmt, EINVAL);
+    mx_assert_return_NULL(mysql, EINVAL);
+    mx_assert_return_NULL(statement, EINVAL);
+    mx_assert_return_NULL(*statement, EINVAL);
 
-    res = mx__mysql_stmt_prepare(stmt, statement);
-    mx_mysql_assert_usage_ok(res);
+    res = mx_mysql_statement_init(mysql, &stmt);
     if (res < 0)
-        return res;
+        return NULL;
 
-    res = mx_mysql_stmt_param_count_set(stmt);
-    mx_mysql_assert_usage_ok(res);
-    if (res < 0)
-        return res;
+    while (1) {
+        res = mx__mysql_stmt_prepare(stmt, statement);
+        if (res < 0)
+            break;
 
-    res = mx_mysql_stmt_field_count_set(stmt);
-    mx_mysql_assert_usage_ok(res);
-    if (res < 0)
-        return res;
+        res = mx_mysql_stmt_param_count_set(stmt);
+        if (res < 0)
+            break;
 
-    res = mx_mysql_bind_init(&stmt->param, stmt->param_count);
-    mx_mysql_assert_usage_ok(res);
-    if (res < 0)
-        return res;
+        res = mx_mysql_stmt_field_count_set(stmt);
+        if (res < 0)
+            break;
 
-    res = mx_mysql_bind_init(&stmt->result, stmt->field_count);
-    mx_mysql_assert_usage_ok(res);
-    if (res < 0)
-        return res;
+        res = mx_mysql_bind_init(&stmt->param, stmt->param_count);
+        if (res < 0)
+            break;
 
-    return 0;
+        res = mx_mysql_bind_init(&stmt->result, stmt->field_count);
+        if (res < 0)
+            break;
+
+        return stmt;
+    };
+
+    mx_mysql_statement_close(&stmt);
+
+    return NULL;
 }
 
 int mx_mysql_statement_close(struct mx_mysql_stmt **stmt)
