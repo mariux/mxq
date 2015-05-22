@@ -17,14 +17,6 @@ struct mxq_mysql {
 MYSQL *mxq_mysql_connect(struct mxq_mysql *mmysql);
 void mxq_mysql_close(MYSQL *mysql);
 
-int mxq_mysql_query(MYSQL *mysql, const char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
-
-MYSQL_RES *mxq_mysql_query_with_result(MYSQL *mysql, const char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
-
-char *mxq_mysql_escape_string(MYSQL *mysql, char *s);
-char *mxq_mysql_escape_str(MYSQL *mysql, char *s);
-char *mxq_mysql_escape_strvec(MYSQL *mysql, char **s);
-
 int mxq_mysql_stmt_fetch_string(MYSQL_STMT *stmt, MYSQL_BIND *bind, int col, char **buf, unsigned long len);
 int mxq_mysql_stmt_fetch_row(MYSQL_STMT *stmt);
 

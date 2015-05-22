@@ -180,6 +180,10 @@ mx_flock.h += mx_flock.h
 mx_mysql.h += mx_mysql.h
 mx_mysql.h += $(mx_util.h)
 
+### mxq.h --------------------------------------------------------------
+
+mx_mxq.h += mx_mxq.h
+
 ### mxq_mysql.h --------------------------------------------------------
 
 mxq_mysql.h += mxq_mysql.h
@@ -340,6 +344,7 @@ mxqsub.o: $(mx_getopt.h)
 mxqsub.o: $(mx_util.h)
 mxqsub.o: $(mx_log.h)
 mxqsub.o: $(mx_mysql.h)
+mxqsub.o: $(mxq.h)
 mxqsub.o: $(mxq_group.h)
 mxqsub.o: $(mxq_job.h)
 mxqsub.o: $(mxq_util.h)
