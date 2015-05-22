@@ -106,6 +106,15 @@ static void print_usage(void)
     "  -m | --memory   <size>    set amount of memory in MiB (default: 2048)\n"
     "  -t | --time     <minutes> set runtime in minutes      (default: 15)\n"
     "\n"
+    "Job handling:\n"
+    "  Define what to do if something bad happens.\n"
+    "\n"
+    "  -r | --restart [restartmode]  restart job on system failure (default: 'never')\n"
+    "\n"
+    "  available [restartmode]s:\n"
+    "      'samehost'  only restart if running on the same host.\n"
+    "      'always'    always restart or requeue. (default)\n"
+    "\n"
     "Job grouping:\n"
     "  Grouping is done by default based on the jobs resource\n"
     "  and priority information, so that jobs using the same\n"
@@ -181,19 +190,17 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
         return res;
     }
 
-    assert(mx_mysql_statement_field_count(stmt) ==  1);
-    assert(mx_mysql_statement_param_count(stmt) == 10);
-
-    mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
-    mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
-    mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
-    mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
-    mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
-    mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
-    mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
-    mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
-    mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
-    mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
+    res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
+    res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
@@ -255,19 +262,17 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
         return res;
     }
 
-    assert(mx_mysql_statement_field_count(stmt) ==  0);
-    assert(mx_mysql_statement_param_count(stmt) == 10);
-
-    mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
-    mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
-    mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
-    mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
-    mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
-    mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
-    mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
-    mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
-    mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
-    mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
+    res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
+    res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    assert(res ==0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
@@ -322,28 +327,32 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
 
                 " job_umask = ?,"
 
-                " host_submit = ?");
+                " host_submit = ?,"
+
+                " job_flags = ?"
+                );
     if (res < 0) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
 
-    assert(mx_mysql_statement_field_count(stmt) == 0);
-    assert(mx_mysql_statement_param_count(stmt) == 9);
-
-    mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
-    mx_mysql_statement_param_bind(stmt, 1, uint64, &(j->group_id));
-    mx_mysql_statement_param_bind(stmt, 2, string, &(j->job_workdir));
-    mx_mysql_statement_param_bind(stmt, 3, uint16, &(j->job_argc));
-    mx_mysql_statement_param_bind(stmt, 4, string, &(j->job_argv_str));
-    mx_mysql_statement_param_bind(stmt, 5, string, &(j->job_stdout));
-    mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
-    mx_mysql_statement_param_bind(stmt, 7, uint32, &(j->job_umask));
-    mx_mysql_statement_param_bind(stmt, 8, string, &(j->host_submit));
+    res  = mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(j->group_id));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(j->job_workdir));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint16, &(j->job_argc));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(j->job_argv_str));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(j->job_stdout));
+    res += mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint32, &(j->job_umask));
+    res += mx_mysql_statement_param_bind(stmt, 8, string, &(j->host_submit));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint64, &(j->job_flags));
+    assert(res ==0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
 
@@ -426,6 +435,7 @@ int main(int argc, char *argv[])
     char      *arg_mysql_default_file;
     char      *arg_mysql_default_group;
     char       arg_debug;
+    char       arg_jobflags;
 
     _mx_cleanup_free_ char *current_workdir = NULL;
     _mx_cleanup_free_ char *arg_stdout_absolute = NULL;
@@ -456,6 +466,8 @@ int main(int argc, char *argv[])
 
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("verbose",              'v'),
+
+                MX_OPTION_OPTIONAL_ARG("restartable",    'r'),
 
                 MX_OPTION_REQUIRED_ARG("group-name",     'N'),
                 MX_OPTION_REQUIRED_ARG("group-priority", 'P'),
@@ -498,6 +510,7 @@ int main(int argc, char *argv[])
     arg_stderr         = "stdout";
     arg_umask          = getumask();
     arg_debug          = 0;
+    arg_jobflags       = 0;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -534,6 +547,20 @@ int main(int argc, char *argv[])
             case 'v':
                 if (!arg_debug)
                     mx_log_level_set(MX_LOG_INFO);
+                break;
+
+            case 'r':
+                if (!optctl.optarg || streq(optctl.optarg, "always")) {
+                    arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
+                    arg_jobflags |= MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL;
+                } else if (streq(optctl.optarg, "samehost")) {
+                    arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
+                } else if (streq(optctl.optarg, "never")) {
+                    arg_jobflags &= ~(MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL|MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL);
+                } else {
+                    mx_log_crit("--restart '%s': restartmode unknown.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 break;
 
             case 'p':
@@ -700,6 +727,7 @@ int main(int argc, char *argv[])
     group.job_memory     = arg_memory;
     group.job_time       = arg_time;
 
+    job.job_flags      = arg_jobflags;
     job.job_priority   = arg_priority;
     job.job_workdir    = arg_workdir;
     job.job_stdout     = arg_stdout;

@@ -234,6 +234,10 @@ static int mx__mysql_stmt_prepare(struct mx_mysql_stmt *stmt, char *statement)
         case CR_SERVER_GONE_ERROR:
         case CR_SERVER_LOST:
             return -(errno=EAGAIN);
+
+        case ER_PARSE_ERROR:
+            mx__mysql_stmt_log_emerg(stmt);
+            return -(errno=EBADRQC);
     }
 
     mx__mysql_stmt_log_emerg(stmt);
@@ -638,7 +642,7 @@ static inline int _mx_mysql_bind_validate(struct mx_mysql_bind *b)
 
     for (i=0; i < b->count; i++) {
         if (!(b->data[i].flags)) {
-            return -(errno=ENOENT);
+            return -(errno=EBADSLT);
         }
     }
 
@@ -913,7 +917,7 @@ int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *c
 
     res = _mx_mysql_bind_validate(&stmt->param);
     if (res < 0) {
-        mx_log_debug("ERROR: param not initialized completely.");
+        mx_log_crit("MxSQL: parameter list for prepared statement not initialized completely.");
         return res;
     }
 
