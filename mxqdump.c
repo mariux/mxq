@@ -16,37 +16,17 @@
 
 #include "mxq_group.h"
 
-#ifndef MXQ_VERSION
-#define MXQ_VERSION "0.00"
-#endif
+#include "mxq.h"
 
-#ifndef MXQ_VERSIONFULL
-#define MXQ_VERSIONFULL "MXQ v0.00 super alpha 0"
-#endif
 
-#ifndef MXQ_VERSIONDATE
-#define MXQ_VERSIONDATE "2015"
-#endif
-
-#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
-#define MYSQL_DEFAULT_GROUP    "mxqdump"
-
-static void print_version(void)
-{
-    printf(
-    "mxqdump - " MXQ_VERSIONFULL "\n"
-    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
-    "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
-    );
-}
 
 static void print_usage(void)
 {
-    print_version();
+    mxq_print_generic_version();
     printf(
     "\n"
     "Usage:\n"
-    "  mxqdump [options]\n"
+    "  %s [options]\n"
     "\n"
     "Synopsis:\n"
     "  Dump status infromation of MXQ cluster.\n"
@@ -57,13 +37,16 @@ static void print_usage(void)
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
-    "  -M | --mysql-default-file [mysql-file]    default: " MYSQL_DEFAULT_FILE "\n"
-    "  -S | --mysql-default-group [mysql-group]  default: " MYSQL_DEFAULT_GROUP "\n"
+    "  -M | --mysql-default-file  [mysql-file]   (default: %s)\n"
+    "  -S | --mysql-default-group [mysql-group]  (default: %s)\n"
     "\n"
     "Environment:\n"
     "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
     "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
-    "\n"
+    "\n",
+    program_invocation_short_name,
+    MXQ_MYSQL_DEFAULT_FILE_STR,
+    MXQ_MYSQL_DEFAULT_GROUP_STR
     );
 }
 
@@ -90,12 +73,11 @@ int main(int argc, char *argv[])
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
+        arg_mysql_default_group = MXQ_MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
-
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
     optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
@@ -107,7 +89,7 @@ int main(int argc, char *argv[])
 
         switch (opt) {
             case 'V':
-                print_version();
+                mxq_print_generic_version();
                 exit(EX_USAGE);
 
             case 'h':
