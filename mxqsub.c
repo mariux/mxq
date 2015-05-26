@@ -36,49 +36,17 @@
 #include "mx_getopt.h"
 #include "mx_mysql.h"
 
+#include "mxq.h"
 
 #define MXQ_TASK_JOB_FORCE_APPEND  (1<<0)
 #define MXQ_TASK_JOB_FORCE_NEW     (1<<1)
 
 #define MXQ_JOB_STATUS_ACTIVE      (1)
 
-#ifndef MXQ_VERSION
-#define MXQ_VERSION "0.00"
-#endif
-
-#ifndef MXQ_VERSIONFULL
-#define MXQ_VERSIONFULL "MXQ v0.00 super alpha 0"
-#endif
-
-#ifndef MXQ_VERSIONDATE
-#define MXQ_VERSIONDATE "2015"
-#endif
-
-#ifndef MXQ_MYSQL_DEFAULT_FILE
-#   define MXQ_MYSQL_DEFAULT_FILE NULL
-#   define MXQ_MYSQL_DEFAULT_FILE_STR "\"MySQL defaults\""
-#else
-#   define MXQ_MYSQL_DEFAULT_FILE_STR MXQ_MYSQL_DEFAULT_FILE
-#endif
-
-#ifndef MXQ_MYSQL_DEFAULT_GROUP
-#   define MXQ_MYSQL_DEFAULT_GROUP     program_invocation_short_name
-#endif
-#define MXQ_MYSQL_DEFAULT_GROUP_STR MXQ_MYSQL_DEFAULT_GROUP
-
-
-static void print_version(void)
-{
-    printf(
-    "mxqsub - " MXQ_VERSIONFULL "\n"
-    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
-    "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
-    );
-}
 
 static void print_usage(void)
 {
-    print_version();
+    mxq_print_generic_version();
     printf(
     "\n"
     "Usage:\n"
@@ -201,6 +169,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
     assert(num_rows <= 1);
@@ -211,11 +180,12 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
         res = mx_mysql_statement_fetch(stmt);
         if (res < 0) {
             mx_log_err("mx_mysql_statement_fetch(): %m");
+            mx_mysql_statement_close(&stmt);
             return res;
         }
     }
 
-    res = mx_mysql_statement_close(&stmt);
+    mx_mysql_statement_close(&stmt);
 
     return (int)num_rows;
 }
@@ -264,21 +234,21 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
     res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
     res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
-    assert(res ==0);
+    assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
         return res;
     }
 
     assert(num_rows == 1);
     mx_mysql_statement_insert_id(stmt, &insert_id);
-    assert(insert_id > 0);
 
     g->group_id = insert_id;
 
-    res = mx_mysql_statement_close(&stmt);
+    mx_mysql_statement_close(&stmt);
 
     return (int)num_rows;
 }
@@ -520,7 +490,7 @@ int main(int argc, char *argv[])
 
         switch (opt) {
             case 'V':
-                print_version();
+                mxq_print_generic_version();
                 exit(EX_USAGE);
 
             case 'h':

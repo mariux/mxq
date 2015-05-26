@@ -180,6 +180,10 @@ mx_flock.h += mx_flock.h
 mx_mysql.h += mx_mysql.h
 mx_mysql.h += $(mx_util.h)
 
+### mxq.h --------------------------------------------------------------
+
+mx_mxq.h += mx_mxq.h
+
 ### mxq_mysql.h --------------------------------------------------------
 
 mxq_mysql.h += mxq_mysql.h
@@ -273,11 +277,14 @@ clean: CLEAN += mxqdump.o
 
 mxqkill.o: $(mx_log.h)
 mxqkill.o: $(mx_util.h)
-mxqkill.o: $(mxq_util.h)
-mxqkill.o: $(mxq_mysql.h)
+mxqkill.o: $(mx_mysql.h)
 mxqkill.o: $(mx_getopt.h)
+mxqkill.o: $(mxq.h)
+mxqkill.o: $(mxq_group.h)
+mxqkill.o: $(mxq_job.h)
 mxqkill.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqkill.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
+mxqkill.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_GROUP)
 
 clean: CLEAN += mxqkill.o
 
@@ -340,6 +347,7 @@ mxqsub.o: $(mx_getopt.h)
 mxqsub.o: $(mx_util.h)
 mxqsub.o: $(mx_log.h)
 mxqsub.o: $(mx_mysql.h)
+mxqsub.o: $(mxq.h)
 mxqsub.o: $(mxq_group.h)
 mxqsub.o: $(mxq_job.h)
 mxqsub.o: $(mxq_util.h)
@@ -406,11 +414,8 @@ install:: mxqdump
 ### mxqkill -----------------------------------------------------
 
 mxqkill: mx_log.o
-mxqkill: mxq_mysql.o
-mxqkill: mxq_util.o
+mxqkill: mx_mysql.o
 mxqkill: mx_util.o
-mxqkill: mxq_group.o
-mxqkill: mxq_job.o
 mxqkill: mx_getopt.o
 mxqkill: LDLIBS += $(LDLIBS_MYSQL)
 
