@@ -2,9 +2,10 @@
 MXQ_VERSION_MAJOR = 0
 MXQ_VERSION_MINOR = 3
 MXQ_VERSION_PATCH = 3
+MXQ_VERSION_EXTRA = "beta"
 
 MXQ_VERSION = ${MXQ_VERSION_MAJOR}.${MXQ_VERSION_MINOR}.${MXQ_VERSION_PATCH}
-MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
+MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (${MXQ_VERSION_EXTRA})"
 MXQ_VERSIONDATE = 2013-2015
 
 ##############################################################################
@@ -87,12 +88,16 @@ endif
 CFLAGS_MYSQL := $(shell $(MYSQL_CONFIG) --cflags)
 LDLIBS_MYSQL := $(shell $(MYSQL_CONFIG) --libs)
 
+CFLAGS_MYSQL += ${CFLAGS_MXQ_MYSQL_DEFAULT_FILE}
+CFLAGS_MYSQL += ${CFLAGS_MXQ_MYSQL_DEFAULT_GROUP}
+
 CFLAGS += -g
 CFLAGS += -Wall
 CFLAGS += -Wno-unused-variable
 CFLAGS += -DMXQ_VERSION=\"${MXQ_VERSION}\"
 CFLAGS += -DMXQ_VERSIONFULL=\"${MXQ_VERSIONFULL}\"
 CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
+CFLAGS += -DMXQ_VERSIONEXTRA=\"${MXQ_VERSIONEXTRA}\"
 
 ########################################################################
 
@@ -243,7 +248,6 @@ mx_mysql.o: $(mx_mysql.h)
 mx_mysql.o: $(mx_util.h)
 mx_mysql.o: $(mx_log.h)
 mx_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
-mx_mysql.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
 clean: CLEAN += mx_mysql.o
 
@@ -269,7 +273,6 @@ mxqdump.o: $(mxq_util.h)
 mxqdump.o: $(mxq_mysql.h)
 mxqdump.o: $(mx_getopt.h)
 mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqdump.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
 clean: CLEAN += mxqdump.o
 
@@ -283,8 +286,6 @@ mxqkill.o: $(mxq.h)
 mxqkill.o: $(mxq_group.h)
 mxqkill.o: $(mxq_job.h)
 mxqkill.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqkill.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
-mxqkill.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_GROUP)
 
 clean: CLEAN += mxqkill.o
 
@@ -335,7 +336,6 @@ mxqd.o: $(mxq_group.h)
 mxqd.o: $(mxq_job.h)
 mxqd.o: $(mxq_mysql.h)
 mxqd.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqd.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
 mxqd.o: CFLAGS += -Wno-unused-but-set-variable
 
@@ -352,8 +352,6 @@ mxqsub.o: $(mxq_group.h)
 mxqsub.o: $(mxq_job.h)
 mxqsub.o: $(mxq_util.h)
 mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
-mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_GROUP)
 
 clean: CLEAN += mxqsub.o
 
