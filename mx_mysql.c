@@ -1007,6 +1007,10 @@ int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
             r->bind[col].buffer_length =   r->data[col].length;
 
             res = mx__mysql_stmt_fetch_column(stmt, col, 0);
+
+            r->data[col].length        = 0;
+            r->bind[col].buffer        = NULL;
+            r->bind[col].buffer_length = 0;
             continue;
         }
 
