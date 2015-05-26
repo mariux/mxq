@@ -396,9 +396,11 @@ install:: mxqsub
 ### mxqdump -----------------------------------------------------
 
 mxqdump: mx_log.o
+mxqdump: mx_mysql.o
 mxqdump: mxq_group.o
 mxqdump: mxq_mysql.o
 mxqdump: mxq_util.o
+mxqdump: mx_util.o
 mxqdump: mx_getopt.o
 mxqdump: LDLIBS += $(LDLIBS_MYSQL)
 
