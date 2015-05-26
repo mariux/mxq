@@ -89,6 +89,8 @@ static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gro
                 " stats_max_real_sec"
             " FROM mxq_group"
             " WHERE (group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0)"
+            "    OR (NOW()-group_mtime < 604800)"
+            " ORDER BY group_mtime"
             " LIMIT 1000");
     if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
