@@ -28,7 +28,7 @@ static void print_usage(void)
     "  %s [options]\n"
     "\n"
     "Synopsis:\n"
-    "  Dump status infromation of MXQ cluster.\n"
+    "  Dump status information of MXQ cluster.\n"
     "\n"
     "options:\n\n"
     "  -V | --version\n"
