@@ -160,12 +160,38 @@ static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gro
     return cnt;
 }
 
+static int dump_active_groups(struct mx_mysql *mysql)
+{
+    struct mxq_group *g;
+    struct mxq_group *groups = NULL;
+
+    int group_cnt;
+    int i;
+
+    group_cnt = load_active_groups(mysql, &groups);
+
+    for (i=0; i<group_cnt; i++) {
+
+        g = &groups[i];
+
+        printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu finished=%lu cancelled=%lu unknown=%lu inq=%lu job_threads=%u job_memory=%lu job_time=%u stats_max_utime=%lu stats_max_real=%lu job_command=%s group_name=%s\n",
+                g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
+                g->group_jobs_running, g->group_slots_running, g->group_jobs_failed, g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
+                mxq_group_jobs_inq(g),
+                g->job_threads, g->job_memory, g->job_time, g->stats_max_utime.tv_sec, g->stats_max_real.tv_sec,
+                g->job_command, g->group_name);
+
+        mxq_group_free_content(&groups[i]);
+    }
+
+    free(groups);
+
+    return group_cnt;
+}
 
 int main(int argc, char *argv[])
 {
     struct mx_mysql *mysql = NULL;
-    struct mxq_group *groups = NULL;
-    int group_cnt;
     int i;
     int res;
     char *arg_mysql_default_group;
@@ -246,25 +272,7 @@ int main(int argc, char *argv[])
 
     mx_log_info("MySQL: Connection to database established.");
 
-
-    group_cnt = load_active_groups(mysql, &groups);
-
-    for (i=0; i<group_cnt; i++) {
-        struct mxq_group *g;
-
-        g = &groups[i];
-
-        printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu finished=%lu cancelled=%lu unknown=%lu inq=%lu job_threads=%u job_memory=%lu job_time=%u stats_max_utime=%lu stats_max_real=%lu job_command=%s group_name=%s\n",
-                g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
-                g->group_jobs_running, g->group_slots_running, g->group_jobs_failed, g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
-                mxq_group_jobs_inq(g),
-                g->job_threads, g->job_memory, g->job_time, g->stats_max_utime.tv_sec, g->stats_max_real.tv_sec,
-                g->job_command, g->group_name);
-
-        mxq_group_free_content(&groups[i]);
-    }
-
-    free(groups);
+    dump_active_groups(mysql);
 
     mx_mysql_finish(&mysql);
     mx_log_info("MySQL: Connection to database closed.");
