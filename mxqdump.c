@@ -28,7 +28,7 @@ static void print_usage(void)
     "  %s [options]\n"
     "\n"
     "Synopsis:\n"
-    "  Dump status infromation of MXQ cluster.\n"
+    "  Dump status information of MXQ cluster.\n"
     "\n"
     "options:\n\n"
     "  -V | --version\n"
@@ -90,7 +90,7 @@ static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gro
             " FROM mxq_group"
             " WHERE (group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0)"
             "    OR (NOW()-group_mtime < 604800)"
-            " ORDER BY group_mtime"
+            " ORDER BY user_name, group_mtime"
             " LIMIT 1000");
     if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
