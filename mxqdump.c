@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     int i;
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
+    char     arg_debug;
 
     int opt;
     struct mx_getopt_ctl optctl;
@@ -66,10 +67,15 @@ int main(int argc, char *argv[])
                 MX_OPTION_NO_ARG("help",                 'h'),
                 MX_OPTION_NO_ARG("version",              'V'),
 
+                MX_OPTION_NO_ARG("debug",                5),
+                MX_OPTION_NO_ARG("verbose",              'v'),
+
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
                 MX_OPTION_END
     };
+
+    arg_debug = 0;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -95,6 +101,16 @@ int main(int argc, char *argv[])
             case 'h':
                 print_usage();
                 exit(EX_USAGE);
+
+            case 5:
+                arg_debug = 1;
+                mx_log_level_set(MX_LOG_DEBUG);
+                break;
+
+            case 'v':
+                if (!arg_debug)
+                    mx_log_level_set(MX_LOG_INFO);
+                break;
 
             case 'M':
                 arg_mysql_default_file = optctl.optarg;
