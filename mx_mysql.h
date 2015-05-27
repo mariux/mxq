@@ -91,8 +91,11 @@ struct mx_mysql_stmt {
 #   endif
 #endif
 
-#define mx_mysql_statement_param_bind(s, i, t, p)  mx_mysql_bind_##t(&((s)->param), (i), (p))
-#define mx_mysql_statement_result_bind(s, i, t, p) mx_mysql_bind_##t(&((s)->result), (i), (p))
+
+#define mx_mysql_bind_var(b, i, t, p)  mx_mysql_bind_##t((b), (i), (p))
+
+#define mx_mysql_statement_param_bind(s, i, t, p)  mx_mysql_bind_var(&((s)->param), (i), t, (p))
+#define mx_mysql_statement_result_bind(s, i, t, p) mx_mysql_bind_var(&((s)->result), (i), t, (p))
 
 int mx_mysql_init(struct mx_mysql **);
 int mx_mysql_free(struct mx_mysql **mysql);
