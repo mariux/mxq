@@ -127,7 +127,10 @@ int mx_mysql_statement_field_count(struct mx_mysql_stmt *stmt);
 int mx_mysql_statement_param_count(struct mx_mysql_stmt *stmt);
 int mx_mysql_statement_close(struct mx_mysql_stmt **stmt);
 
-#define mx_mysql_statement_param_bind(s, i, t, p) mx_mysql_bind_##t(&((s)->param), (i), (p))
+#define mx_mysql_bind_init_param(b, c)  mx_mysql_bind_init((b), (c), MX_MYSQL_BIND_TYPE_PARAM)
+#define mx_mysql_bind_init_result(b, c) mx_mysql_bind_init((b), (c), MX_MYSQL_BIND_TYPE_RESULT)
+
+int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count, enum mx_mysql_bind_type type);
 
 int mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value);
 

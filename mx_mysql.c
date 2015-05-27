@@ -888,8 +888,6 @@ int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt)
     s = mx_calloc_forever(1, sizeof(*s));
 
     s->mysql       = mysql;
-    s->param.type  = MX_MYSQL_BIND_TYPE_PARAM;
-    s->result.type = MX_MYSQL_BIND_TYPE_RESULT;
 
     do {
         res = mx__mysql_stmt_init(s);
@@ -1094,20 +1092,40 @@ int mx_mysql_bind_cleanup(struct mx_mysql_bind *bind)
     return 0;
 }
 
-int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count)
+int mx_mysql_bind_init_from(struct mx_mysql_bind *bind, unsigned long count, enum mx_mysql_bind_type type, struct mx_mysql_bind *from)
 {
     mx_assert_return_minus_errno(bind, EINVAL);
-
-    mx_assert_return_minus_errno(bind->type != MX_MYSQL_BIND_TYPE_UNKNOWN, EBADF);
 
     mx_assert_return_minus_errno(!bind->count,  EUCLEAN);
     mx_assert_return_minus_errno(!bind->bind,   EUCLEAN);
     mx_assert_return_minus_errno(!bind->data,   EUCLEAN);
 
+    if (from) {
+        assert(count == from->count);
+        assert(type  == from->type);
+        assert(from->bind);
+        assert(from->data);
+        memcpy(bind, from, sizeof(*bind));
+        return 0;
+    }
+
+    return mx_mysql_bind_init(bind, count, type);
+}
+
+int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count, enum mx_mysql_bind_type type)
+{
+    mx_assert_return_minus_errno(bind, EINVAL);
+
+    mx_assert_return_minus_errno(!bind->count,  EUCLEAN);
+    mx_assert_return_minus_errno(!bind->bind,   EUCLEAN);
+    mx_assert_return_minus_errno(!bind->data,   EUCLEAN);
+
+    bind->type  = type;
+    bind->count = count;
+
     if (!count)
         return 0;
 
-    bind->count = count;
     bind->bind  = mx_calloc_forever(bind->count, sizeof(*bind->bind));
     bind->data  = mx_calloc_forever(bind->count, sizeof(*bind->data));
 
@@ -1140,11 +1158,11 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *s
         if (res < 0)
             break;
 
-        res = mx_mysql_bind_init(&stmt->param, stmt->param_count);
+        res = mx_mysql_bind_init(&stmt->param, stmt->param_count, MX_MYSQL_BIND_TYPE_PARAM);
         if (res < 0)
             break;
 
-        res = mx_mysql_bind_init(&stmt->result, stmt->field_count);
+        res = mx_mysql_bind_init(&stmt->result, stmt->field_count, MX_MYSQL_BIND_TYPE_RESULT);
         if (res < 0)
             break;
 
