@@ -115,6 +115,7 @@ int mx_mysql_finish(struct mx_mysql **mysql);
 
 int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt);
 struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement);
+struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *mysql, char *statement, struct mx_mysql_bind *param, struct mx_mysql_bind *result);
 int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *count);
 
 int mx_mysql_statement_insert_id(struct mx_mysql_stmt *stmt, unsigned long long int *id);

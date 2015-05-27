@@ -1132,7 +1132,7 @@ int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count, enum mx_
     return 0;
 }
 
-struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement)
+struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *mysql, char *statement, struct mx_mysql_bind *param, struct mx_mysql_bind *result)
 {
     int res;
     struct mx_mysql_stmt *stmt = NULL;
@@ -1158,11 +1158,11 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *s
         if (res < 0)
             break;
 
-        res = mx_mysql_bind_init(&stmt->param, stmt->param_count, MX_MYSQL_BIND_TYPE_PARAM);
+        res = mx_mysql_bind_init_from(&stmt->param, stmt->param_count, MX_MYSQL_BIND_TYPE_PARAM, param);
         if (res < 0)
             break;
 
-        res = mx_mysql_bind_init(&stmt->result, stmt->field_count, MX_MYSQL_BIND_TYPE_RESULT);
+        res = mx_mysql_bind_init_from(&stmt->result, stmt->field_count, MX_MYSQL_BIND_TYPE_RESULT, result);
         if (res < 0)
             break;
 
@@ -1172,6 +1172,18 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *s
     mx_mysql_statement_close(&stmt);
 
     return NULL;
+}
+
+struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement)
+{
+    int res;
+    struct mx_mysql_stmt *stmt = NULL;
+
+    mx_assert_return_NULL(mysql, EINVAL);
+    mx_assert_return_NULL(statement, EINVAL);
+    mx_assert_return_NULL(*statement, EINVAL);
+
+    return mx_mysql_statement_prepare_with_bindings(mysql, statement, NULL, NULL);
 }
 
 int mx_mysql_statement_close(struct mx_mysql_stmt **stmt)
