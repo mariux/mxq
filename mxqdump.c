@@ -56,6 +56,8 @@ static void print_usage(void)
     "  Dump status information of MXQ cluster.\n"
     "\n"
     "options:\n\n"
+    "  -g | --group-id <group-id>   dump group with <group-id>\n"
+    "\n"
     "  -V | --version\n"
     "  -h | --help\n"
     "\n"
@@ -148,6 +150,43 @@ static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gro
     return res;
 }
 
+static int load_group_by_id(struct mx_mysql *mysql, struct mxq_group **mxq_groups, uint64_t group_id)
+{
+    int res;
+    struct mxq_group *groups = NULL;
+    struct mxq_group g = {0};
+    struct mx_mysql_bind param = {0};
+    struct mx_mysql_bind result = {0};
+
+    assert(mysql);
+    assert(mxq_groups);
+    assert(!(*mxq_groups));
+
+    char *query =
+            "SELECT"
+                GROUP_FIELDS
+            " FROM mxq_group"
+            " WHERE group_id = ?"
+            " LIMIT 1";
+
+    res = mx_mysql_bind_init_param(&param, 1);
+    assert(res == 0);
+    res = mx_mysql_bind_var(&param, 0, uint64, &group_id);
+    assert(res == 0);
+
+    res = bind_result_group_fields(&result, &g);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, &param, &result, &g, (void **)&groups, sizeof(*groups));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    *mxq_groups = groups;
+    return res;
+}
+
 static int print_group(struct mxq_group *g)
 {
     return printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu finished=%lu cancelled=%lu unknown=%lu inq=%lu job_threads=%u job_memory=%lu job_time=%u stats_max_utime=%lu stats_max_real=%lu job_command=%s group_name=%s\n",
@@ -182,6 +221,28 @@ static int dump_all_active_groups(struct mx_mysql *mysql)
     return group_cnt;
 }
 
+static int dump_group_by_id(struct mx_mysql *mysql, uint64_t group_id)
+{
+    struct mxq_group group, *g = NULL;
+    struct mxq_job *groups = NULL;
+
+    int group_cnt;
+    int i;
+
+    group_cnt = load_group_by_id(mysql, &g, group_id);
+
+    mx_log_debug("%d groups loaded.", group_cnt);
+
+    if (group_cnt > 0) {
+        print_group(g);
+
+        mxq_group_free_content(g);
+        mx_free_null(g);
+    }
+
+    return group_cnt;
+}
+
 int main(int argc, char *argv[])
 {
     struct mx_mysql *mysql = NULL;
@@ -190,6 +251,8 @@ int main(int argc, char *argv[])
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
     char     arg_debug;
+
+    uint64_t arg_group_id;
 
     int opt;
     struct mx_getopt_ctl optctl;
@@ -200,12 +263,15 @@ int main(int argc, char *argv[])
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("verbose",              'v'),
 
+                MX_OPTION_REQUIRED_ARG("group-id",       'g'),
+
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
                 MX_OPTION_END
     };
 
-    arg_debug = 0;
+    arg_debug    = 0;
+    arg_group_id = 0;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -237,6 +303,15 @@ int main(int argc, char *argv[])
                 mx_log_level_set(MX_LOG_DEBUG);
                 break;
 
+            case 'g':
+                if (mx_strtou64(optctl.optarg, &arg_group_id) < 0 || !arg_group_id) {
+                    if (!arg_group_id)
+                        errno = ERANGE;
+                    mx_log_err("Invalid argument for --group-id '%s': %m", optctl.optarg);
+                    exit(1);
+                }
+                break;
+
             case 'v':
                 if (!arg_debug)
                     mx_log_level_set(MX_LOG_INFO);
@@ -265,7 +340,11 @@ int main(int argc, char *argv[])
 
     mx_log_info("MySQL: Connection to database established.");
 
-    dump_all_active_groups(mysql);
+    if (arg_group_id) {
+        dump_group_by_id(mysql, arg_group_id);
+    } else {
+        dump_all_active_groups(mysql);
+    }
 
     mx_mysql_finish(&mysql);
     mx_log_info("MySQL: Connection to database closed.");
