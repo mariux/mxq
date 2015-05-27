@@ -19,6 +19,31 @@
 
 #include "mxq_group.h"
 
+#define GROUP_FIELDS \
+            " group_id," \
+            " group_name," \
+            " group_status," \
+            " group_priority," \
+            " user_uid," \
+            " user_name," \
+            " user_gid," \
+            " user_group," \
+            " job_command," \
+            " job_threads," \
+            " job_memory," \
+            " job_time," \
+            " group_jobs," \
+            " group_jobs_running," \
+            " group_jobs_finished," \
+            " group_jobs_failed," \
+            " group_jobs_cancelled," \
+            " group_jobs_unknown," \
+            " group_slots_running," \
+            " stats_max_maxrss," \
+            " stats_max_utime_sec," \
+            " stats_max_stime_sec," \
+            " stats_max_real_sec"
+
 static void print_usage(void)
 {
     mxq_print_generic_version();
@@ -49,6 +74,44 @@ static void print_usage(void)
     );
 }
 
+static int bind_result_group_fields(struct mx_mysql_stmt *stmt, struct mxq_group *g)
+{
+    int res = 0;
+    int idx = 0;
+
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_id));
+    res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g->group_name));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint8,  &(g->group_status));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint16, &(g->group_priority));
+
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g->user_uid));
+    res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g->user_name));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g->user_gid));
+    res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g->user_group));
+
+    res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g->job_command));
+
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint16, &(g->job_threads));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->job_memory));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g->job_time));
+
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_jobs));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_jobs_running));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_jobs_finished));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_jobs_failed));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_jobs_cancelled));
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_jobs_unknown));
+
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g->group_slots_running));
+
+    res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g->stats_max_maxrss));
+    res += mx_mysql_statement_result_bind(stmt, idx++, int64, &(g->stats_max_utime.tv_sec));
+    res += mx_mysql_statement_result_bind(stmt, idx++, int64, &(g->stats_max_stime.tv_sec));
+    res += mx_mysql_statement_result_bind(stmt, idx++, int64, &(g->stats_max_real.tv_sec));
+
+    return res;
+}
+
 static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups)
 {
     struct mx_mysql_stmt *stmt = NULL;
@@ -57,36 +120,13 @@ static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gro
     int cnt = 0;
     struct mxq_group *groups;
 
-
     assert(mysql);
     assert(mxq_groups);
     assert(!(*mxq_groups));
 
     stmt = mx_mysql_statement_prepare(mysql,
             "SELECT"
-                " group_id,"
-                " group_name,"
-                " group_status,"
-                " group_priority,"
-                " user_uid,"
-                " user_name,"
-                " user_gid,"
-                " user_group,"
-                " job_command,"
-                " job_threads,"
-                " job_memory,"
-                " job_time,"
-                " group_jobs,"
-                " group_jobs_running,"
-                " group_jobs_finished,"
-                " group_jobs_failed,"
-                " group_jobs_cancelled,"
-                " group_jobs_unknown,"
-                " group_slots_running,"
-                " stats_max_maxrss,"
-                " stats_max_utime_sec,"
-                " stats_max_stime_sec,"
-                " stats_max_real_sec"
+                GROUP_FIELDS
             " FROM mxq_group"
             " WHERE (group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0)"
             "    OR (NOW()-group_mtime < 604800)"
@@ -105,41 +145,11 @@ static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gro
     }
 
     if (num_rows) {
-        int idx = 0;
         struct mxq_group g = {0};
 
         groups = mx_calloc_forever(num_rows, sizeof(*groups));
 
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_id));
-        res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g.group_name));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint8,  &(g.group_status));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint16, &(g.group_priority));
-
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g.user_uid));
-        res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g.user_name));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g.user_gid));
-        res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g.user_group));
-
-        res += mx_mysql_statement_result_bind(stmt, idx++, string, &(g.job_command));
-
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint16, &(g.job_threads));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.job_memory));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g.job_time));
-
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_jobs));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_jobs_running));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_jobs_finished));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_jobs_failed));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_jobs_cancelled));
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_jobs_unknown));
-
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint64, &(g.group_slots_running));
-
-        res += mx_mysql_statement_result_bind(stmt, idx++, uint32, &(g.stats_max_maxrss));
-        res += mx_mysql_statement_result_bind(stmt, idx++, int64, &(g.stats_max_utime.tv_sec));
-        res += mx_mysql_statement_result_bind(stmt, idx++, int64, &(g.stats_max_stime.tv_sec));
-        res += mx_mysql_statement_result_bind(stmt, idx++, int64, &(g.stats_max_real.tv_sec));
-
+        res = bind_result_group_fields(stmt, &g);
         assert(res == 0);
 
         for (cnt = 0; cnt < num_rows; cnt++) {
