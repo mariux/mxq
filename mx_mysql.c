@@ -1132,6 +1132,49 @@ int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count, enum mx_
     return 0;
 }
 
+int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size)
+{
+    struct mx_mysql_stmt *stmt = NULL;
+    unsigned long long num_rows = 0;
+    int res;
+    int cnt = 0;
+    char *tmpdata;
+
+    assert(mysql);
+
+    stmt = mx_mysql_statement_prepare_with_bindings(mysql, query, param, result);
+    if (!stmt) {
+        mx_log_err("mx_mysql_statement_prepare(): %m");
+        return -errno;
+    }
+
+    res = mx_mysql_statement_execute(stmt, &num_rows);
+    if (res < 0) {
+        mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
+        return res;
+    }
+
+    if (result && result->count && num_rows) {
+        tmpdata = mx_calloc_forever(num_rows, size);
+
+        for (cnt = 0; cnt < num_rows; cnt++) {
+            res = mx_mysql_statement_fetch(stmt);
+            if (res < 0) {
+                mx_log_err("mx_mysql_statement_fetch(): %m");
+                mx_free_null(tmpdata);
+                mx_mysql_statement_close(&stmt);
+                return res;
+            }
+            memcpy(tmpdata+(cnt*size), from, size);
+        }
+        *to = tmpdata;
+    }
+    mx_mysql_statement_close(&stmt);
+
+    return cnt;
+}
+
 struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *mysql, char *statement, struct mx_mysql_bind *param, struct mx_mysql_bind *result)
 {
     int res;

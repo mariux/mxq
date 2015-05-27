@@ -113,6 +113,10 @@ int mx_mysql_end(void);
 
 int mx_mysql_finish(struct mx_mysql **mysql);
 
+#define mx_mysql_do_statement_noresult(m, q, p) \
+        mx_mysql_do_statement(m, q, p, NULL, NULL, NULL, 0)
+int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size);
+
 int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt);
 struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement);
 struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *mysql, char *statement, struct mx_mysql_bind *param, struct mx_mysql_bind *result);
