@@ -19,6 +19,12 @@
 
 #include "mxq_group.h"
 
+
+#define UINT64_UNSET       (uint64_t)(-1)
+#define UINT64_ALL         (uint64_t)(-2)
+#define UINT64_SPECIAL_MIN (uint64_t)(-2)
+
+
 #define GROUP_FIELDS \
             " group_id," \
             " group_name," \
@@ -245,9 +251,9 @@ static int dump_groups_by_id(struct mx_mysql *mysql, uint64_t group_id)
     int group_cnt;
     int i;
 
-    if (group_id == (uint64_t)(-1))
+    if (group_id == UINT64_UNSET)
         group_cnt = load_active_groups(mysql, &groups);
-    else if (group_id == 0)
+    else if (group_id == UINT64_ALL)
         group_cnt = load_all_groups(mysql, &groups);
     else
         group_cnt = load_group_by_id(mysql, &groups, group_id);
@@ -285,7 +291,7 @@ int main(int argc, char *argv[])
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("verbose",              'v'),
 
-                MX_OPTION_NO_ARG("all",              'a'),
+                MX_OPTION_NO_ARG("all-groups",           'a'),
 
                 MX_OPTION_REQUIRED_ARG("group-id",       'g'),
 
@@ -295,7 +301,7 @@ int main(int argc, char *argv[])
     };
 
     arg_debug    = 0;
-    arg_group_id = (uint64_t)(-1);   // set all bits ..
+    arg_group_id = UINT64_UNSET;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -329,12 +335,12 @@ int main(int argc, char *argv[])
                 break;
 
             case 'a':
-                arg_group_id = 0;
+                arg_group_id = UINT64_ALL;
                 break;
 
             case 'g':
-                if (mx_strtou64(optctl.optarg, &arg_group_id) < 0 || !arg_group_id || arg_group_id == (uint64_t)(-1)) {
-                    if (!arg_group_id || arg_group_id == (uint64_t)(-1))
+                if (mx_strtou64(optctl.optarg, &arg_group_id) < 0 || !arg_group_id || arg_group_id >= UINT64_SPECIAL_MIN) {
+                    if (!arg_group_id || arg_group_id >= UINT64_SPECIAL_MIN)
                         errno = ERANGE;
                     mx_log_err("Invalid argument for --group-id '%s': %m", optctl.optarg);
                     exit(1);
