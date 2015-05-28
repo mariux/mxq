@@ -306,10 +306,11 @@ int main(int argc, char *argv[])
         arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
-    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
+    optctl.flags = 0;
 
     while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
         if (opt == MX_GETOPT_ERROR) {
+            print_usage();
             exit(EX_USAGE);
         }
 
