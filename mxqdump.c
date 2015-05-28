@@ -57,6 +57,7 @@ static void print_usage(void)
     "\n"
     "options:\n\n"
     "  -g | --group-id <group-id>   dump group with <group-id>\n"
+    "  -a | --all                   dump all groups\n"
     "\n"
     "  -V | --version\n"
     "  -h | --help\n"
@@ -150,6 +151,37 @@ static int load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gro
     return res;
 }
 
+static int load_all_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups)
+{
+    int res;
+    struct mxq_group *groups = NULL;
+    struct mxq_group g = {0};
+    struct mx_mysql_bind result = {0};
+
+    assert(mysql);
+    assert(mxq_groups);
+    assert(!(*mxq_groups));
+
+    char *query =
+            "SELECT"
+                GROUP_FIELDS
+            " FROM mxq_group"
+            " ORDER BY user_name, group_mtime"
+            " LIMIT 1000";
+
+    res = bind_result_group_fields(&result, &g);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, NULL, &result, &g, (void **)&groups, sizeof(*groups));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    *mxq_groups = groups;
+    return res;
+}
+
 static int load_group_by_id(struct mx_mysql *mysql, struct mxq_group **mxq_groups, uint64_t group_id)
 {
     int res;
@@ -205,48 +237,30 @@ static int print_group(struct mxq_group *g)
         g->stats_max_maxrss/1024, g->job_command, g->group_name);
 }
 
-
-static int dump_all_active_groups(struct mx_mysql *mysql)
+static int dump_groups_by_id(struct mx_mysql *mysql, uint64_t group_id)
 {
-    struct mxq_group *g;
+    struct mxq_group *g = NULL;
     struct mxq_group *groups = NULL;
 
     int group_cnt;
     int i;
 
-    group_cnt = load_active_groups(mysql, &groups);
-
-    for (i=0; i<group_cnt; i++) {
-
-        g = &groups[i];
-        print_group(g);
-
-        mxq_group_free_content(&groups[i]);
-    }
-
-    mx_free_null(groups);
-
-    return group_cnt;
-}
-
-static int dump_group_by_id(struct mx_mysql *mysql, uint64_t group_id)
-{
-    struct mxq_group group, *g = NULL;
-    struct mxq_job *groups = NULL;
-
-    int group_cnt;
-    int i;
-
-    group_cnt = load_group_by_id(mysql, &g, group_id);
+    if (group_id == (uint64_t)(-1))
+        group_cnt = load_active_groups(mysql, &groups);
+    else if (group_id == 0)
+        group_cnt = load_all_groups(mysql, &groups);
+    else
+        group_cnt = load_group_by_id(mysql, &groups, group_id);
 
     mx_log_debug("%d groups loaded.", group_cnt);
 
-    if (group_cnt > 0) {
+    for (i=0; i<group_cnt; i++) {
+        g = &groups[i];
         print_group(g);
-
         mxq_group_free_content(g);
-        mx_free_null(g);
     }
+
+    mx_free_null(groups);
 
     return group_cnt;
 }
@@ -258,8 +272,8 @@ int main(int argc, char *argv[])
     int res;
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
-    char     arg_debug;
 
+    char     arg_debug;
     uint64_t arg_group_id;
 
     int opt;
@@ -271,6 +285,8 @@ int main(int argc, char *argv[])
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("verbose",              'v'),
 
+                MX_OPTION_NO_ARG("all",              'a'),
+
                 MX_OPTION_REQUIRED_ARG("group-id",       'g'),
 
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
@@ -279,7 +295,7 @@ int main(int argc, char *argv[])
     };
 
     arg_debug    = 0;
-    arg_group_id = 0;
+    arg_group_id = (uint64_t)(-1);   // set all bits ..
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -311,9 +327,13 @@ int main(int argc, char *argv[])
                 mx_log_level_set(MX_LOG_DEBUG);
                 break;
 
+            case 'a':
+                arg_group_id = 0;
+                break;
+
             case 'g':
-                if (mx_strtou64(optctl.optarg, &arg_group_id) < 0 || !arg_group_id) {
-                    if (!arg_group_id)
+                if (mx_strtou64(optctl.optarg, &arg_group_id) < 0 || !arg_group_id || arg_group_id == (uint64_t)(-1)) {
+                    if (!arg_group_id || arg_group_id == (uint64_t)(-1))
                         errno = ERANGE;
                     mx_log_err("Invalid argument for --group-id '%s': %m", optctl.optarg);
                     exit(1);
@@ -348,11 +368,7 @@ int main(int argc, char *argv[])
 
     mx_log_info("MySQL: Connection to database established.");
 
-    if (arg_group_id) {
-        dump_group_by_id(mysql, arg_group_id);
-    } else {
-        dump_all_active_groups(mysql);
-    }
+    dump_groups_by_id(mysql, arg_group_id);
 
     mx_mysql_finish(&mysql);
     mx_log_info("MySQL: Connection to database closed.");
