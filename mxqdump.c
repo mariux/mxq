@@ -189,12 +189,20 @@ static int load_group_by_id(struct mx_mysql *mysql, struct mxq_group **mxq_group
 
 static int print_group(struct mxq_group *g)
 {
-    return printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu finished=%lu cancelled=%lu unknown=%lu inq=%lu job_threads=%u job_memory=%lu job_time=%u stats_max_utime=%lu stats_max_real=%lu job_command=%s group_name=%s\n",
+    return printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu"
+                    " finished=%lu cancelled=%lu unknown=%lu inq=%lu"
+                    " job_threads=%u job_memory=%lu job_time=%u"
+                    " memory_load=%lu%% time_load=%lu%%"
+                    " max_utime=%lu max_real=%lu max_memory=%u job_command=%s group_name=%s\n",
         g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
-        g->group_jobs_running, g->group_slots_running, g->group_jobs_failed, g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
+        g->group_jobs_running, g->group_slots_running, g->group_jobs_failed,
+        g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
         mxq_group_jobs_inq(g),
-        g->job_threads, g->job_memory, g->job_time, g->stats_max_utime.tv_sec, g->stats_max_real.tv_sec,
-        g->job_command, g->group_name);
+        g->job_threads, g->job_memory, g->job_time,
+        (100*g->stats_max_maxrss/1024/g->job_memory),
+        (100*g->stats_max_real.tv_sec/60/g->job_time),
+        g->stats_max_utime.tv_sec/60, g->stats_max_real.tv_sec/60,
+        g->stats_max_maxrss/1024, g->job_command, g->group_name);
 }
 
 
