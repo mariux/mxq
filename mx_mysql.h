@@ -91,8 +91,11 @@ struct mx_mysql_stmt {
 #   endif
 #endif
 
-#define mx_mysql_statement_param_bind(s, i, t, p)  mx_mysql_bind_##t(&((s)->param), (i), (p))
-#define mx_mysql_statement_result_bind(s, i, t, p) mx_mysql_bind_##t(&((s)->result), (i), (p))
+
+#define mx_mysql_bind_var(b, i, t, p)  mx_mysql_bind_##t((b), (i), (p))
+
+#define mx_mysql_statement_param_bind(s, i, t, p)  mx_mysql_bind_var(&((s)->param), (i), t, (p))
+#define mx_mysql_statement_result_bind(s, i, t, p) mx_mysql_bind_var(&((s)->result), (i), t, (p))
 
 int mx_mysql_init(struct mx_mysql **);
 int mx_mysql_free(struct mx_mysql **mysql);
@@ -113,8 +116,13 @@ int mx_mysql_end(void);
 
 int mx_mysql_finish(struct mx_mysql **mysql);
 
+#define mx_mysql_do_statement_noresult(m, q, p) \
+        mx_mysql_do_statement(m, q, p, NULL, NULL, NULL, 0)
+int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size);
+
 int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt);
 struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement);
+struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *mysql, char *statement, struct mx_mysql_bind *param, struct mx_mysql_bind *result);
 int mx_mysql_statement_execute(struct mx_mysql_stmt *stmt, unsigned long long *count);
 
 int mx_mysql_statement_insert_id(struct mx_mysql_stmt *stmt, unsigned long long int *id);
@@ -127,7 +135,10 @@ int mx_mysql_statement_field_count(struct mx_mysql_stmt *stmt);
 int mx_mysql_statement_param_count(struct mx_mysql_stmt *stmt);
 int mx_mysql_statement_close(struct mx_mysql_stmt **stmt);
 
-#define mx_mysql_statement_param_bind(s, i, t, p) mx_mysql_bind_##t(&((s)->param), (i), (p))
+#define mx_mysql_bind_init_param(b, c)  mx_mysql_bind_init((b), (c), MX_MYSQL_BIND_TYPE_PARAM)
+#define mx_mysql_bind_init_result(b, c) mx_mysql_bind_init((b), (c), MX_MYSQL_BIND_TYPE_RESULT)
+
+int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count, enum mx_mysql_bind_type type);
 
 int mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value);
 
