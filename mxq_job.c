@@ -90,6 +90,40 @@ enum mxq_job_columns {
     MXQ_JOB_COL__END
 };
 
+char *mxq_job_status_to_name(uint64_t status)
+{
+    switch (status) {
+        case MXQ_JOB_STATUS_INQ:
+            return "inq";
+        case MXQ_JOB_STATUS_ASSIGNED:
+            return "assigned";
+        case MXQ_JOB_STATUS_LOADED:
+            return "loaded";
+        case MXQ_JOB_STATUS_RUNNING:
+            return "running";
+        case MXQ_JOB_STATUS_UNKNOWN_RUN:
+            return "running-unknown";
+        case MXQ_JOB_STATUS_EXTRUNNING:
+            return "running-external";
+        case MXQ_JOB_STATUS_STOPPED:
+            return "stopped";
+        case MXQ_JOB_STATUS_EXIT:
+            return "exited";
+        case MXQ_JOB_STATUS_KILLED:
+            return "killed";
+        case MXQ_JOB_STATUS_FAILED:
+            return "failed";
+        case MXQ_JOB_STATUS_CANCELLED:
+            return "cancelled";
+        case MXQ_JOB_STATUS_UNKNOWN:
+            return "unknown";
+        case MXQ_JOB_STATUS_FINISHED:
+            return "finished";
+    }
+
+    return "invalid";
+}
+
 static inline int mxq_job_bind_results(MYSQL_BIND *bind, struct mxq_job *j)
 {
     memset(bind, 0, sizeof(*bind)*MXQ_JOB_COL__END);
