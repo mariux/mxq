@@ -1,5 +1,9 @@
 
 ALTER TABLE mxq_job
+   ADD INDEX (group_id);
+
+
+ALTER TABLE mxq_job
    ADD COLUMN job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL
    AFTER date_end;
 
@@ -107,6 +111,7 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    stats_nivcsw   INT4 NOT NULL DEFAULT 0,
 
    INDEX (job_id),
+   INDEX (group_id),
    INDEX (job_status),
    INDEX (job_priority),
    INDEX (host_hostname(64)),
