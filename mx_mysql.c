@@ -994,9 +994,6 @@ int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
 
     r = &stmt->result;
     for (col = 0; col < r->count; col++) {
-        if (!(r->data[col].is_error))
-            continue;
-
         if (r->bind[col].buffer_type == MYSQL_TYPE_STRING) {
             str = mx_calloc_forever(r->data[col].length + 1, sizeof(*str));
 
@@ -1011,6 +1008,9 @@ int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
             r->bind[col].buffer_length = 0;
             continue;
         }
+
+        if (!(r->data[col].is_error))
+            continue;
 
         mx_log_debug("WARNING: result data returned in column with index %d was truncated. query was:", col);
         mx_log_debug("       \\ %s", stmt->statement);
