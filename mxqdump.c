@@ -126,7 +126,11 @@ static void print_usage(void)
     "     -s | --status <job-status>   filter jobs with <job-status> (default: running)\n"
     "                                  (only available when --group-id is set)\n"
     "\n"
+    "     -q | --inq        alias for '--status=inq'\n"
     "     -r | --running    alias for '--status=running'\n"
+    "     -f | --finished   alias for '--status=finished'\n"
+    "     -F | --failed     alias for '--status=failed'\n"
+    "     -U | --unknown    alias for '--status=unknown'\n"
     "\n\n"
     "[options]:\n"
     "  -V | --version\n"
@@ -863,6 +867,11 @@ int main(int argc, char *argv[])
                 MX_OPTION_NO_ARG("all",     'a'),
                 MX_OPTION_NO_ARG("running", 'r'),
 
+                MX_OPTION_NO_ARG("inq",      'q'),
+                MX_OPTION_NO_ARG("finished", 'f'),
+                MX_OPTION_NO_ARG("failed",   'F'),
+                MX_OPTION_NO_ARG("unknown",  'U'),
+
                 MX_OPTION_NO_ARG("jobs",    'j'),
 
                 MX_OPTION_OPTIONAL_ARG("groups",   'g'),
@@ -973,6 +982,22 @@ int main(int argc, char *argv[])
             case 'r':
                 arg_running = 1;
                 arg_status  = MXQ_JOB_STATUS_RUNNING;
+                break;
+
+            case 'q':
+                arg_status  = MXQ_JOB_STATUS_INQ;
+                break;
+
+            case 'f':
+                arg_status  = MXQ_JOB_STATUS_FINISHED;
+                break;
+
+            case 'F':
+                arg_status  = MXQ_JOB_STATUS_FAILED;
+                break;
+
+            case 'U':
+                arg_status  = MXQ_JOB_STATUS_UNKNOWN;
                 break;
 
             case 'g':
