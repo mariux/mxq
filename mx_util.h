@@ -54,6 +54,12 @@ static inline void __mx_free(void *ptr) {
 #undef unlikely
 #define unlikely(x)     __builtin_expect((x),0)
 
+#undef mx_streq
+#define mx_streq(a, b) (strcmp((a), (b)) == 0)
+
+#undef mx_streq_nocase
+#define mx_streq_nocase(a, b) (strcasecmp((a), (b)) == 0)
+
 int mx_strbeginswith(char *str, const char *start, char **endptr);
 int mx_stribeginswith(char *str, const char *start, char **endptr);
 int mx_strbeginswithany(char *str, char **starts, char **endptr);

@@ -94,6 +94,7 @@ CFLAGS_MYSQL += ${CFLAGS_MXQ_MYSQL_DEFAULT_GROUP}
 CFLAGS += -g
 CFLAGS += -Wall
 CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-function
 CFLAGS += -DMXQ_VERSION=\"${MXQ_VERSION}\"
 CFLAGS += -DMXQ_VERSIONFULL=\"${MXQ_VERSIONFULL}\"
 CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
@@ -398,6 +399,7 @@ install:: mxqsub
 mxqdump: mx_log.o
 mxqdump: mx_mysql.o
 mxqdump: mxq_group.o
+mxqdump: mxq_job.o
 mxqdump: mxq_mysql.o
 mxqdump: mxq_util.o
 mxqdump: mx_util.o
