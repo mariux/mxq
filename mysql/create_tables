@@ -1,7 +1,19 @@
 
+
+ALTER TABLE mxq_group
+   ADD COLUMN stats_total_utime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
+   ADD COLUMN stats_total_stime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
+   ADD COLUMN stats_total_real_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   ADD COLUMN stats_total_wait_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   ADD COLUMN stats_total_idle_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
+
+   ADD COLUMN stats_total_utime_sec_finished    INT8 UNSIGNED NOT NULL DEFAULT 0,
+   ADD COLUMN stats_total_stime_sec_finished    INT8 UNSIGNED NOT NULL DEFAULT 0,
+   ADD COLUMN stats_total_real_sec_finished     INT8 UNSIGNED NOT NULL DEFAULT 0;
+
+
 ALTER TABLE mxq_job
    ADD INDEX (group_id);
-
 
 ALTER TABLE mxq_job
    ADD COLUMN job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL
@@ -55,6 +67,16 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    stats_max_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
    stats_max_stime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
    stats_max_real_sec   INT4 UNSIGNED NOT NULL DEFAULT 0,
+
+   stats_total_utime_sec    INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_total_stime_sec    INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_total_real_sec     INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_total_wait_sec     INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_total_idle_sec     INT8 UNSIGNED NOT NULL DEFAULT 0,
+
+   stats_total_utime_sec_finished   INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_total_stime_sec_finished   INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_total_real_sec_finished    INT8 UNSIGNED NOT NULL DEFAULT 0,
 
    INDEX(group_id),
    INDEX(group_name)
