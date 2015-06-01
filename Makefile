@@ -290,14 +290,6 @@ mxqkill.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxqkill.o
 
-### mxq_job_dump.o -----------------------------------------------------
-
-mxq_job_dump.o: $(mx_log.h)
-mxq_job_dump.o: $(mxq_util.h)
-mxq_job_dump.o: $(mxq_mysql.h)
-
-clean: CLEAN += mxq_job_dump.o
-
 ### mxq_util.o ---------------------------------------------------------
 
 mxq_util.o: $(mx_log.h)
@@ -427,17 +419,6 @@ clean: CLEAN += mxqkill
 
 install:: mxqkill
 	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqkill,${DESTDIR}${BINDIR}/mxqkill)
-
-### mxq_job_dump -------------------------------------------------------
-
-mxq_job_dump: mx_log.o
-mxq_job_dump: mxq_mysql.o
-mxq_job_dump: mxq_util.o
-mxq_job_dump: LDLIBS += $(LDLIBS_MYSQL)
-
-build: mxq_job_dump
-
-clean: CLEAN += mxq_job_dump
 
 ########################################################################
 
