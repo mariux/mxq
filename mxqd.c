@@ -30,7 +30,6 @@
 #include "mx_util.h"
 #include "mx_log.h"
 
-#include "mxq.h"
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mxq_mysql.h"

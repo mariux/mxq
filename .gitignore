@@ -13,7 +13,9 @@ mxqkill.o
 mxq_util.o
 test_mx_util.o
 test_mx_log.o
+test_mx_mysql.o
 mxq_log.o
+mx_mysql.o
 
 mxqsub
 mxqdump
@@ -22,6 +24,7 @@ mxq_job_dump
 mxqd
 test_mx_util
 test_mx_log
+test_mx_mysql
 
 doc/fairness.aux
 doc/fairness.log

@@ -1,5 +1,13 @@
 
 ALTER TABLE mxq_job
+   ADD INDEX (group_id);
+
+
+ALTER TABLE mxq_job
+   ADD COLUMN job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL
+   AFTER date_end;
+
+ALTER TABLE mxq_job
    ADD COLUMN job_flags INT8 UNSIGNED NOT NULL DEFAULT 0
    AFTER job_status;
 
@@ -82,6 +90,8 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    date_start   TIMESTAMP NOT NULL DEFAULT 0,
    date_end     TIMESTAMP NOT NULL DEFAULT 0,
 
+   job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL,
+
    stats_status   INT4 UNSIGNED NOT NULL DEFAULT 0,
 
    stats_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
@@ -101,6 +111,7 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    stats_nivcsw   INT4 NOT NULL DEFAULT 0,
 
    INDEX (job_id),
+   INDEX (group_id),
    INDEX (job_status),
    INDEX (job_priority),
    INDEX (host_hostname(64)),

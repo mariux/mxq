@@ -13,6 +13,7 @@
 //#include <sys/stat.h>
 #include <fcntl.h>
 
+#include "mx_log.h"
 #include "mx_util.h"
 
 static inline int _mx_strbeginswith(char *str, const char *start, char **endptr, short ignore_case)
@@ -205,7 +206,6 @@ inline int mx_strtoll(char *str, signed long long int *to)
 int mx_strtoui(char *str, unsigned int *to)
 {
     unsigned long int ul;
-    char *end;
     int res;
 
     assert(str);
@@ -226,7 +226,6 @@ int mx_strtoui(char *str, unsigned int *to)
 int mx_strtou8(char *str, uint8_t *to)
 {
     unsigned long int ul;
-    char *end;
     int res;
 
     assert(str);
@@ -247,7 +246,6 @@ int mx_strtou8(char *str, uint8_t *to)
 int mx_strtou16(char *str, uint16_t *to)
 {
     unsigned long int ul;
-    char *end;
     int res;
 
     assert(str);
@@ -268,7 +266,6 @@ int mx_strtou16(char *str, uint16_t *to)
 int mx_strtou32(char *str, uint32_t *to)
 {
     unsigned long int ul;
-    char *end;
     int res;
 
     assert(str);
@@ -289,7 +286,6 @@ int mx_strtou32(char *str, uint32_t *to)
 int mx_strtou64(char *str, uint64_t *to)
 {
     unsigned long long int ull;
-    char *end;
     int res;
 
     assert(str);
@@ -312,7 +308,6 @@ int mx_strtou64(char *str, uint64_t *to)
 int mx_strtoi(char *str, signed int *to)
 {
     signed long int l;
-    char *end;
     int res;
 
     assert(str);
@@ -333,7 +328,6 @@ int mx_strtoi(char *str, signed int *to)
 int mx_strtoi8(char *str, int8_t *to)
 {
     signed long int l;
-    char *end;
     int res;
 
     assert(str);
@@ -354,7 +348,6 @@ int mx_strtoi8(char *str, int8_t *to)
 int mx_strtoi16(char *str, int16_t *to)
 {
     signed long int l;
-    char *end;
     int res;
 
     assert(str);
@@ -375,7 +368,6 @@ int mx_strtoi16(char *str, int16_t *to)
 int mx_strtoi32(char *str, int32_t *to)
 {
     signed long int l;
-    char *end;
     int res;
 
     assert(str);
@@ -396,7 +388,6 @@ int mx_strtoi32(char *str, int32_t *to)
 int mx_strtoi64(char *str, int64_t *to)
 {
     signed long long int ll;
-    char *end;
     int res;
 
     assert(str);
@@ -606,4 +597,21 @@ int mx_sleep_nofail(unsigned int seconds)
 {
     mx_sleep(seconds);
     return 1;
+}
+
+void *mx_calloc_forever_sec(size_t nmemb, size_t size, unsigned int time)
+{
+    void *ptr;
+
+    while (1) {
+        ptr = calloc(nmemb, size);
+        if (ptr)
+            break;
+
+        mx_log_debug("calloc() failed: %m - retrying (forever) in %d second(s).", time);
+        if (time)
+            mx_sleep(time);
+    }
+
+    return ptr;
 }

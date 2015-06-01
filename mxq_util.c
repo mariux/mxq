@@ -15,6 +15,8 @@
 
 #include <time.h>
 #include "mx_log.h"
+#include "mx_util.h"
+
 #include "mxq_util.h"
 
 
@@ -90,14 +92,6 @@ void *realloc_forever(void *ptr, size_t size)
 
         sleep(1);
     } while (1);
-}
-
-void mxq_free_job(struct mxq_job_full *job)
-{
-    if (!job)
-        return;
-
-    free(job);
 }
 
 char **strvec_new(void)
@@ -370,7 +364,7 @@ int mxq_setenv(const char *name, const char *value)
 int mxq_setenvf(const char *name, char *fmt, ...)
 {
     va_list ap;
-    _cleanup_free_ char *value = NULL;
+    _mx_cleanup_free_ char *value = NULL;
     size_t len;
     int res;
 

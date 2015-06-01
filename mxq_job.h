@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <mysql.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include "mxq_group.h"
 
 struct mxq_job {
@@ -74,9 +77,18 @@ struct mxq_job {
 #define MXQ_JOB_STATUS_UNKNOWN      999
 #define MXQ_JOB_STATUS_FINISHED    1000
 
+#define MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL (1<<0)
+#define MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL (1<<1)
+
+#define MXQ_JOB_FLAGS_AUTORESTART         (1<<62)
+#define MXQ_JOB_FLAGS_HOSTFAIL            (1<<63)
+
+
 #define _to_string(s) #s
 #define status_str(x) _to_string(x)
 
+
+char *mxq_job_status_to_name(uint64_t status);
 
 int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id);
 void mxq_job_free_content(struct mxq_job *j);

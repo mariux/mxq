@@ -21,52 +21,40 @@
 
 #include <inttypes.h>
 
-#include "mxq_mysql.h"
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#include <string.h>
+
 #include "mxq_util.h"
+
+#include "mxq_group.h"
+#include "mxq_job.h"
+
+#include "mx_log.h"
 #include "mx_util.h"
 #include "mx_getopt.h"
+#include "mx_mysql.h"
 
+#include "mxq.h"
 
 #define MXQ_TASK_JOB_FORCE_APPEND  (1<<0)
 #define MXQ_TASK_JOB_FORCE_NEW     (1<<1)
 
 #define MXQ_JOB_STATUS_ACTIVE      (1)
 
-#ifndef MXQ_VERSION
-#define MXQ_VERSION "0.00"
-#endif
-
-#ifndef MXQ_VERSIONFULL
-#define MXQ_VERSIONFULL "MXQ v0.00 super alpha 0"
-#endif
-
-#ifndef MXQ_VERSIONDATE
-#define MXQ_VERSIONDATE "2015"
-#endif
-
-#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
-#define MYSQL_DEFAULT_GROUP    "mxqsub"
-
-static void print_version(void)
-{
-    printf(
-    "mxqsub - " MXQ_VERSIONFULL "\n"
-    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
-    "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
-    );
-}
 
 static void print_usage(void)
 {
-    print_version();
+    mxq_print_generic_version();
     printf(
     "\n"
     "Usage:\n"
-    "  mxqsub [mxqsub-options] <command> [command options and arguments ..]\n"
+    "  %s [options] <command [arguments]>\n"
     "\n"
     "Synopsis:\n"
     "  queue a job to be executed on a cluster node.\n"
-    "  <command> [arguments] will be executed on a node that offers\n"
+    "  <command [arguments]> will be executed on a node that offers\n"
     "  enough resources to run the job. the following [options] can\n"
     "  influence the job environment and the scheduling decisions made\n"
     "  by the cluster:\n"
@@ -86,6 +74,16 @@ static void print_usage(void)
     "  -m | --memory   <size>    set amount of memory in MiB (default: 2048)\n"
     "  -t | --time     <minutes> set runtime in minutes      (default: 15)\n"
     "\n"
+    "Job handling:\n"
+    "  Define what to do if something bad happens:\n"
+    "\n"
+    "  -r | --restart [restartmode]  restart job on system failure (default: 'never')\n"
+    "\n"
+    "  available [restartmode]s:\n"
+    "      'never'     do not restart\n"
+    "      'samehost'  only restart if running on the same host.\n"
+    "      'always'    always restart or requeue. (default)\n"
+    "\n"
     "Job grouping:\n"
     "  Grouping is done by default based on the jobs resource\n"
     "  and priority information, so that jobs using the same\n"
@@ -98,74 +96,34 @@ static void print_usage(void)
     "\n"
     "Other options:\n"
     "\n"
-    "  --debug    set debug log level (default: warning log level)\n"
-    "  --version  print version and exit\n"
-    "  --help     print this help and exit ;)\n"
+    "  -v | --verbose   be more verbose\n"
+    "  --debug          set debug log level (default: warning log level)\n"
+    "  --version        print version and exit\n"
+    "  --help           print this help and exit ;)\n"
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
-    "  -M | --mysql-default-file  [mysql-file]   (default: " MYSQL_DEFAULT_FILE ")\n"
-    "  -S | --mysql-default-group [mysql-group]  (default: " MYSQL_DEFAULT_GROUP ")\n"
+    "  -M | --mysql-default-file  [mysql-file]   (default: %s)\n"
+    "  -S | --mysql-default-group [mysql-group]  (default: %s)\n"
     "\n"
     "Environment:\n"
     "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
     "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
-    "\n"
+    "\n",
+        program_invocation_short_name,
+        MXQ_MYSQL_DEFAULT_FILE_STR,
+        MXQ_MYSQL_DEFAULT_GROUP_STR
     );
 }
 
-void mxq_mysql_row_to_group(struct mxq_job *j, MYSQL_ROW row)
+static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
 {
-    int r;
-    struct mxq_group *g;
+    struct mx_mysql_stmt *stmt = NULL;
+    unsigned long long num_rows = 0;
+    int res;
 
-    g = j->group_ptr;
-
-    r = 0;
-
-    mx_strtou64(row[r++], &g->group_id);
-
-    mx_strtou8(row[r++],  &g->group_status);
-    mx_strtou16(row[r++], &g->group_priority);
-
-    mx_strtou64(row[r++], &g->group_jobs);
-    mx_strtou64(row[r++], &g->group_jobs_running);
-    mx_strtou64(row[r++], &g->group_jobs_finished);
-    mx_strtou64(row[r++], &g->group_jobs_failed);
-    mx_strtou64(row[r++], &g->group_jobs_cancelled);
-    mx_strtou64(row[r++], &g->group_jobs_unknown);
-
-    mx_strtou64(row[r++], &g->group_slots_running);
-    r++; /* mtime */
-    mx_strtou32(row[r++], &g->stats_max_maxrss);
-    r++; /* utime */
-    r++; /* stime */
-    r++; /* real */
-
-    j->group_id = g->group_id;
-}
-
-
-static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
-{
-    MYSQL_RES *mres;
-    MYSQL_ROW  row;
-
-    unsigned int num_rows;
-    unsigned int num_fields;
-
-    _cleanup_free_ char *q_group_name  = NULL;
-    _cleanup_free_ char *q_user_name   = NULL;
-    _cleanup_free_ char *q_user_group  = NULL;
-    _cleanup_free_ char *q_job_command = NULL;
-
-    struct mxq_group *g;
-
-    assert(j);
-    assert(j->group_ptr);
-
-    g = j->group_ptr;
-
+    assert(mysql);
+    assert(g);
     assert(g->group_id == 0);
 
     assert(g->group_name); assert(*g->group_name);
@@ -175,95 +133,70 @@ static int mxq_mysql_load_group(MYSQL *mysql, struct mxq_job *j)
     assert(g->job_command); assert(*g->job_command);
     assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
 
-    q_group_name  = mxq_mysql_escape_string(mysql, g->group_name);
-    q_user_name   = mxq_mysql_escape_string(mysql, g->user_name);
-    q_user_group  = mxq_mysql_escape_string(mysql, g->user_group);
-    q_job_command = mxq_mysql_escape_string(mysql, g->job_command);
-
-    if (!q_group_name || !q_user_name || !q_user_group || !q_job_command)
-        return 0;
-    mres = mxq_mysql_query_with_result(mysql, "SELECT "
-        "group_id,"
-        "group_status,"
-        "group_priority,"
-
-        "group_jobs,"
-        "group_jobs_running,"
-        "group_jobs_finished,"
-        "group_jobs_failed,"
-        "group_jobs_cancelled,"
-        "group_jobs_unknown,"
-
-        "group_slots_running,"
-
-        "group_mtime,"
-
-        "stats_max_maxrss,"
-        "stats_max_utime_sec,"
-        "stats_max_stime_sec,"
-        "stats_max_real_sec "
-
-        "FROM mxq_group "
-        "WHERE group_name = '%s' "
-        "AND user_uid = %" PRIu32 " "
-        "AND user_name = '%s' "
-        "AND user_gid = %" PRIu32 " "
-        "AND user_group = '%s' "
-        "AND job_command = '%s' "
-        "AND job_threads = %" PRIu16 " "
-        "AND job_memory = %" PRIu64 " "
-        "AND job_time = %" PRIu32 " "
-        "AND group_status = 0 "
-        "ORDER BY group_id "
-        "LIMIT 1",
-        q_group_name, g->user_uid, q_user_name, g->user_gid, q_user_group,
-        q_job_command, g->job_threads, g->job_memory, g->job_time);
-
-    if (!mres) {
-        mx_log_err("mxq_mysql_select_next_job: Failed to query database: Error: %s", mysql_error(mysql));
-        sleep(10);
-        return 0;
+    stmt = mx_mysql_statement_prepare(mysql,
+            "SELECT"
+                " group_id"
+            " FROM mxq_group "
+            " WHERE group_name = ?"
+                " AND user_uid = ?"
+                " AND user_name = ?"
+                " AND user_gid = ?"
+                " AND user_group = ?"
+                " AND job_command = ?"
+                " AND job_threads = ?"
+                " AND job_memory = ?"
+                " AND job_time = ?"
+                " AND group_priority = ?"
+                " AND group_status = 0"
+            " ORDER BY group_id "
+            " LIMIT 1");
+    if (!stmt) {
+        mx_log_err("mx_mysql_statement_prepare(): %m");
+        return -errno;
     }
 
-    num_rows = mysql_num_rows(mres);
+    res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
+    res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
+    res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    assert(res == 0);
+
+    res = mx_mysql_statement_execute(stmt, &num_rows);
+    if (res < 0) {
+        mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
+        return res;
+    }
     assert(num_rows <= 1);
 
-    if (num_rows == 1) {
-        num_fields = mysql_num_fields(mres);
-        assert(num_fields == 15);
+    if (num_rows) {
+        mx_mysql_statement_result_bind(stmt, 0, uint64, &(g->group_id));
 
-        row = mysql_fetch_row(mres);
-        if (!row) {
-            mx_log_err("mxq_mysql_select_next_job: Failed to fetch row: Error: %s", mysql_error(mysql));
-            mysql_free_result(mres);
-            return 0;
+        res = mx_mysql_statement_fetch(stmt);
+        if (res < 0) {
+            mx_log_err("mx_mysql_statement_fetch(): %m");
+            mx_mysql_statement_close(&stmt);
+            return res;
         }
-        mxq_mysql_row_to_group(j, row);
     }
 
-    mysql_free_result(mres);
+    mx_mysql_statement_close(&stmt);
 
-    return num_rows;
+    return (int)num_rows;
 }
 
-
-static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
+static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
 {
-    _cleanup_free_ char *q_group_name  = NULL;
-    _cleanup_free_ char *q_user        = NULL;
-    _cleanup_free_ char *q_group       = NULL;
-    _cleanup_free_ char *q_command     = NULL;
-
-    int   len;
-    int   res;
-    int   i;
-
-    struct mxq_group *g;
-
-    assert(j);
-    assert(j->group_ptr);
-
-    g = j->group_ptr;
+    struct mx_mysql_stmt *stmt = NULL;
+    unsigned long long num_rows = 0;
+    unsigned long long insert_id = 0;
+    int res;
 
     assert(g->group_name); assert(*g->group_name);
     assert(g->group_priority);
@@ -272,124 +205,173 @@ static int mxq_mysql_add_group(MYSQL *mysql, struct mxq_job *j)
     assert(g->job_command); assert(*g->job_command);
     assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
 
-    q_group_name  = mxq_mysql_escape_string(mysql, g->group_name);
-    q_user        = mxq_mysql_escape_string(mysql, g->user_name);
-    q_group       = mxq_mysql_escape_string(mysql, g->user_group);
-    q_command     = mxq_mysql_escape_string(mysql, g->job_command);
+    stmt = mx_mysql_statement_prepare(mysql,
+            "INSERT INTO mxq_group SET"
+                " group_name = ?,"
 
-    if (!q_group_name || !q_user || !q_group || !q_command)
-        return 0;
+                " user_uid = ?,"
+                " user_name = ?,"
+                " user_gid = ?,"
+                " user_group = ?,"
 
-    res = mxq_mysql_query(mysql,
-            "INSERT INTO mxq_group SET "
-                "group_name = '%s',"
-                "group_priority = %" PRIu16 ","
+                " job_command = ?,"
 
-                "user_uid = %" PRIu32 ","
-                "user_name = '%s',"
-                "user_gid = %" PRIu32 ","
-                "user_group = '%s',"
-
-                "job_command = '%s',"
-
-                "job_threads = %" PRIu16 ","
-                "job_memory = %" PRIu64 " ,"
-                "job_time = %" PRIu32 " ",
-                q_group_name, g->group_priority,
-                g->user_uid, q_user, g->user_gid, q_group,
-                q_command,
-                g->job_threads, g->job_memory, g->job_time);
-    if (res) {
-        mx_log_err("Failed to query database: Error: %s", mysql_error(mysql));
-        return 0;
+                " job_threads = ?,"
+                " job_memory = ?,"
+                " job_time = ?,"
+                " group_priority = ?");
+    if (!stmt) {
+        mx_log_err("mx_mysql_statement_prepare(): %m");
+        return -errno;
     }
 
-    g->group_id = mysql_insert_id(mysql);
-    j->group_id = g->group_id;
+    res  = mx_mysql_statement_param_bind(stmt, 0, string, &(g->group_name));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(g->user_name));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(g->user_gid));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(g->user_group));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(g->job_command));
+    res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
+    res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    assert(res == 0);
 
-    return 1;
+    res = mx_mysql_statement_execute(stmt, &num_rows);
+    if (res < 0) {
+        mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
+        return res;
+    }
+
+    assert(num_rows == 1);
+    mx_mysql_statement_insert_id(stmt, &insert_id);
+
+    g->group_id = insert_id;
+
+    mx_mysql_statement_close(&stmt);
+
+    return (int)num_rows;
 }
 
-static int mxq_mysql_add_job(MYSQL *mysql, struct mxq_job *j)
+static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
 {
-    _cleanup_free_ char *q_workdir     = NULL;
-    _cleanup_free_ char *q_argv        = NULL;
-    _cleanup_free_ char *q_stdout      = NULL;
-    _cleanup_free_ char *q_stderr      = NULL;
-    _cleanup_free_ char *q_submit_host = NULL;
-
-    int   len;
-    int   res;
-    int   i;
+    struct mx_mysql_stmt *stmt = NULL;
+    unsigned long long num_rows = 0;
+    unsigned long long insert_id = 0;
+    int res;
 
     assert(j);
     assert(j->job_priority); assert(j->group_id);
     assert(j->job_workdir); assert(*j->job_workdir);
     assert(j->job_argc); assert(j->job_argv); assert(*j->job_argv);
+    assert(j->job_argv_str); assert(*j->job_argv_str);
     assert(j->job_stdout); assert(*j->job_stdout);
     assert(j->job_stderr); assert(*j->job_stderr);
     assert(j->job_umask);
     assert(j->host_submit); assert(*j->host_submit);
 
-    q_workdir     = mxq_mysql_escape_str(mysql, j->job_workdir);
-    q_argv        = mxq_mysql_escape_strvec(mysql, j->job_argv);
-    q_stdout      = mxq_mysql_escape_str(mysql, j->job_stdout);
-    q_stderr      = mxq_mysql_escape_str(mysql, j->job_stderr);
-    q_submit_host = mxq_mysql_escape_str(mysql, j->host_submit);
+    stmt = mx_mysql_statement_prepare(mysql,
+            "INSERT INTO mxq_job SET"
+                " job_priority = ?,"
 
-    if (!q_workdir || !q_argv
-        || !q_stdout || !q_stderr || !q_submit_host)
-        return 0;
+                " group_id = ?,"
 
-    res = mxq_mysql_query(mysql,
-            "INSERT INTO mxq_job SET "
-                "job_priority = %" PRIu16 ","
+                " job_workdir = ?,"
+                " job_argc = ? ,"
+                " job_argv = ?,"
 
-                "group_id = '%" PRIu64 "',"
+                " job_stdout = ?,"
+                " job_stderr = ?,"
 
-                "job_workdir = '%s',"
-                "job_argc = %" PRIu16 " ,"
-                "job_argv = '%s',"
+                " job_umask = ?,"
 
-                "job_stdout = '%s',"
-                "job_stderr = '%s',"
+                " host_submit = ?,"
 
-                "job_umask = %" PRIu32 ","
-
-                "host_submit = '%s'",
-
-                j->job_priority,
-                j->group_id,
-                q_workdir, j->job_argc, q_argv,
-                q_stdout, q_stderr,
-                j->job_umask, q_submit_host);
-    if (res) {
-        mx_log_err("Failed to query database: Error: %s", mysql_error(mysql));
-        return 0;
+                " job_flags = ?"
+                );
+    if (!stmt) {
+        mx_log_err("mx_mysql_statement_prepare(): %m");
+        mx_mysql_statement_close(&stmt);
+        return -errno;
     }
 
-    j->job_id = mysql_insert_id(mysql);
-    return 1;
+    res  = mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(j->group_id));
+    res += mx_mysql_statement_param_bind(stmt, 2, string, &(j->job_workdir));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint16, &(j->job_argc));
+    res += mx_mysql_statement_param_bind(stmt, 4, string, &(j->job_argv_str));
+    res += mx_mysql_statement_param_bind(stmt, 5, string, &(j->job_stdout));
+    res += mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
+    res += mx_mysql_statement_param_bind(stmt, 7, uint32, &(j->job_umask));
+    res += mx_mysql_statement_param_bind(stmt, 8, string, &(j->host_submit));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint64, &(j->job_flags));
+    assert(res ==0);
+
+    res = mx_mysql_statement_execute(stmt, &num_rows);
+    if (res < 0) {
+        mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
+        return res;
+    }
+
+    assert(num_rows == 1);
+    mx_mysql_statement_insert_id(stmt, &insert_id);
+    assert(insert_id > 0);
+
+    j->job_id = insert_id;
+
+    res = mx_mysql_statement_close(&stmt);
+
+    return (int)num_rows;
 }
 
-static int mxq_submit_task(struct mxq_mysql *mmysql, struct mxq_job *j, int flags)
+static int mxq_submit_task(struct mx_mysql *mysql, struct mxq_job *j, int flags)
 {
-    MYSQL *mysql;
+    int res;
+    struct mxq_group *g;
 
-    mysql = mxq_mysql_connect(mmysql);
+    g = j->group_ptr;
 
+    res = load_group_id(mysql, g);
+    if (res < 0)
+        return res;
 
-    while(!mxq_mysql_load_group(mysql, j)) {
-        mxq_mysql_add_group(mysql, j);
-        j->group_ptr->group_id = 0;
+    if (res == 0) {
+        res = add_group(mysql, g);
+        if (res < 0)
+            return res;
+
+        if (res == 0) {
+            mx_log_err("Failed to add new group.");
+            return -(errno=EIO);
+        }
+
+        mx_log_info("The new job will be added to new group with group_id=%lu", g->group_id);
+
+    } else {
+        mx_log_info("The new job will be attached to existing group with group_id=%lu", g->group_id);
     }
-    mxq_mysql_add_job(mysql, j);
 
-    mxq_mysql_close(mysql);
+    assert(g->group_id);
 
-    return 1;
+    j->group_id = g->group_id;
+
+    res = add_job(mysql, j);
+    if (res < 0)
+        return res;
+
+    if (res == 0) {
+        mx_log_err("Failed to add job group.");
+        return -(errno=EIO);
+    }
+
+    mx_log_info("The new job has been queued successfully with job_id=%lu in group with group_id=%lu", j->job_id, g->group_id);
+
+    assert(j->job_id);
+
+    return res;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -409,23 +391,26 @@ int main(int argc, char *argv[])
     char      *arg_stdout;
     char      *arg_stderr;
     mode_t     arg_umask;
-    char      **arg_env;
     char      *arg_mysql_default_file;
     char      *arg_mysql_default_group;
+    char       arg_debug;
+    char       arg_jobflags;
 
-    _cleanup_free_ char *current_workdir = NULL;
-    _cleanup_free_ char *arg_stdout_absolute = NULL;
-    _cleanup_free_ char *arg_stderr_absolute = NULL;
-    _cleanup_free_ char *arg_args = NULL;
+    _mx_cleanup_free_ char *current_workdir = NULL;
+    _mx_cleanup_free_ char *arg_stdout_absolute = NULL;
+    _mx_cleanup_free_ char *arg_stderr_absolute = NULL;
+    _mx_cleanup_free_ char *arg_args = NULL;
 
     int flags = 0;
 
     struct mxq_job job;
     struct mxq_group group;
-    struct mxq_mysql mmysql;
+
+    struct mx_mysql *mysql = NULL;
 
     struct passwd *passwd;
     struct group  *grp;
+    char *p;
 
     int opt;
     struct mx_getopt_ctl optctl;
@@ -439,6 +424,9 @@ int main(int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("time",           4),
 
                 MX_OPTION_NO_ARG("debug",                5),
+                MX_OPTION_NO_ARG("verbose",              'v'),
+
+                MX_OPTION_OPTIONAL_ARG("restartable",    'r'),
 
                 MX_OPTION_REQUIRED_ARG("group-name",     'N'),
                 MX_OPTION_REQUIRED_ARG("group-priority", 'P'),
@@ -480,22 +468,21 @@ int main(int argc, char *argv[])
     arg_stdout         = "/dev/null";
     arg_stderr         = "stdout";
     arg_umask          = getumask();
-    arg_env            = strvec_new();
-
-    assert(arg_env);
+    arg_debug          = 0;
+    arg_jobflags       = 0;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
+        arg_mysql_default_group = MXQ_MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     /******************************************************************/
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
-    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
+    optctl.flags = MX_FLAG_STOPONNOOPT;
 
     while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
         if (opt == MX_GETOPT_ERROR) {
@@ -504,7 +491,7 @@ int main(int argc, char *argv[])
 
         switch (opt) {
             case 'V':
-                print_version();
+                mxq_print_generic_version();
                 exit(EX_USAGE);
 
             case 'h':
@@ -512,7 +499,27 @@ int main(int argc, char *argv[])
                 exit(EX_USAGE);
 
             case 5:
+                arg_debug = 1;
                 mx_log_level_set(MX_LOG_DEBUG);
+                break;
+
+            case 'v':
+                if (!arg_debug)
+                    mx_log_level_set(MX_LOG_INFO);
+                break;
+
+            case 'r':
+                if (!optctl.optarg || streq(optctl.optarg, "always")) {
+                    arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
+                    arg_jobflags |= MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL;
+                } else if (streq(optctl.optarg, "samehost")) {
+                    arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
+                } else if (streq(optctl.optarg, "never")) {
+                    arg_jobflags &= ~(MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL|MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL);
+                } else {
+                    mx_log_crit("--restart '%s': restartmode unknown.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 break;
 
             case 'p':
@@ -523,19 +530,28 @@ int main(int argc, char *argv[])
                 break;
 
             case 1:
-                mx_log_warning("option --group_id is deprecated. please use --group-name instead.");
+            case 3:
+                if (opt == 3)
+                    mx_log_warning("option --group-id is deprecated (usage will change in next version). Using --group-name instead.");
+                else
+                    mx_log_warning("option --group_id is deprecated. Using --group-name instead.");
             case 'N':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--group-name '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 arg_group_name = optctl.optarg;
                 break;
 
             case 'a':
-                if (*optctl.optarg) {
-                    char *p;
-                    arg_program_name = optctl.optarg;
-                    p = strchr(arg_program_name, ' ');
-                    if (p)
-                        *p = 0;
+                p = strchr(optctl.optarg, ' ');
+                if (p)
+                    *p = 0;
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--command-alias '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
                 }
+                arg_program_name = optctl.optarg;
                 break;
 
             case 2:
@@ -545,11 +561,6 @@ int main(int argc, char *argv[])
                     mx_log_crit("--group-priority '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
-                break;
-
-            case 3:
-                mx_log_warning("option --group-id is deprecated (usage will change in next version). please use --group-name instead.");
-                arg_group_name = optctl.optarg;
                 break;
 
             case 'j':
@@ -576,6 +587,10 @@ int main(int argc, char *argv[])
                 break;
 
             case 'w':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--workdir '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 if (optctl.optarg[0] != '/') {
                     mx_log_crit("--workdir '%s': workdir is a relativ path. please use absolute path.",
                                 optctl.optarg);
@@ -585,18 +600,21 @@ int main(int argc, char *argv[])
                 break;
 
             case 'o':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--stdout '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 arg_stdout = optctl.optarg;
                 break;
 
             case 'e':
+                if (!(*optctl.optarg)) {
+                    mx_log_crit("--stderr '%s': String is empty.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 arg_stderr = optctl.optarg;
                 break;
 
-            case 'D': {
-                char *arg_env_str;
-                assert(strvec_push_str(&arg_env, optctl.optarg));
-                break;
-            }
             case 'u':
                 if (mx_strtou32(optctl.optarg, &arg_umask) < 0) {
                     mx_log_crit("--umask '%s': %m", optctl.optarg);
@@ -626,6 +644,11 @@ int main(int argc, char *argv[])
     if (!arg_program_name)
         arg_program_name = argv[0];
 
+    if (!(*arg_program_name)) {
+        mx_log_crit("<command> is empty. Please check usage with '%s --help'.", program_invocation_short_name);
+        exit(EX_CONFIG);
+    }
+
     /******************************************************************/
 
     if (*arg_stdout != '/') {
@@ -644,6 +667,9 @@ int main(int argc, char *argv[])
         arg_stderr = arg_stderr_absolute;
     }
 
+    arg_args = strvec_to_str(argv);
+    assert(arg_args);
+
     /******************************************************************/
 
     memset(&job,   0, sizeof(job));
@@ -660,14 +686,16 @@ int main(int argc, char *argv[])
     group.job_memory     = arg_memory;
     group.job_time       = arg_time;
 
+    job.job_flags      = arg_jobflags;
     job.job_priority   = arg_priority;
     job.job_workdir    = arg_workdir;
     job.job_stdout     = arg_stdout;
     job.job_stderr     = arg_stderr;
     job.job_umask      = arg_umask;
 
-    job.job_argc = argc;
-    job.job_argv = argv;
+    job.job_argc     = argc;
+    job.job_argv     = argv;
+    job.job_argv_str = arg_args;
 
     /******************************************************************/
 
@@ -695,14 +723,27 @@ int main(int argc, char *argv[])
 
     /******************************************************************/
 
-    mmysql.default_file  = arg_mysql_default_file;
-    mmysql.default_group = arg_mysql_default_group;
+    res = mx_mysql_init(&mysql);
+    assert(res == 0);
 
-    /******************************************************************/
+    mx_mysql_option_set_default_file(mysql, arg_mysql_default_file);
+    mx_mysql_option_set_default_group(mysql, arg_mysql_default_group);
 
-    mxq_submit_task(&mmysql, &job, flags);
+    res = mx_mysql_connect_forever(&mysql);
+    assert(res == 0);
 
-    /******************************************************************/
+    mx_log_info("MySQL: Connection to database established.");
+
+    res = mxq_submit_task(mysql, &job, flags);
+
+    mx_mysql_finish(&mysql);
+
+    mx_log_info("MySQL: Connection to database closed.");
+
+    if (res < 0) {
+        mx_log_err("Job submission failed: %m");
+        return 1;
+    }
 
     printf("mxq_group_id=%" PRIu64 " \n",   group.group_id);
     printf("mxq_group_name=%s\n", group.group_name);
@@ -710,4 +751,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-

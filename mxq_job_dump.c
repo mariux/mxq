@@ -12,6 +12,9 @@
 #include "mxq_util.h"
 #include "mxq_mysql.h"
 
+#include "mxq_group.h"
+#include "mxq_job.h"
+
 
 struct result {
     struct mxq_job job;

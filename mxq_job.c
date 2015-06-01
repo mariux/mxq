@@ -16,7 +16,6 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mxq_mysql.h"
-#include "mxq.h"
 
 #define MXQ_JOB_FIELDS "job_id, " \
                 "job_status, " \
@@ -90,6 +89,40 @@ enum mxq_job_columns {
     MXQ_JOB_COL_STATS_NIVCSW,
     MXQ_JOB_COL__END
 };
+
+char *mxq_job_status_to_name(uint64_t status)
+{
+    switch (status) {
+        case MXQ_JOB_STATUS_INQ:
+            return "inq";
+        case MXQ_JOB_STATUS_ASSIGNED:
+            return "assigned";
+        case MXQ_JOB_STATUS_LOADED:
+            return "loaded";
+        case MXQ_JOB_STATUS_RUNNING:
+            return "running";
+        case MXQ_JOB_STATUS_UNKNOWN_RUN:
+            return "running-unknown";
+        case MXQ_JOB_STATUS_EXTRUNNING:
+            return "running-external";
+        case MXQ_JOB_STATUS_STOPPED:
+            return "stopped";
+        case MXQ_JOB_STATUS_EXIT:
+            return "exited";
+        case MXQ_JOB_STATUS_KILLED:
+            return "killed";
+        case MXQ_JOB_STATUS_FAILED:
+            return "failed";
+        case MXQ_JOB_STATUS_CANCELLED:
+            return "cancelled";
+        case MXQ_JOB_STATUS_UNKNOWN:
+            return "unknown";
+        case MXQ_JOB_STATUS_FINISHED:
+            return "finished";
+    }
+
+    return "invalid";
+}
 
 static inline int mxq_job_bind_results(MYSQL_BIND *bind, struct mxq_job *j)
 {
@@ -414,7 +447,7 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
     int res;
 
     if (!streq(j->job_stdout, "/dev/null")) {
-        _cleanup_free_ char *dir = NULL;
+        _mx_cleanup_free_ char *dir = NULL;
 
         dir = mx_dirname_forever(j->job_stdout);
 
@@ -424,7 +457,7 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
     }
 
     if (!streq(j->job_stderr, "/dev/null")) {
-        _cleanup_free_ char *dir = NULL;
+        _mx_cleanup_free_ char *dir = NULL;
 
         if (streq(j->job_stderr, j->job_stdout)) {
             j->tmp_stderr = j->tmp_stdout;
@@ -521,29 +554,4 @@ int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *
     }
 
     return 1;
-}
-
-int mxq_job_update_status_cancelled_by_group(MYSQL *mysql, struct mxq_group *group)
-{
-    char *query;
-    MYSQL_BIND param[1];
-    int   res;
-
-    assert(group->group_id);
-
-    memset(param, 0, sizeof(param));
-
-    query = "UPDATE mxq_job SET"
-            " job_status = " status_str(MXQ_JOB_STATUS_CANCELLED)
-            " WHERE group_id = ?"
-            " AND job_status = " status_str(MXQ_JOB_STATUS_INQ)
-            " AND host_hostname = ''"
-            " AND server_id = ''"
-            " AND host_pid = 0";
-
-    MXQ_MYSQL_BIND_UINT64(param, 0, &group->group_id);
-
-    res = mxq_mysql_do_update(mysql, query, param);
-
-    return res;
 }

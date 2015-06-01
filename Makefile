@@ -1,10 +1,11 @@
 
 MXQ_VERSION_MAJOR = 0
-MXQ_VERSION_MINOR = 3
-MXQ_VERSION_PATCH = 3
+MXQ_VERSION_MINOR = 4
+MXQ_VERSION_PATCH = 0
+MXQ_VERSION_EXTRA = "beta"
 
 MXQ_VERSION = ${MXQ_VERSION_MAJOR}.${MXQ_VERSION_MINOR}.${MXQ_VERSION_PATCH}
-MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (beta)"
+MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (${MXQ_VERSION_EXTRA})"
 MXQ_VERSIONDATE = 2013-2015
 
 ##############################################################################
@@ -46,11 +47,14 @@ endif
 
 ##############################################################################
 
-MXQ_MYSQL_DEFAULT_FILE = ${SYSCONFDIR}/mxq/mysql.cnf
+MXQ_MYSQL_DEFAULT_FILE  = ${SYSCONFDIR}/mxq/mysql.cnf
+MXQ_MYSQL_DEFAULT_GROUP = mxqclient
+
 MXQ_INITIAL_PATH = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 
-CFLAGS_MXQ_MYSQL_DEFAULT_FILE = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
-CFLAGS_MXQ_INITIAL_PATH       = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
+CFLAGS_MXQ_MYSQL_DEFAULT_FILE  = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
+CFLAGS_MXQ_MYSQL_DEFAULT_GROUP = -DMXQ_MYSQL_DEFAULT_GROUP=\"$(MXQ_MYSQL_DEFAULT_GROUP)\"
+CFLAGS_MXQ_INITIAL_PATH        = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 
 MYSQL_CONFIG = mysql_config
 
@@ -84,12 +88,17 @@ endif
 CFLAGS_MYSQL := $(shell $(MYSQL_CONFIG) --cflags)
 LDLIBS_MYSQL := $(shell $(MYSQL_CONFIG) --libs)
 
+CFLAGS_MYSQL += ${CFLAGS_MXQ_MYSQL_DEFAULT_FILE}
+CFLAGS_MYSQL += ${CFLAGS_MXQ_MYSQL_DEFAULT_GROUP}
+
 CFLAGS += -g
 CFLAGS += -Wall
 CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-function
 CFLAGS += -DMXQ_VERSION=\"${MXQ_VERSION}\"
 CFLAGS += -DMXQ_VERSIONFULL=\"${MXQ_VERSIONFULL}\"
 CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
+CFLAGS += -DMXQ_VERSIONEXTRA=\"${MXQ_VERSIONEXTRA}\"
 
 ########################################################################
 
@@ -172,11 +181,14 @@ mx_util.h += mx_util.h
 
 mx_flock.h += mx_flock.h
 
+### mx_mysql.h ---------------------------------------------------------
+
+mx_mysql.h += mx_mysql.h
+mx_mysql.h += $(mx_util.h)
+
 ### mxq.h --------------------------------------------------------------
 
-mxq.h += mxq.h
-mxq.h += $(mxq_group.h)
-mxq.h += $(mxq_job.h)
+mx_mxq.h += mx_mxq.h
 
 ### mxq_mysql.h --------------------------------------------------------
 
@@ -186,7 +198,7 @@ mxq_mysql.h += $(mxq_util.h)
 ### mxq_util.h ---------------------------------------------------------
 
 mxq_util.h += mxq_util.h
-mxq_util.h += $(mxq.h)
+mxq_util.h += $(mx_log.h)
 
 ### mxq_group.h --------------------------------------------------------
 
@@ -221,6 +233,8 @@ clean: CLEAN += mx_log.o
 
 ### mx_util.o ----------------------------------------------------------
 
+mx_util.o: $(mx_log.h)
+
 clean: CLEAN += mx_util.o
 
 ### mx_flock.o -------------------------------------------------------
@@ -228,6 +242,15 @@ clean: CLEAN += mx_util.o
 mx_flock.o: $(mx_flock.h)
 
 clean: CLEAN += mx_flock.o
+
+### mx_mysql.o ---------------------------------------------------------
+
+mx_mysql.o: $(mx_mysql.h)
+mx_mysql.o: $(mx_util.h)
+mx_mysql.o: $(mx_log.h)
+mx_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
+
+clean: CLEAN += mx_mysql.o
 
 ### mxq_log.o ----------------------------------------------------------
 
@@ -251,7 +274,6 @@ mxqdump.o: $(mxq_util.h)
 mxqdump.o: $(mxq_mysql.h)
 mxqdump.o: $(mx_getopt.h)
 mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqdump.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
 clean: CLEAN += mxqdump.o
 
@@ -259,11 +281,12 @@ clean: CLEAN += mxqdump.o
 
 mxqkill.o: $(mx_log.h)
 mxqkill.o: $(mx_util.h)
-mxqkill.o: $(mxq_util.h)
-mxqkill.o: $(mxq_mysql.h)
+mxqkill.o: $(mx_mysql.h)
 mxqkill.o: $(mx_getopt.h)
+mxqkill.o: $(mxq.h)
+mxqkill.o: $(mxq_group.h)
+mxqkill.o: $(mxq_job.h)
 mxqkill.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqkill.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
 clean: CLEAN += mxqkill.o
 
@@ -296,7 +319,6 @@ clean: CLEAN += mxq_group.o
 
 mxq_job.o: $(mx_util.h)
 mxq_job.o: $(mx_log.h)
-mxq_job.o: $(mxq.h)
 mxq_job.o: $(mxq_job.h)
 mxq_job.o: $(mxq_group.h)
 mxq_job.o: $(mxq_mysql.h)
@@ -315,7 +337,6 @@ mxqd.o: $(mxq_group.h)
 mxqd.o: $(mxq_job.h)
 mxqd.o: $(mxq_mysql.h)
 mxqd.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqd.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
 mxqd.o: CFLAGS += -Wno-unused-but-set-variable
 
@@ -324,12 +345,14 @@ clean: CLEAN += mxqd.o
 ### mxqsub.o -------------------------------------------------------
 
 mxqsub.o: $(mx_getopt.h)
-mxqsub.o: $(mxq_util.h)
 mxqsub.o: $(mx_util.h)
 mxqsub.o: $(mx_log.h)
-mxqsub.o: $(mxq_mysql.h)
+mxqsub.o: $(mx_mysql.h)
+mxqsub.o: $(mxq.h)
+mxqsub.o: $(mxq_group.h)
+mxqsub.o: $(mxq_job.h)
+mxqsub.o: $(mxq_util.h)
 mxqsub.o: CFLAGS += $(CFLAGS_MYSQL)
-mxqsub.o: CFLAGS += $(CFLAGS_MXQ_MYSQL_DEFAULT_FILE)
 
 clean: CLEAN += mxqsub.o
 
@@ -358,10 +381,10 @@ install:: mxqd
 ### mxqsub ------------------------------------------------------------
 
 mxqsub: mx_getopt.o
-mxqsub: mxq_mysql.o
 mxqsub: mxq_util.o
 mxqsub: mx_util.o
 mxqsub: mx_log.o
+mxqsub: mx_mysql.o
 mxqsub: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqsub
@@ -374,9 +397,12 @@ install:: mxqsub
 ### mxqdump -----------------------------------------------------
 
 mxqdump: mx_log.o
+mxqdump: mx_mysql.o
 mxqdump: mxq_group.o
+mxqdump: mxq_job.o
 mxqdump: mxq_mysql.o
 mxqdump: mxq_util.o
+mxqdump: mx_util.o
 mxqdump: mx_getopt.o
 mxqdump: LDLIBS += $(LDLIBS_MYSQL)
 
@@ -390,11 +416,8 @@ install:: mxqdump
 ### mxqkill -----------------------------------------------------
 
 mxqkill: mx_log.o
-mxqkill: mxq_mysql.o
-mxqkill: mxq_util.o
+mxqkill: mx_mysql.o
 mxqkill: mx_util.o
-mxqkill: mxq_group.o
-mxqkill: mxq_job.o
 mxqkill: mx_getopt.o
 mxqkill: LDLIBS += $(LDLIBS_MYSQL)
 
@@ -427,6 +450,7 @@ test_mx_util.o: $(mx_util.h)
 clean: CLEAN += test_mx_util.o
 
 test_mx_util: mx_util.o
+test_mx_util: mx_log.o
 clean: CLEAN += test_mx_util
 
 test: test_mx_util
@@ -438,3 +462,12 @@ test_mx_log: mx_log.o
 clean: CLEAN += test_mx_log
 
 test: test_mx_log
+
+test_mx_mysql.o: $(mx_mysql.h)
+clean: CLEAN += test_mx_mysql.o
+
+test_mx_mysql: mx_mysql.o
+test_mx_mysql: mx_log.o
+test_mx_mysql: mx_util.o
+test_mx_mysql: LDLIBS += $(LDLIBS_MYSQL)
+clean: CLEAN += test_mx_mysql
