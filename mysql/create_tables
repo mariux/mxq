@@ -1,4 +1,7 @@
 
+ALTER TABLE mxq_group
+   ADD COLUMN group_jobs_inq INT8 UNSIGNED NOT NULL DEFAULT 0
+   AFTER group_jobs;
 
 ALTER TABLE mxq_group
    ADD COLUMN stats_total_utime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
@@ -52,6 +55,7 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    job_time       INT4 UNSIGNED NOT NULL DEFAULT 15,
 
    group_jobs           INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_jobs_inq       INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_jobs_running   INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_jobs_finished  INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_jobs_failed    INT8 UNSIGNED NOT NULL DEFAULT 0,
@@ -148,6 +152,7 @@ CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
     FOR EACH ROW BEGIN
         UPDATE mxq_group SET
             group_jobs=group_jobs+1,
+            group_jobs_inq=group_jobs_inq+1,
             group_mtime=NULL
         WHERE group_id=NEW.group_id;
     END;
@@ -157,6 +162,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
     FOR EACH ROW BEGIN
         IF NEW.job_status = 200 AND OLD.job_status IN (0, 100, 150)  THEN
             UPDATE mxq_group SET
+               group_jobs_inq=group_jobs_inq-1,
                group_jobs_running=group_jobs_running+1,
                group_slots_running=group_slots_running+NEW.host_slots,
                group_mtime=NULL
@@ -174,6 +180,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
             WHERE group_id=NEW.group_id;
         ELSEIF NEW.job_status = 990 AND OLD.job_status = 0 THEN
             UPDATE mxq_group SET
+               group_jobs_inq=group_jobs_inq-1,
                group_jobs_cancelled=group_jobs_cancelled+1,
                group_mtime=NULL
             WHERE group_id=NEW.group_id;
