@@ -463,7 +463,7 @@ int main(int argc, char *argv[])
     arg_program_name   = NULL;
     arg_threads        = 1;
     arg_memory         = 2048;
-    arg_time           = 15;
+    arg_time           = 0;
     arg_workdir        = current_workdir;
     arg_stdout         = "/dev/null";
     arg_stderr         = "stdout";
@@ -578,7 +578,7 @@ int main(int argc, char *argv[])
                 break;
 
             case 4:
-                mx_log_warning("option --time is deprecated. please use --runtime instead.");
+                mx_log_warning("option '--time' is deprecated. please use '--runtime' or '-t' in future calls.");
             case 't':
                 if (mx_strtou32(optctl.optarg, &arg_time) < 0) {
                     mx_log_crit("--runtime '%s': %m", optctl.optarg);
@@ -640,6 +640,15 @@ int main(int argc, char *argv[])
     }
 
     /* from this point values in argc,argv are the ones of the cluster job  */
+
+    if (!arg_time) {
+        arg_time = 15;
+        mx_log_warning("option '--runtime' or '-t' not used. Your job will get killed if it runs longer than the default of %d minutes.", arg_time);
+    }
+
+    if (arg_time > 60*24) {
+        mx_log_warning("option '--runtime' specifies a runtime longer than 24h. Your job may get killed. Be sure to implement some check pointing.");
+    }
 
     if (!arg_program_name)
         arg_program_name = argv[0];
