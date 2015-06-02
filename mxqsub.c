@@ -50,36 +50,37 @@ static void print_usage(void)
     printf(
     "\n"
     "Usage:\n"
-    "  %s [mxqsub-options] <command> [command options and arguments ..]\n"
+    "  %s [options] <command [arguments]>\n"
     "\n"
     "Synopsis:\n"
     "  queue a job to be executed on a cluster node.\n"
-    "  <command> [arguments] will be executed on a node that offers\n"
+    "  <command [arguments]> will be executed on a node that offers\n"
     "  enough resources to run the job. the following [options] can\n"
     "  influence the job environment and the scheduling decisions made\n"
     "  by the cluster:\n"
     "\n"
     "Job environment:\n"
-    "  -w | --workdir  <directory> set working directory      (default: current workdir)\n"
-    "  -o | --stdout   <file>      set file to capture stdout (default: '/dev/null')\n"
-    "  -e | --stderr   <file>      set file to capture stderr (default: <stdout>)\n"
-    "  -u | --umask    <mask>      set mode to use as umask   (default: current umask)\n"
-    "  -p | --priority <priority>  set priority               (default: 127)\n"
+    "  -w, --workdir=DIRECTORY   set working directory      (default: current workdir)\n"
+    "  -o, --stdout=FILE         set file to capture stdout (default: '/dev/null')\n"
+    "  -e, --stderr=FILE         set file to capture stderr (default: <stdout>)\n"
+    "  -u, --umask=MASK          set mode to use as umask   (default: current umask)\n"
+    "  -p, --priority=PRIORITY   set priority               (default: 127)\n"
     "\n"
     "Job resource information:\n"
     "  Scheduling is done based on the resources a job needs and\n"
     "  on the priority given to the job.\n"
     "\n"
-    "  -j | --threads  <number>  set number of threads       (default: 1)\n"
-    "  -m | --memory   <size>    set amount of memory in MiB (default: 2048)\n"
-    "  -t | --time     <minutes> set runtime in minutes      (default: 15)\n"
+    "  -j, --threads=NUMBER     set number of threads       (default: 1)\n"
+    "  -m, --memory=SIZE        set amount of memory in MiB (default: 2048)\n"
+    "  -t, --runtime=MINUTES    set runtime in minutes      (default: 15)\n"
     "\n"
     "Job handling:\n"
-    "  Define what to do if something bad happens.\n"
+    "  Define what to do if something bad happens:\n"
     "\n"
-    "  -r | --restart [restartmode]  restart job on system failure (default: 'never')\n"
+    "  -r | --restart[=MODE]  restart job on system failure (default: 'never')\n"
     "\n"
-    "  available [restartmode]s:\n"
+    "  available restart [MODE]s:\n"
+    "      'never'     do not restart\n"
     "      'samehost'  only restart if running on the same host.\n"
     "      'always'    always restart or requeue. (default)\n"
     "\n"
@@ -89,25 +90,25 @@ static void print_usage(void)
     "  amount of resources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
     "\n"
-    "  -a | --command-alias <name>       set command alias  (default: <command>)\n"
-    "  -N | --group-name <name>          set group name     (default: 'default')\n"
-    "  -P | --group-priority <priority>  set group priority (default: 127)\n"
+    "  -a, --command-alias=NAME       set command alias  (default: <command>)\n"
+    "  -N, --group-name=NAME          set group name     (default: 'default')\n"
+    "  -P, --group-priority=PRIORITY  set group priority (default: 127)\n"
     "\n"
     "Other options:\n"
     "\n"
-    "  -v | --verbose   be more verbose\n"
-    "  --debug          set debug log level (default: warning log level)\n"
-    "  --version        print version and exit\n"
-    "  --help           print this help and exit ;)\n"
+    "  -v, --verbose    be more verbose\n"
+    "      --debug      set debug log level (default: warning log level)\n"
+    "  -V, --version    print version and exit\n"
+    "  -h, --help       print this help and exit ;)\n"
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
-    "  -M | --mysql-default-file  [mysql-file]   (default: %s)\n"
-    "  -S | --mysql-default-group [mysql-group]  (default: %s)\n"
+    "  -M | --mysql-default-file[=MYSQLCNF]     (default: %s)\n"
+    "  -S | --mysql-default-group[=MYSQLGROUP]  (default: %s)\n"
     "\n"
     "Environment:\n"
-    "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
-    "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
+    "  MXQ_MYSQL_DEFAULT_FILE   change default for [MYSQLCNF]\n"
+    "  MXQ_MYSQL_DEFAULT_GROUP  change default for [MYSQLGROUP]\n"
     "\n",
         program_invocation_short_name,
         MXQ_MYSQL_DEFAULT_FILE_STR,
@@ -462,7 +463,7 @@ int main(int argc, char *argv[])
     arg_program_name   = NULL;
     arg_threads        = 1;
     arg_memory         = 2048;
-    arg_time           = 15;
+    arg_time           = 0;
     arg_workdir        = current_workdir;
     arg_stdout         = "/dev/null";
     arg_stderr         = "stdout";
@@ -577,7 +578,7 @@ int main(int argc, char *argv[])
                 break;
 
             case 4:
-                mx_log_warning("option --time is deprecated. please use --runtime instead.");
+                mx_log_warning("option '--time' is deprecated. please use '--runtime' or '-t' in future calls.");
             case 't':
                 if (mx_strtou32(optctl.optarg, &arg_time) < 0) {
                     mx_log_crit("--runtime '%s': %m", optctl.optarg);
@@ -639,6 +640,15 @@ int main(int argc, char *argv[])
     }
 
     /* from this point values in argc,argv are the ones of the cluster job  */
+
+    if (!arg_time) {
+        arg_time = 15;
+        mx_log_warning("option '--runtime' or '-t' not used. Your job will get killed if it runs longer than the default of %d minutes.", arg_time);
+    }
+
+    if (arg_time > 60*24) {
+        mx_log_warning("option '--runtime' specifies a runtime longer than 24h. Your job may get killed. Be sure to implement some check pointing.");
+    }
 
     if (!arg_program_name)
         arg_program_name = argv[0];

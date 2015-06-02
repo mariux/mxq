@@ -88,6 +88,8 @@ struct mxq_job {
 #define status_str(x) _to_string(x)
 
 
+char *mxq_job_status_to_name(uint64_t status);
+
 int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id);
 void mxq_job_free_content(struct mxq_job *j);
 int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
