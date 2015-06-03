@@ -42,6 +42,7 @@
             " job_memory," \
             " job_time," \
             " group_jobs," \
+            " group_jobs_inq," \
             " group_jobs_running," \
             " group_jobs_finished," \
             " group_jobs_failed," \
@@ -220,7 +221,7 @@ static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_gro
     int res = 0;
     int idx = 0;
 
-    res = mx_mysql_bind_init_result(result, 23);
+    res = mx_mysql_bind_init_result(result, 24);
     assert(res >= 0);
 
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_id));
@@ -240,6 +241,7 @@ static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_gro
     res += mx_mysql_bind_var(result, idx++, uint32, &(g->job_time));
 
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_jobs));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_jobs_inq));
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_jobs_running));
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_jobs_finished));
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_jobs_failed));
@@ -272,7 +274,7 @@ static int load_active_groups_for_user(struct mx_mysql *mysql, struct mxq_group 
             "SELECT"
                 GROUP_FIELDS
             " FROM mxq_group"
-            " WHERE ((group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0)"
+            " WHERE ((group_jobs_inq > 0 OR group_jobs_running > 0)"
             "    OR (NOW()-group_mtime < 604800))"
             "   AND user_uid = ?"
             " ORDER BY user_name, group_mtime"
@@ -311,7 +313,7 @@ static int load_running_groups(struct mx_mysql *mysql, struct mxq_group **mxq_gr
             "SELECT"
                 GROUP_FIELDS
             " FROM mxq_group"
-            " WHERE (group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0)"
+            " WHERE (group_jobs_inq > 0 OR group_jobs_running > 0)"
             " ORDER BY user_name, group_mtime"
             " LIMIT 1000";
 
@@ -344,7 +346,7 @@ static int load_running_groups_for_user(struct mx_mysql *mysql, struct mxq_group
             "SELECT"
                 GROUP_FIELDS
             " FROM mxq_group"
-            " WHERE (group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0)"
+            " WHERE (group_jobs_inq > 0 OR group_jobs_running > 0)"
             "   AND user_uid = ?"
             " ORDER BY user_name, group_mtime"
             " LIMIT 1000";
@@ -635,7 +637,7 @@ static int print_group(struct mxq_group *g)
         g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
         g->group_jobs_running, g->group_slots_running, g->group_jobs_failed,
         g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
-        mxq_group_jobs_inq(g),
+        g->group_jobs_inq,
         g->job_threads, g->job_memory, g->job_time,
         (100*g->stats_max_maxrss/1024/g->job_memory),
         (100*g->stats_max_real.tv_sec/60/g->job_time),
