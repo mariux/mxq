@@ -29,6 +29,7 @@ struct mxq_group {
    uint32_t  job_time;
 
    uint64_t  group_jobs;
+   uint64_t  group_jobs_inq;
    uint64_t  group_jobs_running;
    uint64_t  group_jobs_finished;
    uint64_t  group_jobs_failed;
