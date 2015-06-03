@@ -57,40 +57,41 @@
 #define JOB_FIELDS \
                 " job_id, " \
                 " job_status, " \
+                " job_flags, " \
                 " job_priority, " \
                 " group_id, " \
-                " job_workdir, " \
                 \
+                " job_workdir, " \
                 " job_argc, " \
                 " job_argv, " \
                 " job_stdout, " \
                 " job_stderr, " \
-                " job_umask, " \
                 \
+                " job_umask, " \
                 " host_submit, " \
                 " server_id, " \
                 " host_hostname, " \
                 " host_pid, " \
-                " UNIX_TIMESTAMP(date_submit) as date_submit, " \
                 \
+                " UNIX_TIMESTAMP(date_submit) as date_submit, " \
                 " UNIX_TIMESTAMP(date_start) as date_start, " \
                 " UNIX_TIMESTAMP(date_end) as date_end, " \
                 " stats_status, " \
                 " stats_utime_sec, " \
-                " stats_utime_usec, " \
                 \
+                " stats_utime_usec, " \
                 " stats_stime_sec, " \
                 " stats_stime_usec, " \
                 " stats_real_sec, " \
                 " stats_real_usec, " \
-                " stats_maxrss, " \
                 \
+                " stats_maxrss, " \
                 " stats_minflt, " \
                 " stats_majflt, " \
                 " stats_nswap, " \
                 " stats_inblock, " \
-                " stats_oublock, " \
                 \
+                " stats_oublock, " \
                 " stats_nvcsw, " \
                 " stats_nivcsw"
 
@@ -171,45 +172,46 @@ static int bind_result_job_fields(struct mx_mysql_bind *result, struct mxq_job *
     int res = 0;
     int idx = 0;
 
-    res = mx_mysql_bind_init_result(result, 32);
+    res = mx_mysql_bind_init_result(result, 33);
     assert(res >= 0);
 
     res += mx_mysql_bind_var(result, idx++, uint64, &(j->job_id));
     res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_status));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(j->job_flags));
     res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_priority));
     res += mx_mysql_bind_var(result, idx++, uint64, &(j->group_id));
-    res += mx_mysql_bind_var(result, idx++, string, &(j->job_workdir));
 
+    res += mx_mysql_bind_var(result, idx++, string, &(j->job_workdir));
     res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_argc));
     res += mx_mysql_bind_var(result, idx++, string, &(j->job_argv_str));
     res += mx_mysql_bind_var(result, idx++, string, &(j->job_stdout));
     res += mx_mysql_bind_var(result, idx++, string, &(j->job_stderr));
-    res += mx_mysql_bind_var(result, idx++, uint32, &(j->job_umask));
 
+    res += mx_mysql_bind_var(result, idx++, uint32, &(j->job_umask));
     res += mx_mysql_bind_var(result, idx++, string, &(j->host_submit));
     res += mx_mysql_bind_var(result, idx++, string, &(j->server_id));
     res += mx_mysql_bind_var(result, idx++, string, &(j->host_hostname));
     res += mx_mysql_bind_var(result, idx++, uint32, &(j->host_pid));
-    res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_submit));
 
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_submit));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_start));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_end));
     res += mx_mysql_bind_var(result, idx++,  int32, &(j->stats_status));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_sec));
-    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_usec));
 
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_usec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_stime.tv_sec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_stime.tv_usec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_realtime.tv_sec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_realtime.tv_usec));
-    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_maxrss));
 
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_maxrss));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_minflt));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_majflt));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nswap));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_inblock));
-    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_oublock));
 
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_oublock));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nvcsw));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nivcsw));
 
@@ -645,6 +647,17 @@ static int print_group(struct mxq_group *g)
         g->stats_max_maxrss/1024, g->job_command, g->group_name);
 }
 
+static char *restart_to_string(uint64_t flags)
+{
+    if (flags & MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL)
+        return "always";
+
+    if (flags & MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL)
+        return "samehost";
+
+    return "never";
+}
+
 static int print_job(struct mxq_group *g, struct mxq_job *j)
 {
     time_t now;
@@ -663,7 +676,7 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         run_sec = (j->date_end - j->date_start);
     }
 
-    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s wait_sec=%lu run_sec=%lu utime=%lu stime=%lu time=%u time_load=%lu%% status=%s(%d) stats_status=%u command=%s"
+    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s wait_sec=%lu run_sec=%lu utime=%lu stime=%lu time=%u time_load=%lu%% status=%s(%d) stats_status=%u restart=%s command=%s"
                     "\n",
         g->user_name, g->user_uid, g->group_id, j->job_id,
         j->host_pid,
@@ -672,8 +685,10 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         j->stats_rusage.ru_utime.tv_sec,j->stats_rusage.ru_stime.tv_sec,g->job_time,
         (100*(run_sec)/60/g->job_time),
         mxq_job_status_to_name(j->job_status), j->job_status, j->stats_status,
+        restart_to_string(j->job_flags),
         j->job_argv_str);
 }
+
 
 static int dump_group(struct mx_mysql *mysql, uint64_t group_id)
 {
