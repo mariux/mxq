@@ -11,6 +11,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <pwd.h>
+
 #include <mysql.h>
 
 #include "mx_getopt.h"
@@ -119,11 +121,11 @@ static void print_usage(void)
     "\n\n"
     "[groups-options]:\n"
     "  -r | --running                filter groups with running jobs (default: active groups)\n"
-    "  -u | --user [uid]             filter [uid]s/everybodys groups (default: own groups)\n"
+    "  -u | --user [username|uid]    filter user/everybodys groups   (default: own groups)\n"
     "  -a | --all                    no filter - dump all groups     (default: active groups)\n"
     "\n\n"
     "[jobs-options]:\n"
-    "  -u | --user [uid]               filter [uid]s/everybodys jobs (default: own uid)\n"
+    "  -u | --user [usrname|uid]       filter user/everybodys jobs (default: own uid)\n"
     "  -g | --group-id <group-id>      filter jobs in group with <group-id>\n"
     "     -s | --status <job-status>   filter jobs with <job-status> (default: running)\n"
     "                                  (only available when --group-id is set)\n"
@@ -862,6 +864,7 @@ int main(int argc, char *argv[])
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
     uid_t ruid, euid, suid;
+    struct passwd *passwd;
 
     char     arg_debug;
     char     arg_all;
@@ -970,10 +973,16 @@ int main(int argc, char *argv[])
                     arg_uid = UINT64_ALL;
                     break;
                 }
+                passwd = getpwnam(optctl.optarg);
+                if (passwd) {
+                    arg_uid = passwd->pw_uid;
+                    break;
+                }
+                mx_log_debug("user %s not found. trying numeric uid.", optctl.optarg);
                 if (mx_strtou64(optctl.optarg, &arg_uid) < 0 || arg_uid >= UINT64_SPECIAL_MIN) {
                     if (arg_uid >= UINT64_SPECIAL_MIN)
                         errno = ERANGE;
-                    mx_log_err("Invalid argument for --group-id '%s': %m", optctl.optarg);
+                    mx_log_err("Invalid argument for --group-id '%s': User not found and %m", optctl.optarg);
                     exit(EX_USAGE);
                 }
                 break;
