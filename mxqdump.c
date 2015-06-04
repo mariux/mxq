@@ -132,6 +132,7 @@ static void print_usage(void)
     "     -r | --running    alias for '--status=running'\n"
     "     -f | --finished   alias for '--status=finished'\n"
     "     -F | --failed     alias for '--status=failed'\n"
+    "     -K | --killed     alias for '--status=killed'\n"
     "     -C | --cancelled  alias for '--status=cancelled'\n"
     "     -U | --unknown    alias for '--status=unknown'\n"
     "\n\n"
@@ -888,6 +889,7 @@ int main(int argc, char *argv[])
                 MX_OPTION_NO_ARG("inq",      'q'),
                 MX_OPTION_NO_ARG("finished", 'f'),
                 MX_OPTION_NO_ARG("failed",   'F'),
+                MX_OPTION_NO_ARG("killed",   'K'),
                 MX_OPTION_NO_ARG("cancelled",'C'),
                 MX_OPTION_NO_ARG("unknown",  'U'),
 
@@ -982,6 +984,8 @@ int main(int argc, char *argv[])
                     arg_status = MXQ_JOB_STATUS_RUNNING;
                 } else if (mx_streq_nocase(optctl.optarg, "failed")) {
                     arg_status = MXQ_JOB_STATUS_FAILED;
+                } else if (mx_streq_nocase(optctl.optarg, "killed")) {
+                    arg_status = MXQ_JOB_STATUS_KILLED;
                 } else if (mx_streq_nocase(optctl.optarg, "cancelled")) {
                     arg_status = MXQ_JOB_STATUS_CANCELLED;
                 } else if (mx_streq_nocase(optctl.optarg, "unknown")) {
@@ -1013,6 +1017,10 @@ int main(int argc, char *argv[])
 
             case 'F':
                 arg_status  = MXQ_JOB_STATUS_FAILED;
+                break;
+
+            case 'K':
+                arg_status  = MXQ_JOB_STATUS_KILLED;
                 break;
 
             case 'C':
