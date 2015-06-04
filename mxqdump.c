@@ -678,7 +678,7 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         run_sec = (j->date_end - j->date_start);
     }
 
-    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s wait_sec=%lu run_sec=%lu utime=%lu stime=%lu time=%u time_load=%lu%% status=%s(%d) stats_status=%u restart=%s command=%s"
+    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s wait_sec=%lu run_sec=%lu utime=%lu stime=%lu time=%u time_load=%lu%% status=%s(%d) stats_status=%u restart=%s workdir=%s command=%s"
                     "\n",
         g->user_name, g->user_uid, g->group_id, j->job_id,
         j->host_pid,
@@ -688,6 +688,7 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         (100*(run_sec)/60/g->job_time),
         mxq_job_status_to_name(j->job_status), j->job_status, j->stats_status,
         restart_to_string(j->job_flags),
+        j->job_workdir,
         j->job_argv_str);
 }
 
