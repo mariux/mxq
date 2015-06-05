@@ -346,7 +346,6 @@ int main(int argc, char *argv[])
                         group.group_id, group.user_name, group.user_uid);
             else
                 mx_log_err("cancelling group failed: %m");
-
             return 1;
         }
 
@@ -361,8 +360,9 @@ int main(int argc, char *argv[])
             res=0;
 
         if (res >= 0) {
-            mx_log_notice("cancelled %d jobs in group with group_id=%lu",
-                    res, group.group_id);
+            if (res)
+                mx_log_notice("cancelled %d jobs in group with group_id=%lu",
+                        res, group.group_id);
             mx_log_notice("marked all running jobs in group with group_id=%lu to be killed by executing servers.",
                     group.group_id);
             mx_log_notice("deactivated group with group_id=%lu",
@@ -370,9 +370,12 @@ int main(int argc, char *argv[])
             return 0;
         } else {
             mx_log_err("cancelling jobs failed: %m");
+            return 1;
         }
     }
 
+    mx_mysql_finish(&mysql);
+    mx_log_info("MySQL: Connection to database closed.");
     return 1;
 }
 
