@@ -14,6 +14,8 @@
 
 #include <sysexits.h>
 
+#include <ctype.h>
+
 #include <mysql.h>
 #include <string.h>
 
@@ -26,6 +28,11 @@
 #include "mxq_job.h"
 
 #include "mxq.h"
+
+#define UINT64_UNSET       (uint64_t)(-1)
+#define UINT64_ALL         (uint64_t)(-2)
+#define UINT64_SPECIAL_MIN (uint64_t)(-2)
+#define UINT64_HASVALUE(x) ((x) < UINT64_SPECIAL_MIN)
 
 static void print_usage(void)
 {
@@ -42,6 +49,7 @@ static void print_usage(void)
     "options:\n"
     "\n"
     "  -g | --group-id=GROUPID   cancel/kill group <group-id>\n"
+    "  -u | --user=NAME|UID      cancel group for user. (root only)\n"
     "\n"
     "  -v | --verbose   be more verbose\n"
     "       --debug     set debug log level (default: warning log level)\n"
@@ -164,6 +172,7 @@ int main(int argc, char *argv[])
 
     uint64_t arg_group_id;
     char     arg_debug;
+    uint64_t arg_uid;
 
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
@@ -178,6 +187,7 @@ int main(int argc, char *argv[])
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("verbose",              'v'),
 
+                MX_OPTION_REQUIRED_ARG("user",     'u'),
                 MX_OPTION_REQUIRED_ARG("group-id", 'g'),
 
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
@@ -195,8 +205,12 @@ int main(int argc, char *argv[])
 
     arg_group_id = 0;
     arg_debug    = 0;
+    arg_uid      = UINT64_UNSET;
 
     mx_log_level_set(MX_LOG_NOTICE);
+
+    res = getresuid(&ruid, &euid, &suid);
+    assert(res != -1);
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
     optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
@@ -218,6 +232,36 @@ int main(int argc, char *argv[])
             case 5:
                 arg_debug = 1;
                 mx_log_level_set(MX_LOG_DEBUG);
+                break;
+
+            case 'u':
+                passwd = getpwnam(optctl.optarg);
+                if (passwd) {
+                    arg_uid = passwd->pw_uid;
+                    break;
+                }
+                mx_log_debug("user %s not found. trying numeric uid.", optctl.optarg);
+
+                if (!isdigit(*optctl.optarg)) {
+                    mx_log_err("Invalid argument for --user '%s': User not found.", optctl.optarg);
+                    exit(EX_USAGE);
+                }
+
+                if (mx_strtou64(optctl.optarg, &arg_uid) < 0 || arg_uid >= UINT64_SPECIAL_MIN) {
+                    if (arg_uid >= UINT64_SPECIAL_MIN)
+                        errno = ERANGE;
+                    mx_log_err("Invalid argument for --user '%s': %m", optctl.optarg);
+                    exit(EX_USAGE);
+                }
+                errno = 0;
+                passwd = getpwuid(arg_uid);
+                if (!passwd) {
+                    if (errno)
+                        mx_log_err("Can't load user '%s': %m");
+                    else
+                        mx_log_err("Invalid argument for --user '%s': User not found.", optctl.optarg);
+                    exit(EX_USAGE);
+                }
                 break;
 
             case 'v':
@@ -251,6 +295,28 @@ int main(int argc, char *argv[])
         exit(EX_USAGE);
     }
 
+    if (arg_uid == UINT64_UNSET)
+        arg_uid = ruid;
+
+    if (arg_uid != ruid && ruid != 0) {
+        mx_log_err("Nice try, but only root user may kill jobs of other users! Better luck next time.");
+        exit(EX_USAGE);
+    }
+
+    if (!passwd) {
+        errno = 0;
+        passwd = getpwuid(arg_uid);
+        if (!passwd && errno) {
+            mx_log_err("Can't load user with uid '%lu': %m", arg_uid);
+            exit(EX_IOERR);
+        }
+        if (!passwd) {
+            assert(arg_uid == ruid);
+            mx_log_err("Can't load current user with uid '%lu'.", arg_uid);
+            exit(EX_NOUSER);
+        }
+    }
+
     res = mx_mysql_init(&mysql);
     assert(res == 0);
 
@@ -265,14 +331,8 @@ int main(int argc, char *argv[])
     if (arg_group_id) {
         memset(&group, 0, sizeof(group));
 
-        res = getresuid(&ruid, &euid, &suid);
-        assert(res != -1);
-
-        passwd = getpwuid(ruid);
-        assert(passwd != NULL);
-
         group.group_id  = arg_group_id;
-        group.user_uid  = ruid;
+        group.user_uid  = passwd->pw_uid;
         group.user_name = passwd->pw_name;
 
         res = update_group_status_cancelled(mysql, &group);
