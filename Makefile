@@ -28,13 +28,8 @@ UNPRIV_USER = nobody
 
 ##############################################################################
 
-### set sysconfdir /etc if prefix /usr
-ifeq (${PREFIX},/usr)
-    SYSCONFDIR = /etc
-endif
-
-### set sysconfdir /etc if prefix /usr/local
-ifeq (${PREFIX},/usr/local)
+### set sysconfdir /etc if prefix /usr || /usr/local
+ifneq (, $(filter /usr /usr/local, ${PREFIX}))
     SYSCONFDIR = /etc
 endif
 
