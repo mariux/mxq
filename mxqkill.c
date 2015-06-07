@@ -58,11 +58,11 @@ static void print_usage(void)
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
-    "  -M | --mysql-default-file[=MYSQLFILE]    (default: %s)\n"
+    "  -M | --mysql-default-file[=MYSQLCNF]     (default: %s)\n"
     "  -S | --mysql-default-group[=MYSQLGROUP]  (default: %s)\n"
     "\n"
     "Environment:\n"
-    "  MXQ_MYSQL_DEFAULT_FILE   change default for MYSQLFILE\n"
+    "  MXQ_MYSQL_DEFAULT_FILE   change default for MYSQLCNF\n"
     "  MXQ_MYSQL_DEFAULT_GROUP  change default for MYSQLGROUP\n"
     "\n",
         program_invocation_short_name,
