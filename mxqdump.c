@@ -665,18 +665,35 @@ static char *restart_to_string(uint64_t flags)
 static int print_job(struct mxq_group *g, struct mxq_job *j)
 {
     time_t now;
-    uint64_t run_sec;
+    uint64_t run_sec = 0;
+    uint64_t wait_sec = 0;
 
-    if (!j->date_end) {
+
+    if (!j->date_start || !j->date_end) {
         time(&now);
-
         if (now == ((time_t)-1)) {
             mx_log_err("time() failed: %m");
-            run_sec = 0;
-        } else {
-            run_sec = (now - j->date_start);
+            now = 0;
         }
+    }
+
+    if (j->date_start) {
+        if (j->date_end)
+            run_sec = (j->date_end - j->date_start);
+        else if (now)
+            run_sec = (now - j->date_start);
+
+        wait_sec = (j->date_start - j->date_submit);
     } else {
+        if (now)
+            wait_sec = (now - j->date_submit);
+    }
+
+    if (!j->date_end) {
+        if (j->date_start)
+            run_sec = (now - j->date_start);
+    } else {
+        assert(j->date_start);
         run_sec = (j->date_end - j->date_start);
     }
 
@@ -685,7 +702,7 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         g->user_name, g->user_uid, g->group_id, j->job_id,
         j->host_pid,
         j->host_hostname, j->server_id,
-        (j->date_start - j->date_submit), run_sec,
+        wait_sec, run_sec,
         j->stats_rusage.ru_utime.tv_sec,j->stats_rusage.ru_stime.tv_sec,g->job_time,
         (100*(run_sec)/60/g->job_time),
         mxq_job_status_to_name(j->job_status), j->job_status, j->stats_status,
