@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
     assert(res != -1);
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
-    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
+    optctl.flags = MX_FLAG_STOPONNOOPT;
 
     while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
         if (opt == MX_GETOPT_ERROR) {
