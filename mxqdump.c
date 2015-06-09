@@ -75,24 +75,25 @@
                 " host_hostname, " \
                 " host_pid, " \
                 \
+                " host_slots, " \
                 " UNIX_TIMESTAMP(date_submit) as date_submit, " \
                 " UNIX_TIMESTAMP(date_start) as date_start, " \
                 " UNIX_TIMESTAMP(date_end) as date_end, " \
                 " stats_status, " \
-                " stats_utime_sec, " \
                 \
+                " stats_utime_sec, " \
                 " stats_utime_usec, " \
                 " stats_stime_sec, " \
                 " stats_stime_usec, " \
                 " stats_real_sec, " \
-                " stats_real_usec, " \
                 \
+                " stats_real_usec, " \
                 " stats_maxrss, " \
                 " stats_minflt, " \
                 " stats_majflt, " \
                 " stats_nswap, " \
-                " stats_inblock, " \
                 \
+                " stats_inblock, " \
                 " stats_oublock, " \
                 " stats_nvcsw, " \
                 " stats_nivcsw"
@@ -176,7 +177,7 @@ static int bind_result_job_fields(struct mx_mysql_bind *result, struct mxq_job *
     int res = 0;
     int idx = 0;
 
-    res = mx_mysql_bind_init_result(result, 33);
+    res = mx_mysql_bind_init_result(result, 34);
     assert(res >= 0);
 
     res += mx_mysql_bind_var(result, idx++, uint64, &(j->job_id));
@@ -197,24 +198,25 @@ static int bind_result_job_fields(struct mx_mysql_bind *result, struct mxq_job *
     res += mx_mysql_bind_var(result, idx++, string, &(j->host_hostname));
     res += mx_mysql_bind_var(result, idx++, uint32, &(j->host_pid));
 
+    res += mx_mysql_bind_var(result, idx++, uint32, &(j->host_slots));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_submit));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_start));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_end));
     res += mx_mysql_bind_var(result, idx++,  int32, &(j->stats_status));
-    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_sec));
 
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_sec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_usec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_stime.tv_sec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_stime.tv_usec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_realtime.tv_sec));
-    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_realtime.tv_usec));
 
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_realtime.tv_usec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_maxrss));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_minflt));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_majflt));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nswap));
-    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_inblock));
 
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_inblock));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_oublock));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nvcsw));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nivcsw));
@@ -697,7 +699,8 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         run_sec = (j->date_end - j->date_start);
     }
 
-    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s wait_sec=%lu run_sec=%lu utime=%lu stime=%lu time=%u time_load=%lu%% status=%s(%d) stats_status=%u restart=%s workdir=%s command=%s"
+    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s wait_sec=%lu run_sec=%lu utime=%lu stime=%lu time=%u time_load=%lu%% "
+                    "memory=%lu max_rss=%lu memory_load=%lu%% threads=%d slots=%u status=%s(%d) stats_status=%u restart=%s workdir=%s command=%s"
                     "\n",
         g->user_name, g->user_uid, g->group_id, j->job_id,
         j->host_pid,
@@ -705,6 +708,9 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         wait_sec, run_sec,
         j->stats_rusage.ru_utime.tv_sec,j->stats_rusage.ru_stime.tv_sec,g->job_time,
         (100*(run_sec)/60/g->job_time),
+        g->job_memory, j->stats_rusage.ru_maxrss,
+        (100*j->stats_rusage.ru_maxrss/1024/g->job_memory),
+        g->job_threads, j->host_slots,
         mxq_job_status_to_name(j->job_status), j->job_status, j->stats_status,
         restart_to_string(j->job_flags),
         j->job_workdir,
