@@ -367,17 +367,16 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
     }
 
-
     server->slots = threads_total;;
     server->memory_total = memory_total;
     server->memory_max_per_slot = memory_max;
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
 
     if (server->memory_max_per_slot < server->memory_avg_per_slot)
-       server->memory_max_per_slot = server->memory_avg_per_slot;
+        server->memory_max_per_slot = server->memory_avg_per_slot;
 
     if (server->memory_max_per_slot > server->memory_total)
-       server->memory_max_per_slot = server->memory_total;
+        server->memory_max_per_slot = server->memory_total;
 
 
     return 1;
