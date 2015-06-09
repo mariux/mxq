@@ -117,8 +117,8 @@ static int print_group(struct mxq_group *g)
         g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
         g->group_jobs_inq,
         g->job_threads, g->job_memory, g->job_time,
-        (100*g->stats_max_maxrss/1024/g->job_memory),
-        (100*g->stats_max_real.tv_sec/60/g->job_time),
+        (100UL*(uint64_t)g->stats_max_maxrss/1024UL/g->job_memory),
+        (100UL*(uint64_t)g->stats_max_real.tv_sec/60UL/g->job_time),
         g->stats_max_utime.tv_sec/60, g->stats_max_real.tv_sec/60,
         g->stats_max_maxrss/1024, g->job_command, g->group_name);
 }
@@ -177,9 +177,9 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         j->host_hostname, j->server_id,
         wait_sec, run_sec,
         j->stats_rusage.ru_utime.tv_sec,j->stats_rusage.ru_stime.tv_sec,g->job_time,
-        (100*(run_sec)/60/g->job_time),
+        (100UL*(run_sec)/60UL/g->job_time),
         g->job_memory, j->stats_rusage.ru_maxrss,
-        (100*j->stats_rusage.ru_maxrss/1024/g->job_memory),
+        (100UL*j->stats_rusage.ru_maxrss/1024UL/g->job_memory),
         g->job_threads, j->host_slots,
         mxq_job_status_to_name(j->job_status), j->job_status, j->stats_status,
         restart_to_string(j->job_flags),
