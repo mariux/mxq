@@ -13,6 +13,7 @@ struct mxq_group {
    unsigned long  _group_name_length;
 
    uint8_t   group_status;
+   uint64_t  group_flags;
    uint16_t  group_priority;
 
    uint32_t  user_uid;

@@ -1,5 +1,9 @@
 
 ALTER TABLE mxq_group
+   ADD COLUMN group_flags INT8 UNSIGNED NOT NULL DEFAULT 0
+   AFTER group_status;
+
+ALTER TABLE mxq_group
    ADD COLUMN group_jobs_inq INT8 UNSIGNED NOT NULL DEFAULT 0
    AFTER group_jobs;
 
@@ -40,6 +44,7 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    group_id       INT8 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
    group_name     VARCHAR(511)  NOT NULL DEFAULT 'default',
    group_status   INT1 UNSIGNED NOT NULL DEFAULT 0,
+   group_flags    INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_priority INT2 UNSIGNED NOT NULL DEFAULT 127,
 
    user_uid        INT4 UNSIGNED   NOT NULL,

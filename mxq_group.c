@@ -12,11 +12,12 @@
 #include "mxq_mysql.h"
 #include "mx_mysql.h"
 
-#define GROUP_FIELDS_CNT 24
+#define GROUP_FIELDS_CNT 25
 #define GROUP_FIELDS \
             " group_id," \
             " group_name," \
             " group_status," \
+            " group_flags," \
             " group_priority," \
             " user_uid," \
             " user_name," \
@@ -101,6 +102,7 @@ static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_gro
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_id));
     res += mx_mysql_bind_var(result, idx++, string, &(g->group_name));
     res += mx_mysql_bind_var(result, idx++, uint8,  &(g->group_status));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_flags));
     res += mx_mysql_bind_var(result, idx++, uint16, &(g->group_priority));
 
     res += mx_mysql_bind_var(result, idx++, uint32, &(g->user_uid));
