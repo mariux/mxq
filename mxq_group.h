@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <mysql.h>
 
+#include "mx_mysql.h"
+
 struct mxq_group {
    uint64_t  group_id;
 
@@ -51,6 +53,13 @@ struct mxq_group {
 inline uint64_t mxq_group_jobs_done(struct mxq_group *g);
 inline uint64_t mxq_group_jobs_active(struct mxq_group *g);
 inline uint64_t mxq_group_jobs_inq(struct mxq_group *g);
+
+int  mxq_load_group(struct mx_mysql *mysql, struct mxq_group **mxq_groups, uint64_t group_id);
+int  mxq_load_all_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups);
+int  mxq_load_all_groups_for_user(struct mx_mysql *mysql, struct mxq_group **mxq_groups, uint64_t user_uid);
+int  mxq_load_active_groups_for_user(struct mx_mysql *mysql, struct mxq_group **mxq_groups, uint64_t user_uid);
+int  mxq_load_running_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups);
+int  mxq_load_running_groups_for_user(struct mx_mysql *mysql, struct mxq_group **mxq_groups, uint64_t user_uid);
 
 int  mxq_group_load_active_groups(MYSQL *mysql, struct mxq_group **mxq_group);
 void mxq_group_free_content(struct mxq_group *g);

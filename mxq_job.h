@@ -60,7 +60,6 @@ struct mxq_job {
     struct rusage  stats_rusage;
 };
 
-
 #define MXQ_JOB_STATUS_INQ            0
 #define MXQ_JOB_STATUS_ASSIGNED     100
 #define MXQ_JOB_STATUS_LOADED       150
@@ -83,12 +82,14 @@ struct mxq_job {
 #define MXQ_JOB_FLAGS_AUTORESTART         (1<<62)
 #define MXQ_JOB_FLAGS_HOSTFAIL            (1<<63)
 
-
 #define _to_string(s) #s
 #define status_str(x) _to_string(x)
 
-
 char *mxq_job_status_to_name(uint64_t status);
+
+int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job_id);
+int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp);
+int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp, uint64_t job_status);
 
 int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id);
 void mxq_job_free_content(struct mxq_job *j);

@@ -356,6 +356,7 @@ mxqd: mxq_group.o
 mxqd: mxq_job.o
 mxqd: mxq_util.o
 mxqd: mxq_mysql.o
+mxqd: mx_mysql.o
 mxqd: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqd
@@ -392,6 +393,7 @@ mxqdump: mxq_util.o
 mxqdump: mx_util.o
 mxqdump: mx_getopt.o
 mxqdump: LDLIBS += $(LDLIBS_MYSQL)
+mxqdump: CFLAGS += -Wunused-function
 
 build: mxqdump
 

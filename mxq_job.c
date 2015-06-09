@@ -17,6 +17,49 @@
 #include "mxq_job.h"
 #include "mxq_mysql.h"
 
+#define JOB_FIELDS_CNT 34
+#define JOB_FIELDS \
+                " job_id, " \
+                " job_status, " \
+                " job_flags, " \
+                " job_priority, " \
+                " group_id, " \
+                \
+                " job_workdir, " \
+                " job_argc, " \
+                " job_argv, " \
+                " job_stdout, " \
+                " job_stderr, " \
+                \
+                " job_umask, " \
+                " host_submit, " \
+                " server_id, " \
+                " host_hostname, " \
+                " host_pid, " \
+                \
+                " host_slots, " \
+                " UNIX_TIMESTAMP(date_submit) as date_submit, " \
+                " UNIX_TIMESTAMP(date_start) as date_start, " \
+                " UNIX_TIMESTAMP(date_end) as date_end, " \
+                " stats_status, " \
+                \
+                " stats_utime_sec, " \
+                " stats_utime_usec, " \
+                " stats_stime_sec, " \
+                " stats_stime_usec, " \
+                " stats_real_sec, " \
+                \
+                " stats_real_usec, " \
+                " stats_maxrss, " \
+                " stats_minflt, " \
+                " stats_majflt, " \
+                " stats_nswap, " \
+                \
+                " stats_inblock, " \
+                " stats_oublock, " \
+                " stats_nvcsw, " \
+                " stats_nivcsw"
+
 #define MXQ_JOB_FIELDS "job_id, " \
                 "job_status, " \
                 "job_flags, " \
@@ -89,6 +132,58 @@ enum mxq_job_columns {
     MXQ_JOB_COL_STATS_NIVCSW,
     MXQ_JOB_COL__END
 };
+
+static int bind_result_job_fields(struct mx_mysql_bind *result, struct mxq_job *j)
+{
+    int res = 0;
+    int idx = 0;
+
+    res = mx_mysql_bind_init_result(result, JOB_FIELDS_CNT);
+    assert(res >= 0);
+
+    res += mx_mysql_bind_var(result, idx++, uint64, &(j->job_id));
+    res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_status));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(j->job_flags));
+    res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_priority));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(j->group_id));
+
+    res += mx_mysql_bind_var(result, idx++, string, &(j->job_workdir));
+    res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_argc));
+    res += mx_mysql_bind_var(result, idx++, string, &(j->job_argv_str));
+    res += mx_mysql_bind_var(result, idx++, string, &(j->job_stdout));
+    res += mx_mysql_bind_var(result, idx++, string, &(j->job_stderr));
+
+    res += mx_mysql_bind_var(result, idx++, uint32, &(j->job_umask));
+    res += mx_mysql_bind_var(result, idx++, string, &(j->host_submit));
+    res += mx_mysql_bind_var(result, idx++, string, &(j->server_id));
+    res += mx_mysql_bind_var(result, idx++, string, &(j->host_hostname));
+    res += mx_mysql_bind_var(result, idx++, uint32, &(j->host_pid));
+
+    res += mx_mysql_bind_var(result, idx++, uint32, &(j->host_slots));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_submit));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_start));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_end));
+    res += mx_mysql_bind_var(result, idx++,  int32, &(j->stats_status));
+
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_sec));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_usec));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_stime.tv_sec));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_stime.tv_usec));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_realtime.tv_sec));
+
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_realtime.tv_usec));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_maxrss));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_minflt));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_majflt));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nswap));
+
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_inblock));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_oublock));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nvcsw));
+    res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_nivcsw));
+
+    return res;
+}
 
 char *mxq_job_status_to_name(uint64_t status)
 {
@@ -262,6 +357,119 @@ void mxq_job_free_content(struct mxq_job *j)
 
         free_null(j->job_argv);
         j->job_argv = NULL;
+}
+
+int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job_id)
+{
+    int res;
+    struct mxq_job *jobs = NULL;
+    struct mxq_job j = {0};
+    struct mx_mysql_bind param = {0};
+    struct mx_mysql_bind result = {0};
+
+    assert(mysql);
+    assert(mxq_jobs);
+    assert(!(*mxq_jobs));
+
+    char *query =
+            "SELECT"
+                JOB_FIELDS
+            " FROM mxq_job"
+            " WHERE job_id = ?"
+            " LIMIT 1";
+
+    res = mx_mysql_bind_init_param(&param, 1);
+    assert(res == 0);
+    res = mx_mysql_bind_var(&param, 0, uint64, &job_id);
+    assert(res == 0);
+
+    res = bind_result_job_fields(&result, &j);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    *mxq_jobs = jobs;
+    return res;
+}
+
+int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp)
+{
+    int res;
+    struct mxq_job *jobs = NULL;
+    struct mxq_job j = {0};
+    struct mx_mysql_bind param = {0};
+    struct mx_mysql_bind result = {0};
+
+    assert(mysql);
+    assert(mxq_jobs);
+    assert(!(*mxq_jobs));
+
+    char *query =
+            "SELECT"
+                JOB_FIELDS
+            " FROM mxq_job"
+            " WHERE group_id = ? OR 1 = 0"
+            " ORDER BY server_id, host_hostname, job_id";
+
+    res = mx_mysql_bind_init_param(&param, 1);
+    assert(res == 0);
+    res = mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
+    assert(res == 0);
+
+    res = bind_result_job_fields(&result, &j);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    *mxq_jobs = jobs;
+    return res;
+}
+
+int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp, uint64_t job_status)
+{
+    int res;
+    struct mxq_job *jobs = NULL;
+    struct mxq_job j = {0};
+    struct mx_mysql_bind param = {0};
+    struct mx_mysql_bind result = {0};
+
+    assert(mysql);
+    assert(mxq_jobs);
+    assert(!(*mxq_jobs));
+
+    char *query =
+            "SELECT"
+                JOB_FIELDS
+            " FROM mxq_job"
+            " WHERE group_id = ?"
+            "   AND job_status = ?"
+            " ORDER BY server_id, host_hostname, job_id";
+
+    res = mx_mysql_bind_init_param(&param, 2);
+    assert(res == 0);
+    res = mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
+    res = mx_mysql_bind_var(&param, 1, uint64, &job_status);
+    assert(res == 0);
+
+    res = bind_result_job_fields(&result, &j);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    *mxq_jobs = jobs;
+    return res;
 }
 
 int mxq_job_update_status_assigned(MYSQL *mysql, struct mxq_job *job)
