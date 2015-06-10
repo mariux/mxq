@@ -24,9 +24,6 @@ test_mx_util
 test_mx_log
 test_mx_mysql
 
-doc/fairness.aux
-doc/fairness.log
-doc/fairness.pdf
 *~
 
 gmon.out
