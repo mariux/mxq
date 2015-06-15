@@ -72,9 +72,9 @@ int mx_log_print(char *msg, size_t len)
     timetag(timebuf, sizeof(timebuf));
 
     if (cnt > 1)
-        printf("%s %s[%d]: last message repeated %d times\n", timebuf, program_invocation_short_name, getpid(), cnt);
+        fprintf(stderr, "%s %s[%d]: last message repeated %d times\n", timebuf, program_invocation_short_name, getpid(), cnt);
     else if (cnt == 1)
-        printf("%s %s[%d]: %s\n", timebuf, program_invocation_short_name, getpid(), lastmsg);
+        fprintf(stderr, "%s %s[%d]: %s\n", timebuf, program_invocation_short_name, getpid(), lastmsg);
 
     if (lastmsg)
         mx_free_null(lastmsg);
@@ -83,8 +83,8 @@ int mx_log_print(char *msg, size_t len)
     lastlen = len;
     cnt     = 0;
 
-    printf("%s %s[%d]: %s\n", timebuf, program_invocation_short_name, getpid(), msg);
-    fflush(stdout);
+    fprintf(stderr, "%s %s[%d]: %s\n", timebuf, program_invocation_short_name, getpid(), msg);
+    fflush(stderr);
 
     return 1;
 }
