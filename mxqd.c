@@ -960,7 +960,14 @@ unsigned long start_job(struct mxq_group_list *group)
         }
 
 
-        char **argv = str_to_strvec(mxqjob.job_argv_str);
+        argv = str_to_strvec(mxqjob.job_argv_str);
+        if (!argv) {
+            mx_log_err("job=%s(%d):%lu:%lu Can't recaculate commandline. str_to_strvev(%s) failed: %m",
+                group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
+                mxqjob.job_argv_str);
+            _exit(EX__MAX + 1);
+        }
+
         execvp(argv[0], argv);
         mx_log_err("job=%s(%d):%lu:%lu execvp(\"%s\", ...): %m",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
