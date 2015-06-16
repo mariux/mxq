@@ -938,7 +938,7 @@ unsigned long start_job(struct mxq_group_list *group)
 
         res = init_child_process(group, &mxqjob);
         if (!res)
-            exit(1);
+            _exit(EX__MAX + 1);
 
         mxq_job_set_tmpfilenames(&group->group, &mxqjob);
 
@@ -972,7 +972,7 @@ unsigned long start_job(struct mxq_group_list *group)
         mx_log_err("job=%s(%d):%lu:%lu execvp(\"%s\", ...): %m",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
             argv[0]);
-        exit(1);
+        _exit(EX__MAX + 1);
     }
 
     gettimeofday(&mxqjob.stats_starttime, NULL);
