@@ -109,9 +109,9 @@ static int print_group(struct mxq_group *g)
 {
     return printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu"
                     " finished=%lu cancelled=%lu unknown=%lu inq=%lu"
-                    " job_threads=%u job_memory=%luMiB job_time=%us"
+                    " job_threads=%u job_memory=%luMiB job_time=%umin"
                     " memory_load=%lu%% time_load=%lu%%"
-                    " max_utime=%lus max_real=%lus max_memory=%uMiB job_command=%s group_name=%s\n",
+                    " max_utime=%lumin max_real=%lumin max_memory=%uMiB job_command=%s group_name=%s\n",
         g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
         g->group_jobs_running, g->group_slots_running, g->group_jobs_failed,
         g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
@@ -169,14 +169,14 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         run_sec = (j->date_end - j->date_start);
     }
 
-    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s waittime=%lus runtime=%lus utime=%lus stime=%lus runtime_requested=%us time_load=%lu%% "
+    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s waittime=%lumin runtime=%lumin utime=%lumin stime=%lumin runtime_requested=%umin time_load=%lu%% "
                     "memory_requested=%luMiB max_rss=%lukiB memory_load=%lu%% threads=%d slots=%u status=%s(%d) stats_status=%u restart=%s workdir=%s command=%s"
                     "\n",
         g->user_name, g->user_uid, g->group_id, j->job_id,
         j->host_pid,
         j->host_hostname, j->server_id,
-        wait_sec, run_sec,
-        j->stats_rusage.ru_utime.tv_sec,j->stats_rusage.ru_stime.tv_sec,g->job_time,
+        wait_sec/60, run_sec/60,
+        j->stats_rusage.ru_utime.tv_sec/60,j->stats_rusage.ru_stime.tv_sec/60,g->job_time,
         (100UL*(run_sec)/60UL/g->job_time),
         g->job_memory, j->stats_rusage.ru_maxrss,
         (100UL*j->stats_rusage.ru_maxrss/1024UL/g->job_memory),
