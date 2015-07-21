@@ -109,18 +109,18 @@ static int print_group(struct mxq_group *g)
 {
     return printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu"
                     " finished=%lu cancelled=%lu unknown=%lu inq=%lu"
-                    " job_threads=%u job_memory=%luMiB job_time=%umin"
+                    " job_threads=%u job_memory=%lukiB job_time=%us"
                     " memory_load=%lu%% time_load=%lu%%"
-                    " max_utime=%lumin max_real=%lumin max_memory=%uMiB job_command=%s group_name=%s\n",
+                    " max_utime=%lu max_real=%lu max_memory=%ukiB job_command=%s group_name=%s\n",
         g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
         g->group_jobs_running, g->group_slots_running, g->group_jobs_failed,
         g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
         g->group_jobs_inq,
-        g->job_threads, g->job_memory, g->job_time,
+        g->job_threads, g->job_memory*1024, g->job_time*60,
         (100UL*(uint64_t)g->stats_max_maxrss/1024UL/g->job_memory),
         (100UL*(uint64_t)g->stats_max_real.tv_sec/60UL/g->job_time),
-        g->stats_max_utime.tv_sec/60, g->stats_max_real.tv_sec/60,
-        g->stats_max_maxrss/1024, g->job_command, g->group_name);
+        g->stats_max_utime.tv_sec, g->stats_max_real.tv_sec,
+        g->stats_max_maxrss, g->job_command, g->group_name);
 }
 
 static char *restart_to_string(uint64_t flags)
