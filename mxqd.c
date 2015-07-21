@@ -694,6 +694,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     pid_t pid;
     int res;
     int fh;
+    struct rlimit rlim;
 
     assert(j);
     assert(group);
@@ -771,6 +772,46 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     }
     dprintf(fh, "%d", g->user_uid);
     close(fh);
+
+    /* set memory limits */
+    rlim.rlim_cur = g->job_memory*1024*1024;
+    rlim.rlim_max = g->job_memory*1024*1024;
+
+    res = setrlimit(RLIMIT_AS, &rlim);
+    if (res == -1)
+        mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_AS, ...) failed: %m",
+                    g->user_name, g->user_uid, g->group_id, j->job_id);
+
+    res = setrlimit(RLIMIT_DATA, &rlim);
+    if (res == -1)
+        mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_DATA, ...) failed: %m",
+                    g->user_name, g->user_uid, g->group_id, j->job_id);
+
+    res = setrlimit(RLIMIT_RSS, &rlim);
+    if (res == -1)
+        mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_RSS, ...) failed: %m",
+                    g->user_name, g->user_uid, g->group_id, j->job_id);
+
+    /* disable core files */
+    rlim.rlim_cur = 0;
+    rlim.rlim_cur = 0;
+
+    res = setrlimit(RLIMIT_CORE,  &rlim);
+    if (res == -1)
+        mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_CORE, ...) failed: %m",
+                    g->user_name, g->user_uid, g->group_id, j->job_id);
+
+    /* set single threaded time limits */
+    if (g->job_threads == 1) {
+            /* set cpu time limits - hardlimit is 105% of softlimit */
+            rlim.rlim_cur = g->job_time*60;
+            rlim.rlim_cur = g->job_time*63;
+
+            res = setrlimit(RLIMIT_CPU,  &rlim);
+            if (res == -1)
+                mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_CPU, ...) failed: %m",
+                            g->user_name, g->user_uid, g->group_id, j->job_id);
+    }
 
     res = initgroups(passwd->pw_name, g->user_gid);
     if (res == -1) {
