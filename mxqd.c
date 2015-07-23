@@ -83,6 +83,7 @@ static void print_usage(void)
     "       --pid-file <pidfile>          default: create no pid file\n"
     "       --daemonize                   default: run in foreground\n"
     "       --no-log                      default: write a logfile\n"
+    "       --debug                       default: info log level\n"
     "\n"
     "  -V | --version\n"
     "  -h | --help\n"
@@ -215,6 +216,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
+                MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
                 MX_OPTION_REQUIRED_ARG("slots",        'j'),
                 MX_OPTION_REQUIRED_ARG("memory",       'm'),
@@ -256,6 +258,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 3:
                 arg_nolog = 1;
+                break;
+
+            case 5:
+                mx_log_level_set(MX_LOG_DEBUG);
                 break;
 
             case 'V':
