@@ -278,8 +278,10 @@ int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **
 
     res = mx_mysql_bind_init_param(&param, 2);
     assert(res == 0);
-    res = mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
-    res = mx_mysql_bind_var(&param, 1, uint64, &job_status);
+
+    res = 0;
+    res += mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
+    res += mx_mysql_bind_var(&param, 1, uint64, &job_status);
     assert(res == 0);
 
     res = bind_result_job_fields(&result, &j);
