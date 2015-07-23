@@ -193,9 +193,6 @@ static int dump_group(struct mx_mysql *mysql, uint64_t group_id)
     struct mxq_group *grp, *groups = NULL;
 
     int grp_cnt = 0;
-    int total = 0;
-
-    int g;
 
     assert(mysql);
     assert(UINT64_HASVALUE(group_id));
@@ -219,7 +216,6 @@ static int dump_groups(struct mx_mysql *mysql, uint64_t status, uint64_t user_ui
     struct mxq_group *grp, *groups = NULL;
 
     int grp_cnt = 0;
-    int total = 0;
 
     int g;
 
@@ -260,9 +256,6 @@ static int dump_job(struct mx_mysql *mysql, uint64_t job_id)
 
     int grp_cnt = 0;
     int job_cnt = 0;
-    int total = 0;
-
-    int g, j;
 
     assert(mysql);
     assert(UINT64_HASVALUE(job_id));

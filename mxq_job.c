@@ -516,8 +516,6 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
 
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
 {
-    int res;
-
     if (!streq(j->job_stdout, "/dev/null")) {
         _mx_cleanup_free_ char *dir = NULL;
 

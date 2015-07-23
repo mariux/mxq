@@ -1156,7 +1156,6 @@ unsigned long start_users(struct mxq_server *server)
     unsigned long slots_started_total = 0;
 
     struct mxq_user_list  *user, *unext=NULL;
-    struct mxq_group_list *group, *gnext;
 
     assert(server);
 
@@ -1201,7 +1200,6 @@ int remove_orphaned_groups(struct mxq_server *server)
 {
     struct mxq_user_list  *user,  *unext, *uprev;
     struct mxq_group_list *group, *gnext, *gprev;
-    struct mxq_job_list   *job;
     int cnt=0;
 
     for (user=server->users, uprev=NULL; user; user=unext) {
@@ -1527,17 +1525,13 @@ static void sig_handler(int sig)
 
 int main(int argc, char *argv[])
 {
-    struct mxq_group *mxqgroups;
-
     int group_cnt;
 
     struct mxq_server server;
-    struct mxq_group_list *group;
 
     unsigned long slots_started  = 0;
     unsigned long slots_returned = 0;
 
-    int i;
     int res;
 
     /*** server init ***/

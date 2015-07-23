@@ -87,8 +87,6 @@ CFLAGS_MYSQL += ${CFLAGS_MXQ_MYSQL_DEFAULT_GROUP}
 
 CFLAGS += -g
 CFLAGS += -Wall
-CFLAGS += -Wno-unused-variable
-CFLAGS += -Wno-unused-function
 CFLAGS += -DMXQ_VERSION=\"${MXQ_VERSION}\"
 CFLAGS += -DMXQ_VERSIONFULL=\"${MXQ_VERSIONFULL}\"
 CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
@@ -276,6 +274,7 @@ clean: CLEAN += mxqkill.o
 mxq_util.o: $(mx_log.h)
 mxq_util.o: $(mxq_util.h)
 mxq_util.o: CFLAGS += $(CFLAGS_MYSQL)
+mxq_util.o: CFLAGS += -Wno-unused-variable
 
 clean: CLEAN += mxq_util.o
 

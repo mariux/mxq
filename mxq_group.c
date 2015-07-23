@@ -41,57 +41,6 @@
             " stats_max_stime_sec," \
             " stats_max_real_sec"
 
-#define MXQ_GROUP_FIELDS "group_id," \
-                "group_name," \
-                "group_status," \
-                "group_priority," \
-                "user_uid," \
-                "user_name," \
-                "user_gid," \
-                "user_group," \
-                "job_command," \
-                "job_threads," \
-                "job_memory," \
-                "job_time," \
-                "group_jobs," \
-                "group_jobs_running," \
-                "group_jobs_finished," \
-                "group_jobs_failed," \
-                "group_jobs_cancelled," \
-                "group_jobs_unknown," \
-                "group_slots_running," \
-                "stats_max_maxrss," \
-                "stats_max_utime_sec," \
-                "stats_max_stime_sec," \
-                "stats_max_real_sec"
-
-enum mxq_group_columns {
-    MXQ_GROUP_COL_GROUP_ID=0,
-    MXQ_GROUP_COL_GROUP_NAME,
-    MXQ_GROUP_COL_GROUP_STATUS,
-    MXQ_GROUP_COL_GROUP_PRIORITY,
-    MXQ_GROUP_COL_USER_UID,
-    MXQ_GROUP_COL_USER_NAME,
-    MXQ_GROUP_COL_USER_GID,
-    MXQ_GROUP_COL_USER_GROUP,
-    MXQ_GROUP_COL_JOB_COMMAND,
-    MXQ_GROUP_COL_JOB_THREADS,
-    MXQ_GROUP_COL_JOB_MEMORY,
-    MXQ_GROUP_COL_JOB_TIME,
-    MXQ_GROUP_COL_GROUP_JOBS,
-    MXQ_GROUP_COL_GROUP_JOBS_RUNNING,
-    MXQ_GROUP_COL_GROUP_JOBS_FINISHED,
-    MXQ_GROUP_COL_GROUP_JOBS_FAILED,
-    MXQ_GROUP_COL_GROUP_JOBS_CANCELLED,
-    MXQ_GROUP_COL_GROUP_JOBS_UNKNOWN,
-    MXQ_GROUP_COL_GROUP_SLOTS_RUNNING,
-    MXQ_GROUP_COL_STATS_MAX_MAXRSS,
-    MXQ_GROUP_COL_STATS_MAX_UTIME_SEC,
-    MXQ_GROUP_COL_STATS_MAX_STIME_SEC,
-    MXQ_GROUP_COL_STATS_MAX_REAL_SEC,
-    MXQ_GROUP_COL__END
-};
-
 static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_group *g)
 {
     int res = 0;

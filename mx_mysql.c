@@ -1341,9 +1341,6 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *
 
 struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement)
 {
-    int res;
-    struct mx_mysql_stmt *stmt = NULL;
-
     mx_assert_return_NULL(mysql, EINVAL);
     mx_assert_return_NULL(statement, EINVAL);
     mx_assert_return_NULL(*statement, EINVAL);
