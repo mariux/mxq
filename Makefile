@@ -93,6 +93,7 @@ CFLAGS += -DMXQ_VERSION=\"${MXQ_VERSION}\"
 CFLAGS += -DMXQ_VERSIONFULL=\"${MXQ_VERSIONFULL}\"
 CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
 CFLAGS += -DMXQ_VERSIONEXTRA=\"${MXQ_VERSIONEXTRA}\"
+CFLAGS += $(EXTRA_CFLAGS)
 
 ########################################################################
 
