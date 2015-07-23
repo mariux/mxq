@@ -755,18 +755,28 @@ static inline int _mx_mysql_bind_validate(struct mx_mysql_bind *b)
 
 /**********************************************************************/
 
-int mx_mysql_init(struct mx_mysql **mysql)
+int mx_mysql_initialize(struct mx_mysql **mysql)
 {
     struct mx_mysql *m;
-    int res;
 
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(!(*mysql), EUCLEAN);
 
     m = mx_calloc_forever(1, sizeof(*m));
 
+    *mysql = m;
+
+    return 0;
+}
+
+int mx_mysql_init(struct mx_mysql *mysql)
+{
+    int res;
+
+    mx_assert_return_minus_errno(mysql, EINVAL);
+
     do {
-        res = mx__mysql_init(m);
+        res = mx__mysql_init(mysql);
         if (res == 0)
             break;
 
@@ -777,8 +787,6 @@ int mx_mysql_init(struct mx_mysql **mysql)
         mx_sleep(MX_CALLOC_FAIL_WAIT_DEFAULT);
 
     } while (1);
-
-    *mysql = m;
 
     return 0;
 }
@@ -883,7 +891,12 @@ int mx_mysql_connect(struct mx_mysql **mysql)
     mx_assert_return_minus_errno(mysql, EINVAL);
 
     if (!(*mysql)) {
-        res = mx_mysql_init(mysql);
+        res = mx_mysql_initialize(mysql);
+        if (res < 0)
+            return res;
+    }
+    if (!(*mysql)->mysql) {
+        res = mx_mysql_init(*mysql);
         if (res < 0)
             return res;
     }

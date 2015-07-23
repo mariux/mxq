@@ -665,7 +665,7 @@ int main(int argc, char *argv[])
     if (arg_jobs && arg_status == UINT64_UNSET)
         arg_status = MXQ_JOB_STATUS_RUNNING;
 
-    res = mx_mysql_init(&mysql);
+    res = mx_mysql_initialize(&mysql);
     assert(res == 0);
 
     mx_mysql_option_set_default_file(mysql, arg_mysql_default_file);
