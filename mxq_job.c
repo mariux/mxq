@@ -472,7 +472,7 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
             " stats_nvcsw = ?, "
             " stats_nivcsw = ?"
             " WHERE job_id = ?"
-            " AND job_status = " status_str(MXQ_JOB_STATUS_RUNNING)
+            " AND job_status IN (" status_str(MXQ_JOB_STATUS_LOADED) ", " status_str(MXQ_JOB_STATUS_RUNNING) ")"
             " AND host_hostname = ?"
             " AND server_id = ?"
             " AND host_pid = ?";
