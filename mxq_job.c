@@ -386,11 +386,6 @@ int mxq_set_job_status_running(struct mx_mysql *mysql, struct mxq_job *job)
 
     if (job->job_status != MXQ_JOB_STATUS_LOADED) {
         mx_log_warning("new status==runnning but old status(=%d) is != loaded ", job->job_status);
-        if (job->job_status != MXQ_JOB_STATUS_ASSIGNED) {
-            mx_log_err("new status==runnning but old status(=%d) is != (loaded || assigned). Aborting Status change.", job->job_status);
-            errno = EINVAL;
-            return -1;
-        }
     }
 
     char *query =
@@ -400,7 +395,7 @@ int mxq_set_job_status_running(struct mx_mysql *mysql, struct mxq_job *job)
             " host_pid = ?,"
             " host_slots = ?"
             " WHERE job_id = ?"
-            " AND job_status IN (" status_str(MXQ_JOB_STATUS_ASSIGNED) ", " status_str(MXQ_JOB_STATUS_LOADED) ")"
+            " AND job_status = " status_str(MXQ_JOB_STATUS_LOADED)
             " AND host_hostname = ?"
             " AND server_id = ?"
             " AND host_pid = 0";
