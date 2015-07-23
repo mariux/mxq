@@ -252,6 +252,7 @@ clean: CLEAN += mxq_log.o
 
 mxqdump.o: $(mx_log.h)
 mxqdump.o: $(mxq_util.h)
+mxqdump.o: $(mx_mysql.h)
 mxqdump.o: $(mx_getopt.h)
 mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
 
