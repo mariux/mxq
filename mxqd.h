@@ -1,6 +1,7 @@
 #ifndef __MXQ_SERVER_H__
 #define __MXQ_SERVER_H__ 1
 
+#include "mx_mysql.h"
 
 struct mxq_job_list {
     struct mxq_group_list *group;
@@ -67,8 +68,7 @@ struct mxq_server {
     long double   memory_avg_per_slot;
     unsigned long memory_max_per_slot;
 
-    struct mxq_mysql mmysql;
-    MYSQL *mysql;
+    struct mx_mysql *mysql;
 
     char *hostname;
     char *server_id;

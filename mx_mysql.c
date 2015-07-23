@@ -36,11 +36,13 @@
 
 #define mx__mysql_log_emerg(mysql) mx__mysql_log(emerg, (mysql))
 #define mx__mysql_log_err(mysql)   mx__mysql_log(err,   (mysql))
+#define mx__mysql_log_warning(mysql) mx__mysql_log(warning,   (mysql))
 #define mx__mysql_log_info(mysql)  mx__mysql_log(info,  (mysql))
 #define mx__mysql_log_debug(mysql) mx__mysql_log(debug, (mysql))
 
 #define mx__mysql_stmt_log_emerg(stmt) mx__mysql_stmt_log(emerg, (stmt))
 #define mx__mysql_stmt_log_err(stmt)   mx__mysql_stmt_log(err,   (stmt))
+#define mx__mysql_stmt_log_warning(stmt) mx__mysql_stmt_log(warning,   (stmt))
 #define mx__mysql_stmt_log_info(stmt)  mx__mysql_stmt_log(info,  (stmt))
 #define mx__mysql_stmt_log_debug(stmt) mx__mysql_stmt_log(debug, (stmt))
 
@@ -910,8 +912,9 @@ int mx_mysql_connect_forever_sec(struct mx_mysql **mysql, unsigned int seconds)
     int res;
 
     while ((res = mx_mysql_connect(mysql)) < 0) {
-        mx__mysql_log_info(*mysql);
+        mx__mysql_log_warning(*mysql);
         mx_mysql_assert_usage_ok(res);
+        mx_log_warning("mx_mysql_connect() failed: %m - retrying (forever) in %d second(s).", seconds);
         mx_sleep(seconds);
     }
 
@@ -1014,8 +1017,8 @@ int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt)
         if (res != -ENOMEM)
             return res;
 
-        mx_log_debug("mx__mysql_stmt_init() failed: %m - retrying (forever) in %d second(s).", MX_CALLOC_FAIL_WAIT_DEFAULT);
-        mx_sleep(MX_CALLOC_FAIL_WAIT_DEFAULT);
+        mx_log_debug("mx__mysql_stmt_init() failed: %m - retrying (forever) in %d second(s).", MX_MYSQL_FAIL_WAIT_DEFAULT);
+        mx_sleep(MX_MYSQL_FAIL_WAIT_DEFAULT);
     } while (1);
 
     *stmt = s;
@@ -1101,7 +1104,7 @@ int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
     }
 
     res = mx__mysql_stmt_fetch(stmt);
-    if (res == -ENOENT || res == 0)
+    if (res == -ENOENT)
         return 0;
 
     if (res < 0 && res != -ERANGE) {
@@ -1199,7 +1202,6 @@ int mx_mysql_bind_cleanup(struct mx_mysql_bind *bind)
 {
     mx_assert_return_minus_errno(bind, EINVAL);
 
-    mx_assert_return_minus_errno(bind->type != MX_MYSQL_BIND_TYPE_UNKNOWN, EBADF);
 
     mx_free_null(bind->bind);
     mx_free_null(bind->data);
@@ -1328,6 +1330,9 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *
 
         return stmt;
     };
+
+    if (res < 0)
+        mx__mysql_stmt_log_warning(stmt);
 
     mx_mysql_statement_close(&stmt);
 

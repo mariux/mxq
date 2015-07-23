@@ -87,19 +87,17 @@ struct mxq_job {
 
 char *mxq_job_status_to_name(uint64_t status);
 
+void mxq_job_free_content(struct mxq_job *j);
+
 int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job_id);
 int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp);
 int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp, uint64_t job_status);
-
-int mxq_job_load_assigned(MYSQL *mysql, struct mxq_job *job, char *hostname, char *server_id);
-void mxq_job_free_content(struct mxq_job *j);
-int mxq_job_load(MYSQL *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
-int mxq_job_update_status_assigned(MYSQL *mysql, struct mxq_job *job);
-int mxq_job_update_status_loaded(MYSQL *mysql, struct mxq_job *job);
-int mxq_job_update_status_running(MYSQL *mysql, struct mxq_job *job);
-int mxq_job_update_status_exit(MYSQL *mysql, struct mxq_job *job);
+int mxq_assign_job_from_group_to_server(struct mx_mysql *mysql, uint64_t group_id, char *hostname, char *server_id);
+int mxq_set_job_status_loaded_on_server(struct mx_mysql *mysql, struct mxq_job *job);
+int mxq_set_job_status_running(struct mx_mysql *mysql, struct mxq_job *job);
+int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job);
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j);
-
-int mxq_job_update_status_cancelled_by_group(MYSQL *mysql, struct mxq_group *group);
+int mxq_load_job_assigned_to_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, char *hostname, char *server_id);
+int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
 
 #endif

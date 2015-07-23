@@ -32,7 +32,8 @@
 
 #include "mxq_group.h"
 #include "mxq_job.h"
-#include "mxq_mysql.h"
+#include "mx_mysql.h"
+#include "mxq_util.h"
 #include "mxqd.h"
 
 #ifndef MXQ_VERSION
@@ -318,8 +319,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     memset(server, 0, sizeof(*server));
 
-    server->mmysql.default_file  = arg_mysql_default_file;
-    server->mmysql.default_group = arg_mysql_default_group;
+    res = mx_mysql_initialize(&(server->mysql));
+    assert(res == 0);
+
+    mx_mysql_option_set_default_file(server->mysql,  arg_mysql_default_file);
+    mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
+
     server->hostname = mxq_hostname();
     server->server_id = arg_server_id;
 
@@ -956,7 +961,7 @@ unsigned long start_job(struct mxq_group_list *group)
 
     server = group->user->server;
 
-    res = mxq_job_load(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id);
+    res = mxq_load_job_from_group_for_server(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id);
 
     if (!res) {
         return 0;
@@ -964,7 +969,7 @@ unsigned long start_job(struct mxq_group_list *group)
     mx_log_info("   job=%s(%d):%lu:%lu :: new job loaded.",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
-    mxq_mysql_close(server->mysql);
+    mx_mysql_disconnect(server->mysql);
 
     pid = fork();
     if (pid < 0) {
@@ -1018,14 +1023,17 @@ unsigned long start_job(struct mxq_group_list *group)
 
     gettimeofday(&mxqjob.stats_starttime, NULL);
 
-    server->mysql = mxq_mysql_connect(&server->mmysql);
+    mx_mysql_connect_forever(&(server->mysql));
 
     mxqjob.host_pid = pid;
     mxqjob.host_slots = group->slots_per_job;
-    res = mxq_job_update_status_running(server->mysql, &mxqjob);
-    if (res <= 0) {
-        mx_log_err("mxq_job_update_status_running(): %m");
-    }
+    res = mxq_set_job_status_running(server->mysql, &mxqjob);
+    if (res < 0)
+        mx_log_err("job=%s(%d):%lu:%lu mxq_job_update_status_running(): %m",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+    if (res == 0)
+        mx_log_err("job=%s(%d):%lu:%lu  mxq_job_update_status_running(): Job not found.",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
     do {
         job = group_add_job(group, &mxqjob);
@@ -1441,7 +1449,7 @@ int catchall(struct mxq_server *server) {
         mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.",
                 g->user_name, g->user_uid, g->group_id, j->job_id, pid, status);
 
-        mxq_job_update_status_exit(server->mysql, j);
+        mxq_set_job_status_exited(server->mysql, j);
 
         if (j->job_status == MXQ_JOB_STATUS_FINISHED) {
             g->group_jobs_finished++;
@@ -1484,7 +1492,7 @@ int load_groups(struct mxq_server *server) {
     int total;
     int i;
 
-    group_cnt = mxq_group_load_active_groups(server->mysql, &mxqgroups);
+    group_cnt = mxq_load_active_groups(server->mysql, &mxqgroups);
 
     for (i=0, total=0; i<group_cnt; i++) {
         group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
@@ -1551,7 +1559,7 @@ int main(int argc, char *argv[])
 
     /*** database connect ***/
 
-    server.mysql = mxq_mysql_connect(&server.mmysql);
+    mx_mysql_connect_forever(&(server.mysql));
 
     /*** main loop ***/
 
@@ -1629,7 +1637,7 @@ int main(int argc, char *argv[])
         sleep(1);
     }
 
-    mxq_mysql_close(server.mysql);
+    mx_mysql_finish(&(server.mysql));
 
     server_close(&server);
 

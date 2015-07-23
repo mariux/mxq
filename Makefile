@@ -185,11 +185,6 @@ mx_mysql.h += $(mx_util.h)
 
 mx_mxq.h += mx_mxq.h
 
-### mxq_mysql.h --------------------------------------------------------
-
-mxq_mysql.h += mxq_mysql.h
-mxq_mysql.h += $(mxq_util.h)
-
 ### mxq_util.h ---------------------------------------------------------
 
 mxq_util.h += mxq_util.h
@@ -253,20 +248,10 @@ mxq_log.o: $(mx_log.h)
 
 clean: CLEAN += mxq_log.o
 
-### mxq_mysql.o --------------------------------------------------------
-
-mxq_mysql.o: $(mx_log.h)
-mxq_mysql.o: $(mxq_mysql.h)
-mxq_mysql.o: $(mxq_util.h)
-mxq_mysql.o: CFLAGS += $(CFLAGS_MYSQL)
-
-clean: CLEAN += mxq_mysql.o
-
 ### mxqdump.o ---------------------------------------------------
 
 mxqdump.o: $(mx_log.h)
 mxqdump.o: $(mxq_util.h)
-mxqdump.o: $(mxq_mysql.h)
 mxqdump.o: $(mx_getopt.h)
 mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
 
@@ -297,7 +282,7 @@ clean: CLEAN += mxq_util.o
 
 mxq_group.o: $(mx_log.h)
 mxq_group.o: $(mxq_group.h)
-mxq_group.o: $(mxq_mysql.h)
+mxq_group.o: $(mx_mysql.h)
 mxq_group.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_group.o
@@ -308,7 +293,7 @@ mxq_job.o: $(mx_util.h)
 mxq_job.o: $(mx_log.h)
 mxq_job.o: $(mxq_job.h)
 mxq_job.o: $(mxq_group.h)
-mxq_job.o: $(mxq_mysql.h)
+mxq_job.o: $(mx_mysql.h)
 mxq_job.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_job.o
@@ -322,7 +307,7 @@ mxqd.o: $(mx_log.h)
 mxqd.o: $(mxqd.h)
 mxqd.o: $(mxq_group.h)
 mxqd.o: $(mxq_job.h)
-mxqd.o: $(mxq_mysql.h)
+mxqd.o: $(mx_mysql.h)
 mxqd.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
 mxqd.o: CFLAGS += -Wno-unused-but-set-variable
@@ -355,7 +340,6 @@ mxqd: mx_getopt.o
 mxqd: mxq_group.o
 mxqd: mxq_job.o
 mxqd: mxq_util.o
-mxqd: mxq_mysql.o
 mxqd: mx_mysql.o
 mxqd: LDLIBS += $(LDLIBS_MYSQL)
 
@@ -388,7 +372,6 @@ mxqdump: mx_log.o
 mxqdump: mx_mysql.o
 mxqdump: mxq_group.o
 mxqdump: mxq_job.o
-mxqdump: mxq_mysql.o
 mxqdump: mxq_util.o
 mxqdump: mx_util.o
 mxqdump: mx_getopt.o
