@@ -1598,7 +1598,7 @@ int main(int argc, char *argv[])
         if (slots_started)
             mx_log_info("slots_started=%lu :: Main Loop started %lu slots.", slots_started, slots_started);
 
-        if (!slots_started && !slots_returned) {
+        if (!slots_started && !slots_returned && !global_sigint_cnt && !global_sigterm_cnt) {
             if (!server.jobs_running) {
                 mx_log_info("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).");
                 sleep(15);
