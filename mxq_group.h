@@ -39,6 +39,8 @@ struct mxq_group {
    uint64_t  group_jobs_cancelled;
    uint64_t  group_jobs_unknown;
 
+   uint64_t  group_jobs_restarted;
+
    uint64_t  group_slots_running;
 
    uint32_t  stats_max_maxrss;
