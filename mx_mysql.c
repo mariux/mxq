@@ -711,6 +711,42 @@ static inline int _mx_mysql_bind_integer(struct mx_mysql_bind *b, unsigned int i
     return 0;
 }
 
+void _mx_mysql_bind_dump_index(struct mx_mysql_bind *b, unsigned int index)
+{
+    mx_debug_value("%d", index);
+    mx_debug_value("%d", b->bind[index].buffer_type);
+    mx_debug_value("%d", b->bind[index].buffer_length);
+    mx_debug_value("%p", b->bind[index].buffer);
+    if (b->bind[index].buffer_type == MYSQL_TYPE_STRING)
+        mx_debug_value("%s", b->bind[index].buffer);
+    mx_debug_value("%d", b->bind[index].is_unsigned);
+    mx_debug_value("%d", *b->bind[index].length);
+    mx_debug_value("%d", *b->bind[index].is_null);
+    mx_debug_value("%d", *b->bind[index].error);
+    mx_debug_value("0x%x", b->data[index].flags);
+}
+
+void _mx_mysql_bind_dump(struct mx_mysql_bind *b)
+{
+    int i;
+
+    mx_log_debug("entered");
+
+    if (!b) {
+        mx_log_debug("done");
+        return;
+    }
+
+    mx_debug_value("%d", b->type);
+    mx_debug_value("%d", b->count);
+
+    for (i=0; i < b->count; i++) {
+        _mx_mysql_bind_dump_index(b, i);
+    }
+    mx_log_debug("done");
+}
+
+
 static inline int _mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value)
 {
     mx_assert_return_minus_errno(b,     EINVAL);
