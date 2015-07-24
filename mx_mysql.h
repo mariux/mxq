@@ -104,9 +104,11 @@ int mx_mysql_free(struct mx_mysql **mysql);
 
 int mx_mysql_option_set_default_file(struct mx_mysql *mysql, char *fname);
 int mx_mysql_option_set_default_group(struct mx_mysql *mysql, char *group);
+int mx_mysql_option_set_reconnect(struct mx_mysql *mysql, int reconnect);
 
 char *mx_mysql_option_get_default_file(struct mx_mysql *mysql);
 char *mx_mysql_option_get_default_group(struct mx_mysql *mysql);
+int   mx_mysql_option_get_reconnect(struct mx_mysql *mysql);
 
 int mx_mysql_connect(struct mx_mysql **mysql);
 int mx_mysql_connect_forever_sec(struct mx_mysql **mysql, unsigned int seconds);
@@ -118,9 +120,18 @@ int mx_mysql_end(void);
 
 int mx_mysql_finish(struct mx_mysql **mysql);
 
+int mx_mysql_ping(struct mx_mysql *mysql);
+int mx_mysql_ping_forever(struct mx_mysql *mysql);
+
+
 #define mx_mysql_do_statement_noresult(m, q, p) \
         mx_mysql_do_statement(m, q, p, NULL, NULL, NULL, 0)
+
+#define mx_mysql_do_statement_noresult_retry_on_fail(m, q, p) \
+        mx_mysql_do_statement_retry_on_fail(m, q, p, NULL, NULL, NULL, 0)
+
 int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size);
+int mx_mysql_do_statement_retry_on_fail(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size);
 
 int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt);
 struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement);

@@ -324,6 +324,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     mx_mysql_option_set_default_file(server->mysql,  arg_mysql_default_file);
     mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
+    mx_mysql_option_set_reconnect(server->mysql, 1);
 
     server->hostname = mxq_hostname();
     server->server_id = arg_server_id;

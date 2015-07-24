@@ -303,9 +303,9 @@ int mxq_load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups
     res = bind_result_group_fields(&result, &g);
     assert(res == 0);
 
-    res = mx_mysql_do_statement(mysql, query, NULL, &result, &g, (void **)&groups, sizeof(*groups));
+    res = mx_mysql_do_statement_retry_on_fail(mysql, query, NULL, &result, &g, (void **)&groups, sizeof(*groups));
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
+        mx_log_err("mx_mysql_do_statement_retry_on_fail(): %m");
         return res;
     }
 
