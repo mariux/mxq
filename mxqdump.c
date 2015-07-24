@@ -475,7 +475,7 @@ int main(int argc, char *argv[])
                 if (mx_strtou64(optctl.optarg, &arg_uid) < 0 || arg_uid >= UINT64_SPECIAL_MIN) {
                     if (arg_uid >= UINT64_SPECIAL_MIN)
                         errno = ERANGE;
-                    mx_log_err("Invalid argument for --group-id '%s': User not found and %m", optctl.optarg);
+                    mx_log_err("Invalid argument for --user '%s': User not found and %m", optctl.optarg);
                     exit(EX_USAGE);
                 }
                 break;
