@@ -9,7 +9,7 @@
 
 #include "mxq_group.h"
 #include "mxq_job.h"
-#include "mxq_util.h"
+#include "mx_util.h"
 #include "mx_mysql.h"
 
 #define GROUP_FIELDS_CNT 26
@@ -88,16 +88,16 @@ static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_gro
 
 void mxq_group_free_content(struct mxq_group *g)
 {
-        free_null(g->group_name);
+        mx_free_null(g->group_name);
         g->_group_name_length = 0;
 
-        free_null(g->user_name);
+        mx_free_null(g->user_name);
         g->_user_name_length = 0;
 
-        free_null(g->user_group);
+        mx_free_null(g->user_group);
         g->_user_group_length = 0;
 
-        free_null(g->job_command);
+        mx_free_null(g->job_command);
         g->_job_command_length = 0;
 }
 

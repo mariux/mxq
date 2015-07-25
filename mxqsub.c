@@ -509,12 +509,12 @@ int main(int argc, char *argv[])
                 break;
 
             case 'r':
-                if (!optctl.optarg || streq(optctl.optarg, "always")) {
+                if (!optctl.optarg || mx_streq(optctl.optarg, "always")) {
                     arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
                     arg_jobflags |= MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL;
-                } else if (streq(optctl.optarg, "samehost")) {
+                } else if (mx_streq(optctl.optarg, "samehost")) {
                     arg_jobflags |= MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL;
-                } else if (streq(optctl.optarg, "never")) {
+                } else if (mx_streq(optctl.optarg, "never")) {
                     arg_jobflags &= ~(MXQ_JOB_FLAGS_RESTART_ON_HOSTFAIL|MXQ_JOB_FLAGS_REQUEUE_ON_HOSTFAIL);
                 } else {
                     mx_log_crit("--restart '%s': restartmode unknown.", optctl.optarg);
@@ -666,7 +666,7 @@ int main(int argc, char *argv[])
         arg_stdout = arg_stdout_absolute;
     }
 
-    if (streq(arg_stderr, "stdout")) {
+    if (mx_streq(arg_stderr, "stdout")) {
         arg_stderr = arg_stdout;
     }
 

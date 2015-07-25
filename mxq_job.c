@@ -15,7 +15,6 @@
 
 #include "mxq_group.h"
 #include "mxq_job.h"
-#include "mxq_util.h"
 
 #define JOB_FIELDS_CNT 34
 #define JOB_FIELDS \
@@ -148,35 +147,35 @@ char *mxq_job_status_to_name(uint64_t status)
 
 void mxq_job_free_content(struct mxq_job *j)
 {
-        free_null(j->job_workdir);
+        mx_free_null(j->job_workdir);
         j->_job_workdir_length = 0;
 
-        free_null(j->job_argv_str);
+        mx_free_null(j->job_argv_str);
         j->_job_argv_str_length = 0;
 
-        free_null(j->job_stdout);
+        mx_free_null(j->job_stdout);
         j->_job_stdout_length = 0;
 
-        free_null(j->job_stderr);
+        mx_free_null(j->job_stderr);
         j->_job_stderr_length = 0;
 
         if (j->tmp_stderr == j->tmp_stdout) {
             j->tmp_stdout = NULL;
         } else {
-            free_null(j->tmp_stdout);
+            mx_free_null(j->tmp_stdout);
         }
-        free_null(j->tmp_stderr);
+        mx_free_null(j->tmp_stderr);
 
-        free_null(j->host_submit);
+        mx_free_null(j->host_submit);
         j->_host_submit_length = 0;
 
-        free_null(j->server_id);
+        mx_free_null(j->server_id);
         j->_server_id_length = 0;
 
-        free_null(j->host_hostname);
+        mx_free_null(j->host_hostname);
         j->_host_hostname_length = 0;
 
-        free_null(j->job_argv);
+        mx_free_null(j->job_argv);
         j->job_argv = NULL;
 }
 
@@ -513,7 +512,7 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
 
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
 {
-    if (!streq(j->job_stdout, "/dev/null")) {
+    if (!mx_streq(j->job_stdout, "/dev/null")) {
         _mx_cleanup_free_ char *dir = NULL;
 
         dir = mx_dirname_forever(j->job_stdout);
@@ -523,10 +522,10 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
             j->server_id, j->host_pid);
     }
 
-    if (!streq(j->job_stderr, "/dev/null")) {
+    if (!mx_streq(j->job_stderr, "/dev/null")) {
         _mx_cleanup_free_ char *dir = NULL;
 
-        if (streq(j->job_stderr, j->job_stdout)) {
+        if (mx_streq(j->job_stderr, j->job_stdout)) {
             j->tmp_stderr = j->tmp_stdout;
             return 1;
         }

@@ -17,8 +17,8 @@
 
 #define FLOCK_MODE 0600
 
-#ifndef free_null
-#define free_null(a) do { free((a)); (a) = NULL; } while(0)
+#if !defined mx_free_null
+#   define mx_free_null(a) do { free((a)); (a) = NULL; } while(0)
 #endif
 
 static inline int _flock_open(struct mx_flock *lock, mode_t mode)
@@ -59,7 +59,7 @@ static inline void _flock_free(struct mx_flock *lock)
         return;
 
     if (lock->fname)
-        free_null(lock->fname);
+        mx_free_null(lock->fname);
 
     if (lock->fd >= 0)
         _flock_close(lock);

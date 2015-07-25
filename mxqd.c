@@ -743,7 +743,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
         return 0;
     }
 
-    if (!streq(passwd->pw_name, g->user_name)) {
+    if (!mx_streq(passwd->pw_name, g->user_name)) {
         mx_log_err("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping",
             g->user_name, g->user_uid, g->group_id, j->job_id,
             g->user_uid, g->user_name, passwd->pw_name);
@@ -874,7 +874,7 @@ int mxq_redirect_open(char *fname)
 
     if (!fname) {
         fname = "/dev/null";
-    } else if (!streq(fname, "/dev/null")) {
+    } else if (!mx_streq(fname, "/dev/null")) {
         res = unlink(fname);
         if (res == -1 && errno != ENOENT) {
             mx_log_err("unlink() failed: %m");
@@ -1240,7 +1240,7 @@ int remove_orphaned_groups(struct mxq_server *server)
             server->group_cnt--;
             cnt++;
             mxq_group_free_content(&group->group);
-            free_null(group);
+            mx_free_null(group);
         }
         if(user->groups) {
             uprev = user;
@@ -1254,7 +1254,7 @@ int remove_orphaned_groups(struct mxq_server *server)
             server->users = unext;
         }
         server->user_cnt--;
-        free_null(user);
+        mx_free_null(user);
 
         mx_log_info("Removed orphaned user. %lu users left.", server->user_cnt);
     }
@@ -1466,7 +1466,7 @@ int catchall(struct mxq_server *server) {
 
         mxq_job_set_tmpfilenames(g, j);
 
-        if (!streq(j->job_stdout, "/dev/null")) {
+        if (!mx_streq(j->job_stdout, "/dev/null")) {
             res = rename(j->tmp_stdout, j->job_stdout);
             if (res == -1) {
                 mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m",
@@ -1474,7 +1474,7 @@ int catchall(struct mxq_server *server) {
             }
         }
 
-        if (!streq(j->job_stderr, "/dev/null") && !streq(j->job_stderr, j->job_stdout)) {
+        if (!mx_streq(j->job_stderr, "/dev/null") && !mx_streq(j->job_stderr, j->job_stdout)) {
             res = rename(j->tmp_stderr, j->job_stderr);
             if (res == -1) {
                 mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m",

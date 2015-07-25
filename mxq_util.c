@@ -27,28 +27,6 @@ mode_t getumask(void)
     return mask;
 }
 
-size_t timetag(char *buf, size_t max)
-{
-    time_t t;
-    struct tm *ltime;
-
-    *buf = 0;
-
-    t = time(NULL);
-    if (t == ((time_t) -1)) {
-        perror("timetag::time");
-        return 0;
-    }
-
-    ltime = localtime(&t);
-    if (ltime == NULL) {
-        perror("timetag::localtime");
-        return 0;
-    }
-
-    return strftime(buf, max, "%F %T %z", ltime);
-}
-
 char *mxq_hostname(void)
 {
     static char hostname[1024] = "";
@@ -65,33 +43,6 @@ char *mxq_hostname(void)
     }
 
     return hostname;
-}
-
-void *realloc_or_free(void *ptr, size_t size)
-{
-    void *new_ptr;
-
-    new_ptr = realloc(ptr, size);
-    if (new_ptr)
-        return new_ptr;
-
-    free(ptr);
-    return NULL;
-}
-
-void *realloc_forever(void *ptr, size_t size)
-{
-    void *new_ptr;
-
-    assert(size > 0);
-
-    do {
-        new_ptr = realloc(ptr, size);
-        if (new_ptr)
-            return new_ptr;
-
-        sleep(1);
-    } while (1);
 }
 
 char **strvec_new(void)
@@ -287,114 +238,4 @@ char **str_to_strvec(char *str)
     }
 
     return strvec;
-}
-
-char *stringvectostring(int argc, char *argv[])
-{
-    int     i,j,k;
-    char   *buf;
-    char   *s;
-    size_t  len = 1;
-
-    for (i=0; i < argc; i++) {
-        len += strlen(argv[i]);
-        len += chrcnt(argv[i], '\\');
-        len += 2;
-    }
-
-    buf = malloc(len);
-    if (!buf)
-        return NULL;
-
-    for (i=0, k=0; i < argc; i++) {
-        s = argv[i];
-        for (j=0; j < strlen(s); j++) {
-             buf[k++] = s[j];
-             if (s[j] == '\\')
-                 buf[k++] = '\\';
-        }
-        buf[k++] = '\\';
-        buf[k++] = '0';
-    }
-
-    assert(k == len-1);
-    buf[k] = 0;
-
-    return buf;
-}
-
-char **stringtostringvec(int argc, char *s)
-{
-    int i;
-    char *p;
-    char **argv;
-
-    argv = calloc(argc+1, sizeof(*argv));
-    if (!argv)
-        return NULL;
-
-    for (i=0, p=s; i < argc; i++) {
-        argv[i] = p;
-        p = strstr(p, "\\0");  /* search "\0" */
-        if (!p) {
-            errno = EINVAL; /* "\0" need to be there or string is invalid */
-            return NULL;
-        }
-        *p = 0;     /* add end of string */
-        p += 2;     /* skip "\0" */
-    }
-
-    return argv;
-}
-
-int mxq_setenv(const char *name, const char *value)
-{
-    int res;
-
-    res = setenv(name, value, 1);
-    if (res == -1) {
-        mx_log_err("mxq_setenv(%s, %s) failed! (%s)", name, value, strerror(errno));
-        return 0;
-    }
-
-    return 1;
-}
-
-
-int mxq_setenvf(const char *name, char *fmt, ...)
-{
-    va_list ap;
-    _mx_cleanup_free_ char *value = NULL;
-    size_t len;
-    int res;
-
-    assert(name);
-    assert(*name);
-    assert(fmt);
-
-    va_start(ap, fmt);
-    len = vasprintf(&value, fmt, ap);
-    va_end(ap);
-
-    if (len == -1) {
-        mx_log_err("mxq_setenvf(%s, %s, ...) failed! (%s)", name, fmt, strerror(errno));
-        return 0;
-    }
-
-    return mxq_setenv(name, value);
-}
-
-int chrcnt(char *s, char c)
-{
-    int i = 0;
-    char *p;
-
-    p = s;
-
-    while ((p = strchr(p, c))) {
-        i++;
-        p++;
-    }
-
-    return i;
 }
