@@ -364,7 +364,7 @@ int mxq_set_job_status_loaded_on_server(struct mx_mysql *mysql, struct mxq_job *
     res += mx_mysql_bind_var(&param, 2, string, &(job->server_id));
     assert(res == 0);
 
-    res = mx_mysql_do_statement_noresult(mysql, query, &param);
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
     if (res < 0) {
         mx_log_err("mx_mysql_do_statement(): %m");
         return res;
@@ -410,7 +410,7 @@ int mxq_set_job_status_running(struct mx_mysql *mysql, struct mxq_job *job)
     res += mx_mysql_bind_var(&param, 4, string, &(job->server_id));
     assert(res == 0);
 
-    res = mx_mysql_do_statement_noresult(mysql, query, &param);
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
     if (res < 0) {
         mx_log_err("mx_mysql_do_statement(): %m");
         return res;
@@ -499,7 +499,7 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
     res += mx_mysql_bind_var(&param, 19, uint32, &(job->host_pid));
     assert(res == 0);
 
-    res = mx_mysql_do_statement_noresult(mysql, query, &param);
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
     if (res < 0) {
         mx_log_err("mx_mysql_do_statement(): %m");
         return res;
