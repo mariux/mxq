@@ -210,7 +210,7 @@ void strvec_free(char **strvec)
     free(strvec);
 }
 
-char **str_to_strvec(char *str)
+char **strvec_from_str(char *str)
 {
     int res;
     char* s;

@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     assert(str1 = strvec_to_str(strvec1));
 
     assert(str3 = strdup(str1));
-    assert(strvec3 = str_to_strvec(str3));
+    assert(strvec3 = strvec_from_str(str3));
     assert(str2 = strvec_to_str(strvec3));
 
     display_mallinfo();

@@ -13,7 +13,7 @@ size_t strvec_length(char **strvec);
 int    strvec_push_str(char ***strvecp, char *str);
 int    strvec_push_strvec(char*** strvecp, char **strvec);
 char*  strvec_to_str(char **strvec);
-char** str_to_strvec(char *str);
+char** strvec_from_str(char *str);
 void   strvec_free(char **strvec);
 
 #endif
