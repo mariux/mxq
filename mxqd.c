@@ -1359,7 +1359,7 @@ int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
             if (group->group.group_status != MXQ_GROUP_STATUS_CANCELLED)
                 continue;
 
-            mx_log_info("Cancelling all running jobs in group=%s(%d):%lu",
+            mx_log_debug("Cancelling all running jobs in group=%s(%d):%lu",
                 group->group.user_name, group->group.user_uid, group->group.group_id);
 
             for (job=group->jobs; job; job=job->next) {
@@ -1410,7 +1410,7 @@ int catchall(struct mxq_server *server) {
 
         job = server_remove_job_by_pid(server, siginfo.si_pid);
         if (!job) {
-            mx_log_err("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d",
+            mx_log_warning("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d",
                 siginfo.si_pid, siginfo.si_uid, siginfo.si_code, siginfo.si_status,
                 getpgid(siginfo.si_pid), getsid(siginfo.si_pid));
             pid = waitpid(siginfo.si_pid, &status, WNOHANG);
@@ -1612,7 +1612,7 @@ int main(int argc, char *argv[])
                 mx_log_info("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).");
                 sleep(15);
             } else {
-                mx_log_info("Tried Hard. But have done nothing. Sleeping for a very short while.");
+                mx_log_info("Tried Hard. But have done nothing. Sleeping for a very short while (3 seconds).");
                 sleep(3);
             }
             continue;
