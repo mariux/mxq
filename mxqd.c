@@ -1580,6 +1580,7 @@ int main(int argc, char *argv[])
 
         if (slots_started || slots_returned) {
             server_dump(&server);
+            slots_started = 0;
         }
 
         group_cnt = load_groups(&server);
