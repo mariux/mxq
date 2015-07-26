@@ -36,11 +36,13 @@
 
 #define mx__mysql_log_emerg(mysql) mx__mysql_log(emerg, (mysql))
 #define mx__mysql_log_err(mysql)   mx__mysql_log(err,   (mysql))
+#define mx__mysql_log_warning(mysql) mx__mysql_log(warning,   (mysql))
 #define mx__mysql_log_info(mysql)  mx__mysql_log(info,  (mysql))
 #define mx__mysql_log_debug(mysql) mx__mysql_log(debug, (mysql))
 
 #define mx__mysql_stmt_log_emerg(stmt) mx__mysql_stmt_log(emerg, (stmt))
 #define mx__mysql_stmt_log_err(stmt)   mx__mysql_stmt_log(err,   (stmt))
+#define mx__mysql_stmt_log_warning(stmt) mx__mysql_stmt_log(warning,   (stmt))
 #define mx__mysql_stmt_log_info(stmt)  mx__mysql_stmt_log(info,  (stmt))
 #define mx__mysql_stmt_log_debug(stmt) mx__mysql_stmt_log(debug, (stmt))
 
@@ -206,6 +208,16 @@ static inline int mx__mysql_ping(struct mx_mysql *mysql)
             mx__mysql_log_emerg(mysql);
             return -(errno=EPROTO);
 
+        case CR_OUT_OF_MEMORY:
+            return -(errno=ENOMEM);
+
+        case CR_CONN_HOST_ERROR:
+        case CR_CONNECTION_ERROR:
+        case CR_IPSOCK_ERROR:
+        case CR_SOCKET_CREATE_ERROR:
+        case CR_UNKNOWN_HOST:
+        case CR_VERSION_ERROR:
+        case CR_SERVER_LOST:
         case CR_SERVER_GONE_ERROR:
             return -(errno=EAGAIN);
 
@@ -699,6 +711,42 @@ static inline int _mx_mysql_bind_integer(struct mx_mysql_bind *b, unsigned int i
     return 0;
 }
 
+void _mx_mysql_bind_dump_index(struct mx_mysql_bind *b, unsigned int index)
+{
+    mx_debug_value("%d", index);
+    mx_debug_value("%d", b->bind[index].buffer_type);
+    mx_debug_value("%d", b->bind[index].buffer_length);
+    mx_debug_value("%p", b->bind[index].buffer);
+    if (b->bind[index].buffer_type == MYSQL_TYPE_STRING)
+        mx_debug_value("%s", b->bind[index].buffer);
+    mx_debug_value("%d", b->bind[index].is_unsigned);
+    mx_debug_value("%d", *b->bind[index].length);
+    mx_debug_value("%d", *b->bind[index].is_null);
+    mx_debug_value("%d", *b->bind[index].error);
+    mx_debug_value("0x%x", b->data[index].flags);
+}
+
+void _mx_mysql_bind_dump(struct mx_mysql_bind *b)
+{
+    int i;
+
+    mx_log_debug("entered");
+
+    if (!b) {
+        mx_log_debug("done");
+        return;
+    }
+
+    mx_debug_value("%d", b->type);
+    mx_debug_value("%d", b->count);
+
+    for (i=0; i < b->count; i++) {
+        _mx_mysql_bind_dump_index(b, i);
+    }
+    mx_log_debug("done");
+}
+
+
 static inline int _mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value)
 {
     mx_assert_return_minus_errno(b,     EINVAL);
@@ -755,30 +803,38 @@ static inline int _mx_mysql_bind_validate(struct mx_mysql_bind *b)
 
 /**********************************************************************/
 
-int mx_mysql_init(struct mx_mysql **mysql)
+int mx_mysql_initialize(struct mx_mysql **mysql)
 {
     struct mx_mysql *m;
-    int res;
 
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(!(*mysql), EUCLEAN);
 
     m = mx_calloc_forever(1, sizeof(*m));
 
+    *mysql = m;
+
+    return 0;
+}
+
+int mx_mysql_init(struct mx_mysql *mysql)
+{
+    int res;
+
+    mx_assert_return_minus_errno(mysql, EINVAL);
+
     do {
-        res = mx__mysql_init(m);
+        res = mx__mysql_init(mysql);
         if (res == 0)
             break;
 
         if (res != -ENOMEM)
             return res;
 
-        mx_log_debug("mx__mysql_init() failed: %m - retrying (forever) in %d second(s).", MX_CALLOC_FAIL_WAIT_DEFAULT);
-        mx_sleep(MX_CALLOC_FAIL_WAIT_DEFAULT);
+        mx_log_debug("mx__mysql_init() failed: %m - retrying (forever) in %d second(s).", MX_MYSQL_FAIL_WAIT_DEFAULT);
+        mx_sleep(MX_MYSQL_FAIL_WAIT_DEFAULT);
 
     } while (1);
-
-    *mysql = m;
 
     return 0;
 }
@@ -883,7 +939,12 @@ int mx_mysql_connect(struct mx_mysql **mysql)
     mx_assert_return_minus_errno(mysql, EINVAL);
 
     if (!(*mysql)) {
-        res = mx_mysql_init(mysql);
+        res = mx_mysql_initialize(mysql);
+        if (res < 0)
+            return res;
+    }
+    if (!(*mysql)->mysql) {
+        res = mx_mysql_init(*mysql);
         if (res < 0)
             return res;
     }
@@ -897,8 +958,9 @@ int mx_mysql_connect_forever_sec(struct mx_mysql **mysql, unsigned int seconds)
     int res;
 
     while ((res = mx_mysql_connect(mysql)) < 0) {
-        mx__mysql_log_info(*mysql);
+        mx__mysql_log_warning(*mysql);
         mx_mysql_assert_usage_ok(res);
+        mx_log_warning("mx_mysql_connect() failed: %m - retrying (forever) in %d second(s).", seconds);
         mx_sleep(seconds);
     }
 
@@ -955,6 +1017,33 @@ int mx_mysql_ping(struct mx_mysql *mysql)
     return mx__mysql_ping(mysql);
 }
 
+int mx_mysql_ping_forever(struct mx_mysql *mysql)
+{
+    int res;
+    int fail = 0;
+
+    mx_assert_return_minus_errno(mysql, EINVAL);
+
+    while (1) {
+        res = mx_mysql_ping(mysql);
+        if (res == 0)
+            break;
+
+        fail++;
+
+        mx__mysql_log_warning(mysql);
+        mx_mysql_assert_usage_ok(res);
+        mx_log_warning("mx_mysql_ping() failed: %m - retrying again (forever) in %d second(s).", MX_MYSQL_FAIL_WAIT_DEFAULT);
+        mx_sleep(MX_MYSQL_FAIL_WAIT_DEFAULT);
+    }
+
+    if (fail)
+        mx_log_info("mx_mysql_ping_forever() recovered from previous errors (%d tries). Yippieh! Back to work!", fail);
+
+    return res;
+}
+
+
 int mx_mysql_queryf(struct mx_mysql *mysql, const char *fmt, ...)
 {
     mx_assert_return_minus_errno(mysql, EINVAL);
@@ -1001,8 +1090,8 @@ int mx_mysql_statement_init(struct mx_mysql *mysql, struct mx_mysql_stmt **stmt)
         if (res != -ENOMEM)
             return res;
 
-        mx_log_debug("mx__mysql_stmt_init() failed: %m - retrying (forever) in %d second(s).", MX_CALLOC_FAIL_WAIT_DEFAULT);
-        mx_sleep(MX_CALLOC_FAIL_WAIT_DEFAULT);
+        mx_log_debug("mx__mysql_stmt_init() failed: %m - retrying (forever) in %d second(s).", MX_MYSQL_FAIL_WAIT_DEFAULT);
+        mx_sleep(MX_MYSQL_FAIL_WAIT_DEFAULT);
     } while (1);
 
     *stmt = s;
@@ -1088,7 +1177,7 @@ int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt)
     }
 
     res = mx__mysql_stmt_fetch(stmt);
-    if (res == -ENOENT || res == 0)
+    if (res == -ENOENT)
         return 0;
 
     if (res < 0 && res != -ERANGE) {
@@ -1186,7 +1275,6 @@ int mx_mysql_bind_cleanup(struct mx_mysql_bind *bind)
 {
     mx_assert_return_minus_errno(bind, EINVAL);
 
-    mx_assert_return_minus_errno(bind->type != MX_MYSQL_BIND_TYPE_UNKNOWN, EBADF);
 
     mx_free_null(bind->bind);
     mx_free_null(bind->data);
@@ -1246,9 +1334,12 @@ int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_b
 
     assert(mysql);
 
+    mx_mysql_ping_forever(mysql);
+
     stmt = mx_mysql_statement_prepare_with_bindings(mysql, query, param, result);
     if (!stmt) {
-        mx_log_err("mx_mysql_statement_prepare(): %m");
+        mx_log_err("mx_mysql_statement_prepare_with_bindings(): %m");
+        mx_log_err("mx_mysql_statement_prepare_with_bindings(): query was: %s", query);
         return -errno;
     }
 
@@ -1276,8 +1367,34 @@ int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_b
     }
     mx_mysql_statement_close(&stmt);
 
-    return cnt;
+    return num_rows;
 }
+
+int mx_mysql_do_statement_retry_on_fail(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size)
+{
+    int res;
+
+    mx_log_debug("entered");
+
+    while (1) {
+        res = mx_mysql_do_statement(mysql, query, param, result, from, to, size);
+
+        if (res >= 0)
+            break;
+
+        mx_mysql_assert_usage_ok(res);
+
+        mx_log_warning("mx_mysql_do_statement() failed: %m");
+
+        if (res != -EAGAIN)
+            break;
+
+        mx_mysql_ping_forever(mysql);
+    }
+
+    return res;
+}
+
 
 struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *mysql, char *statement, struct mx_mysql_bind *param, struct mx_mysql_bind *result)
 {
@@ -1316,6 +1433,9 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *
         return stmt;
     };
 
+    if (res < 0)
+        mx__mysql_stmt_log_warning(stmt);
+
     mx_mysql_statement_close(&stmt);
 
     return NULL;
@@ -1323,9 +1443,6 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *
 
 struct mx_mysql_stmt *mx_mysql_statement_prepare(struct mx_mysql *mysql, char *statement)
 {
-    int res;
-    struct mx_mysql_stmt *stmt = NULL;
-
     mx_assert_return_NULL(mysql, EINVAL);
     mx_assert_return_NULL(statement, EINVAL);
     mx_assert_return_NULL(*statement, EINVAL);

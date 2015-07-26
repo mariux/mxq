@@ -5,7 +5,6 @@ mx_util.o
 mxq_group.o
 mxqdump.o
 mxq_job.o
-mxq_mysql.o
 mxqd.o
 mxqsub.o
 mxqkill.o
