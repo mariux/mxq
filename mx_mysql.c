@@ -1289,7 +1289,7 @@ int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_b
     }
     mx_mysql_statement_close(&stmt);
 
-    return cnt;
+    return num_rows;
 }
 
 struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *mysql, char *statement, struct mx_mysql_bind *param, struct mx_mysql_bind *result)
