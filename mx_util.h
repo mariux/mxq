@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "mx_log.h"
 
@@ -110,5 +111,13 @@ int mx_sleep_nofail(unsigned int seconds);
 #define mx_calloc_forever(n, s) mx_calloc_forever_sec((n), (s), MX_CALLOC_FAIL_WAIT_DEFAULT)
 
 void *mx_calloc_forever_sec(size_t nmemb, size_t size, unsigned int time);
+
+char** mx_strvec_new(void);
+size_t mx_strvec_length(char **strvec);
+int    mx_strvec_push_str(char ***strvecp, char *str);
+int    mx_strvec_push_strvec(char*** strvecp, char **strvec);
+char*  mx_strvec_to_str(char **strvec);
+char** mx_strvec_from_str(char *str);
+void   mx_strvec_free(char **strvec);
 
 #endif

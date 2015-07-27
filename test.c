@@ -4,8 +4,6 @@
 #include <string.h>
 #include <malloc.h>
 
-#include "mxq_util.h"
-
 static void display_mallinfo(void)
 {
     struct mallinfo mi;

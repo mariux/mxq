@@ -26,8 +26,6 @@
 
 #include <string.h>
 
-#include "mxq_util.h"
-
 #include "mxq_group.h"
 #include "mxq_job.h"
 
@@ -684,7 +682,7 @@ int main(int argc, char *argv[])
         arg_stderr = arg_stderr_absolute;
     }
 
-    arg_args = strvec_to_str(argv);
+    arg_args = mx_strvec_to_str(argv);
     assert(arg_args);
 
     /******************************************************************/
