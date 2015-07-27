@@ -19,25 +19,6 @@
 
 #include "mxq_util.h"
 
-
-char *mxq_hostname(void)
-{
-    static char hostname[1024] = "";
-    int res;
-
-    if (*hostname)
-        return hostname;
-
-    res = gethostname(hostname, 1024);
-    if (res == -1) {
-        if (errno != ENAMETOOLONG)
-            assert_perror(errno);
-        hostname[1024-1] = 0;
-    }
-
-    return hostname;
-}
-
 char **strvec_new(void)
 {
     char **strvec;

@@ -736,7 +736,7 @@ int main(int argc, char *argv[])
     /******************************************************************/
 
     group.job_command = arg_program_name;
-    job.host_submit = mxq_hostname();
+    job.host_submit = mx_hostname();
 
     /******************************************************************/
 

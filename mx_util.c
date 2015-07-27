@@ -441,6 +441,24 @@ int mx_asprintf_forever(char **strp, const char *fmt, ...)
     return len;
 }
 
+char *mx_hostname(void)
+{
+    static char hostname[1024] = "";
+    int res;
+
+    if (*hostname)
+        return hostname;
+
+    res = gethostname(hostname, 1024);
+    if (res == -1) {
+        if (errno != ENAMETOOLONG)
+            assert_perror(errno);
+        hostname[1024-1] = 0;
+    }
+
+    return hostname;
+}
+
 char *mx_dirname(char *path)
 {
     char *tmp;

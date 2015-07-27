@@ -332,7 +332,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
     mx_mysql_option_set_reconnect(server->mysql, 1);
 
-    server->hostname = mxq_hostname();
+    server->hostname = mx_hostname();
     server->server_id = arg_server_id;
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
@@ -768,7 +768,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenv_forever("PWD",      j->job_workdir);
     mx_setenv_forever("HOME",     passwd->pw_dir);
     mx_setenv_forever("SHELL",    passwd->pw_shell);
-    mx_setenv_forever("HOSTNAME", mxq_hostname());
+    mx_setenv_forever("HOSTNAME", mx_hostname());
     mx_setenvf_forever("JOB_ID",      "%lu",    j->job_id);
     mx_setenvf_forever("MXQ_JOBID",   "%lu",    j->job_id);
     mx_setenvf_forever("MXQ_THREADS", "%d",     g->job_threads);

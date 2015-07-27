@@ -6,8 +6,6 @@
 #include <string.h>
 #include <mysql.h>
 
-char *mxq_hostname(void);
-
 char** strvec_new(void);
 size_t strvec_length(char **strvec);
 int    strvec_push_str(char ***strvecp, char *str);
