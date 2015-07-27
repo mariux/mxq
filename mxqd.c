@@ -1346,6 +1346,43 @@ int killall(struct mxq_server *server, int sig, unsigned int pgrp)
     return 0;
 }
 
+int killall_over_time(struct mxq_server *server, int sig, unsigned int pgrp)
+{
+    struct mxq_user_list  *user;
+    struct mxq_group_list *group;
+    struct mxq_job_list   *job;
+
+    struct timeval now;
+    struct timeval delta;
+
+    pid_t pid;
+
+    assert(server);
+
+    gettimeofday(&now, NULL);
+
+    for (user=server->users; user; user=user->next) {
+        for (group=user->groups; group; group=group->next) {
+            for (job=group->jobs; job; job=job->next) {
+                timersub(&now, &job->job.stats_starttime, &delta);
+
+                if (delta.tv_sec <= group->group.job_time*63)
+                    continue;
+
+                pid = job->job.host_pid;
+                if (pgrp)
+                    pid = -pid;
+                mx_log_info("killall_over_time(): Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
+                    sig,
+                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    pgrp?"pgrp":"pid", pid);
+                kill(pid, sig);
+            }
+        }
+    }
+    return 0;
+}
+
 int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
 {
     struct mxq_user_list  *user;
@@ -1590,6 +1627,8 @@ int main(int argc, char *argv[])
 
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
+        killall_over_time(&server, SIGTERM, 0);
+        killall_over_time(&server, SIGINT, 0);
 
         if (!server.group_cnt) {
             assert(!server.jobs_running);
@@ -1637,6 +1676,8 @@ int main(int argc, char *argv[])
 
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
+        killall_over_time(&server, SIGTERM, 0);
+        killall_over_time(&server, SIGINT, 0);
 
         mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
               server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
