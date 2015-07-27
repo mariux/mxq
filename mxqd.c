@@ -1434,15 +1434,16 @@ int catchall(struct mxq_server *server) {
         res = waitid(P_ALL, 0, &siginfo, WEXITED|WNOHANG|WNOWAIT);
 
         if (res == -1) {
+            /* no childs (left) => break loop */
             if (errno == ECHILD)
-                return 0;
+                break;
             mx_log_err("waitid: %m");
             return 0;
         }
 
-        /* no childs changed state => return */
+        /* no (more) childs changed state => break loop */
         if (res == 0 && siginfo.si_pid == 0)
-            return 0;
+            break;
 
         assert(siginfo.si_pid > 1);
 
