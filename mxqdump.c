@@ -19,7 +19,7 @@
 
 #include "mxq.h"
 
-#include "mxq_util.h"
+#include "mx_util.h"
 #include "mx_mysql.h"
 
 #include "mxq_group.h"

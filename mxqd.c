@@ -33,7 +33,6 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mx_mysql.h"
-#include "mxq_util.h"
 #include "mxqd.h"
 
 #ifndef MXQ_VERSION
@@ -332,7 +331,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
     mx_mysql_option_set_reconnect(server->mysql, 1);
 
-    server->hostname = mxq_hostname();
+    server->hostname = mx_hostname();
     server->server_id = arg_server_id;
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
@@ -768,7 +767,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenv_forever("PWD",      j->job_workdir);
     mx_setenv_forever("HOME",     passwd->pw_dir);
     mx_setenv_forever("SHELL",    passwd->pw_shell);
-    mx_setenv_forever("HOSTNAME", mxq_hostname());
+    mx_setenv_forever("HOSTNAME", mx_hostname());
     mx_setenvf_forever("JOB_ID",      "%lu",    j->job_id);
     mx_setenvf_forever("MXQ_JOBID",   "%lu",    j->job_id);
     mx_setenvf_forever("MXQ_THREADS", "%d",     g->job_threads);
@@ -1014,7 +1013,7 @@ unsigned long start_job(struct mxq_group_list *group)
         }
 
 
-        argv = strvec_from_str(mxqjob.job_argv_str);
+        argv = mx_strvec_from_str(mxqjob.job_argv_str);
         if (!argv) {
             mx_log_err("job=%s(%d):%lu:%lu Can't recaculate commandline. str_to_strvev(%s) failed: %m",
                 group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,

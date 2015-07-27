@@ -26,8 +26,6 @@
 
 #include <string.h>
 
-#include "mxq_util.h"
-
 #include "mxq_group.h"
 #include "mxq_job.h"
 
@@ -115,6 +113,14 @@ static void print_usage(void)
         MXQ_MYSQL_DEFAULT_GROUP_STR
     );
 }
+
+mode_t getumask(void)
+{
+    mode_t mask = umask( 0 );
+    umask(mask);
+    return mask;
+}
+
 
 static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
 {
@@ -676,7 +682,7 @@ int main(int argc, char *argv[])
         arg_stderr = arg_stderr_absolute;
     }
 
-    arg_args = strvec_to_str(argv);
+    arg_args = mx_strvec_to_str(argv);
     assert(arg_args);
 
     /******************************************************************/
@@ -728,7 +734,7 @@ int main(int argc, char *argv[])
     /******************************************************************/
 
     group.job_command = arg_program_name;
-    job.host_submit = mxq_hostname();
+    job.host_submit = mx_hostname();
 
     /******************************************************************/
 

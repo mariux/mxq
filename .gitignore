@@ -8,7 +8,6 @@ mxq_job.o
 mxqd.o
 mxqsub.o
 mxqkill.o
-mxq_util.o
 test_mx_util.o
 test_mx_log.o
 test_mx_mysql.o

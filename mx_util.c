@@ -441,6 +441,24 @@ int mx_asprintf_forever(char **strp, const char *fmt, ...)
     return len;
 }
 
+char *mx_hostname(void)
+{
+    static char hostname[1024] = "";
+    int res;
+
+    if (*hostname)
+        return hostname;
+
+    res = gethostname(hostname, 1024);
+    if (res == -1) {
+        if (errno != ENAMETOOLONG)
+            assert_perror(errno);
+        hostname[1024-1] = 0;
+    }
+
+    return hostname;
+}
+
 char *mx_dirname(char *path)
 {
     char *tmp;
@@ -614,4 +632,195 @@ void *mx_calloc_forever_sec(size_t nmemb, size_t size, unsigned int time)
     }
 
     return ptr;
+}
+
+char **mx_strvec_new(void)
+{
+    char **strvec;
+
+    strvec = calloc(sizeof(*strvec), 1);
+
+    return strvec;
+}
+
+static inline size_t mx_strvec_length_cache(char **strvec, int32_t len)
+{
+    static char ** sv = NULL;
+    static size_t l = 0;
+
+    if (likely(len == -1)) {
+        if (likely(sv == strvec)) {
+            return l;
+        }
+        return -1;
+    }
+
+    if (likely(sv == strvec)) {
+        l = len;
+    } else {
+        sv = strvec;
+        l = len;
+    }
+    return l;
+}
+
+size_t mx_strvec_length(char ** strvec)
+{
+    char ** sv;
+    size_t len;
+
+    assert(strvec);
+
+    sv = strvec;
+
+    len = mx_strvec_length_cache(sv, -1);
+    if (len != -1)
+        return len;
+
+    for (; *sv; sv++);
+
+    len = sv-strvec;
+    mx_strvec_length_cache(sv, len);
+    return len;
+}
+
+int mx_strvec_push_str(char *** strvecp, char * str)
+{
+    char ** sv;
+
+    size_t len;
+
+    assert(strvecp);
+    assert(*strvecp);
+    assert(str);
+
+    len = mx_strvec_length(*strvecp);
+
+    sv = realloc(*strvecp, sizeof(**strvecp) * (len + 2));
+    if (!sv) {
+       return 0;
+    }
+
+    sv[len++] = str;
+    sv[len] = NULL;
+
+    mx_strvec_length_cache(sv, len);
+
+    *strvecp = sv;
+
+    return 1;
+}
+
+int mx_strvec_push_strvec(char ***strvecp, char **strvec)
+{
+    char **sv;
+
+    size_t len1;
+    size_t len2;
+
+    assert(strvecp);
+    assert(*strvecp);
+    assert(strvec);
+
+    len1 = mx_strvec_length(*strvecp);
+    len2 = mx_strvec_length(strvec);
+
+    sv = realloc(*strvecp, sizeof(**strvecp) * (len1 + len2 + 1));
+    if (!sv) {
+       return 0;
+    }
+
+    memcpy(sv+len1, strvec, sizeof(*strvec) * (len2 + 1));
+
+    mx_strvec_length_cache(sv, len1+len2);
+
+    *strvecp = sv;
+
+    return 1;
+}
+
+char *mx_strvec_to_str(char **strvec)
+{
+    char **sv;
+    char*  buf;
+    char*  s;
+    size_t totallen;
+    char*  str;
+
+    assert(strvec);
+
+    totallen = 0;
+    for (sv = strvec; *sv; sv++) {
+        totallen += strlen(*sv);
+    }
+
+    buf = malloc(sizeof(*buf) * (totallen * 2 + 2) + 1);
+    if (!buf)
+        return NULL;
+
+    str  = buf;
+    *str = 0;
+
+    for (sv = strvec; *sv; sv++) {
+        for (s=*sv; *s; s++) {
+            switch (*s) {
+                case '\\':
+                    *(str++) = '\\';
+                    *(str++) = '\\';
+                    break;
+
+                default:
+                    *(str++) = *s;
+            }
+        }
+        *(str++) = '\\';
+        *(str++) = '0';
+    }
+
+    *str = '\0';
+
+    return buf;
+}
+
+void mx_strvec_free(char **strvec)
+{
+    char **sv;
+
+    if (!strvec)
+        return;
+
+    for (sv = strvec; *sv; sv++) {
+        free(sv);
+    }
+    free(strvec);
+}
+
+char **mx_strvec_from_str(char *str)
+{
+    int res;
+    char* s;
+    char* p;
+    char** strvec;
+
+    strvec = mx_strvec_new();
+    if (!strvec)
+        return NULL;
+
+    for (s=str; *s; s=p+2) {
+       p = strstr(s, "\\0");
+       if (!p) {
+           free(strvec);
+           errno = EINVAL;
+           return NULL;
+       }
+       *p = 0;
+
+       res = mx_strvec_push_str(&strvec, s);
+       if (!res) {
+          free(strvec);
+          return NULL;
+       }
+    }
+
+    return strvec;
 }
