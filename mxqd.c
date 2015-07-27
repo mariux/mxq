@@ -1634,6 +1634,9 @@ int main(int argc, char *argv[])
         if (global_sigint_cnt)
             killall(&server, SIGTERM, 0);
 
+        killallcancelled(&server, SIGTERM, 0);
+        killallcancelled(&server, SIGINT, 0);
+
         mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
               server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
         sleep(1);
