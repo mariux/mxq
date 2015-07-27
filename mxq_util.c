@@ -20,13 +20,6 @@
 #include "mxq_util.h"
 
 
-mode_t getumask(void)
-{
-    mode_t mask = umask( 0 );
-    umask(mask);
-    return mask;
-}
-
 char *mxq_hostname(void)
 {
     static char hostname[1024] = "";

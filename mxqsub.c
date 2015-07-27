@@ -116,6 +116,14 @@ static void print_usage(void)
     );
 }
 
+mode_t getumask(void)
+{
+    mode_t mask = umask( 0 );
+    umask(mask);
+    return mask;
+}
+
+
 static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
 {
     struct mx_mysql_stmt *stmt = NULL;
