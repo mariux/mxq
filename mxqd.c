@@ -590,6 +590,7 @@ struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job 
     server->threads_running += mxqgrp->job_threads;
 
     mxqgrp->group_jobs_running++;
+    mxqgrp->group_jobs_inq--;
 
     group->jobs_running++;
     user->jobs_running++;

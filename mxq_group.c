@@ -122,7 +122,8 @@ inline uint64_t mxq_group_jobs_active(struct mxq_group *g)
     active -= mxq_group_jobs_done(g);
 
     if (active != g->group_jobs_inq+g->group_jobs_running)
-        mx_log_warning("BUG: mxq_group: inconsistent 'active' (inq+run) value");
+        mx_log_warning("BUG: mxq_group: inconsistent 'active'=%lu (inq=%lu+run=%lu)=%lu value",
+            active, g->group_jobs_inq, g->group_jobs_running, g->group_jobs_inq+g->group_jobs_running);
 
     return active;
 }
@@ -135,7 +136,8 @@ inline uint64_t mxq_group_jobs_inq(struct mxq_group *g)
     inq -= g->group_jobs_running;
 
     if (inq != g->group_jobs_inq)
-        mx_log_warning("BUG: mxq_group: inconsistent inq value");
+        mx_log_warning("BUG: mxq_group: inconsistent inq value (%lu != %lu)",
+            inq, g->group_jobs_inq);
 
     return inq;
 }
