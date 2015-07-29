@@ -1,4 +1,12 @@
 
+ALTER TABLE mxq_job
+   ADD COLUMN job_id_first INT8 UNSIGNED   NULL DEFAULT NULL
+   AFTER job_id_old;
+
+ALTER TABLE mxq_job
+   ADD COLUMN job_id_old INT8 UNSIGNED   NULL DEFAULT NULL
+   AFTER job_id_new;
+
 ALTER TABLE mxq_group
    ADD COLUMN group_jobs_restarted INT8 UNSIGNED NOT NULL DEFAULT 0
    AFTER group_jobs_unknown;
@@ -127,6 +135,8 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    date_end     TIMESTAMP NOT NULL DEFAULT 0,
 
    job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL,
+   job_id_old     INT8 UNSIGNED   NULL DEFAULT NULL,
+   job_id_first   INT8 UNSIGNED   NULL DEFAULT NULL,
 
    stats_status   INT4 UNSIGNED NOT NULL DEFAULT 0,
 
