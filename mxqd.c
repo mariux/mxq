@@ -78,6 +78,7 @@ static void print_usage(void)
     "  -x | --max-memory-per-slot <mem>   default: <memory>/<slots>\n"
     "\n"
     "  -N | --server-id <id>              default: main\n"
+    "       --hostname <hostname>         default: $(hostname)\n"
     "\n"
     "       --pid-file <pidfile>          default: create no pid file\n"
     "       --daemonize                   default: run in foreground\n"
@@ -197,7 +198,8 @@ int write_pid_to_file(char *fname)
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
     int res;
-    char *arg_server_id = "main";
+    char *arg_server_id;
+    char *arg_hostname;
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
     char *arg_pidfile = NULL;
@@ -221,12 +223,14 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("memory",       'm'),
                 MX_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
                 MX_OPTION_REQUIRED_ARG("server-id",    'N'),
+                MX_OPTION_REQUIRED_ARG("hostname",       6),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
                 MX_OPTION_END
     };
 
     arg_server_id = "main";
+    arg_hostname  = mx_hostname();
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -261,6 +265,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 5:
                 mx_log_level_set(MX_LOG_DEBUG);
+                break;
+
+            case 6:
+                arg_hostname = optctl.optarg;
                 break;
 
             case 'V':
@@ -331,7 +339,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
     mx_mysql_option_set_reconnect(server->mysql, 1);
 
-    server->hostname = mx_hostname();
+    server->hostname = arg_hostname;
     server->server_id = arg_server_id;
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
