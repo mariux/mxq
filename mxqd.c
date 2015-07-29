@@ -1649,7 +1649,7 @@ int main(int argc, char *argv[])
         fail = 1;
     }
     if (res > 0)
-        mx_log_warning("total %d jobs recovered from previous crash.");
+        mx_log_warning("total %d jobs recovered from previous crash.", res);
 
     while (!global_sigint_cnt && !global_sigterm_cnt && !fail) {
         slots_returned = catchall(&server);
