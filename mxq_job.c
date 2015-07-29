@@ -338,6 +338,42 @@ int mxq_assign_job_from_group_to_server(struct mx_mysql *mysql, uint64_t group_i
     return res;
 }
 
+int mxq_unassign_jobs_of_server(struct mx_mysql *mysql, char *hostname, char *server_id)
+{
+    int res;
+    struct mx_mysql_bind param = {0};
+
+    assert(mysql);
+    assert(hostname);
+    assert(*hostname);
+    assert(server_id);
+    assert(*server_id);
+
+    char *query =
+            "UPDATE mxq_job SET"
+            " job_status = " status_str(MXQ_JOB_STATUS_INQ)
+            " WHERE host_pid = 0"
+            " AND job_status = " status_str(MXQ_JOB_STATUS_ASSIGNED)
+            " AND host_hostname = ?"
+            " AND server_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 2);
+    assert(res == 0);
+
+    res = 0;
+    res += mx_mysql_bind_var(&param, 0, string, &hostname);
+    res += mx_mysql_bind_var(&param, 1, string, &server_id);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    return res;
+}
+
 int mxq_set_job_status_loaded_on_server(struct mx_mysql *mysql, struct mxq_job *job)
 {
     int res;
@@ -506,6 +542,42 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
     }
 
     job->job_status = newstatus;
+
+    return res;
+}
+
+int mxq_set_job_status_unknown_for_server(struct mx_mysql *mysql, char *hostname, char *server_id)
+{
+    int res;
+    struct mx_mysql_bind param = {0};
+
+    assert(mysql);
+    assert(hostname);
+    assert(*hostname);
+    assert(server_id);
+    assert(*server_id);
+
+    char *query =
+            "UPDATE mxq_job SET"
+            " job_status = " status_str(MXQ_JOB_STATUS_UNKNOWN) ","
+            " date_end = NULL"
+            " WHERE job_status IN (" status_str(MXQ_JOB_STATUS_LOADED) "," status_str(MXQ_JOB_STATUS_RUNNING) ")"
+            " AND host_hostname = ?"
+            " AND server_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 2);
+    assert(res == 0);
+
+    res = 0;
+    res += mx_mysql_bind_var(&param, 0, string, &hostname);
+    res += mx_mysql_bind_var(&param, 1, string, &server_id);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
 
     return res;
 }

@@ -1552,6 +1552,37 @@ int load_groups(struct mxq_server *server) {
     return total;
 }
 
+int recover_from_previous_crash(struct mxq_server *server)
+{
+    int res1;
+    int res2;
+
+    assert(server);
+    assert(server->mysql);
+    assert(server->hostname);
+    assert(server->server_id);
+
+    res1 = mxq_unassign_jobs_of_server(server->mysql, server->hostname, server->server_id);
+    if (res1 < 0) {
+        mx_log_info("mxq_unassign_jobs_of_server() failed: %m");
+        return res1;
+    }
+    if (res1 > 0)
+        mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: unassigned %d jobs.",
+            server->hostname, server->server_id, res1);
+
+    res2 = mxq_set_job_status_unknown_for_server(server->mysql, server->hostname, server->server_id);
+    if (res2 < 0) {
+        mx_log_info("mxq_unassign_jobs_of_server() failed: %m");
+        return res2;
+    }
+    if (res2 > 0)
+        mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: set job_status='unknown' for %d jobs.",
+            server->hostname, server->server_id, res2);
+
+    return res1+res2;
+}
+
 /**********************************************************************/
 static void no_handler(int sig) {}
 
@@ -1578,6 +1609,7 @@ int main(int argc, char *argv[])
     unsigned long slots_returned = 0;
 
     int res;
+    int fail = 0;
 
     /*** server init ***/
 
@@ -1611,7 +1643,15 @@ int main(int argc, char *argv[])
     signal(SIGTTOU, SIG_IGN);
     signal(SIGCHLD, no_handler);
 
-    do {
+    res = recover_from_previous_crash(&server);
+    if (res < 0) {
+        mx_log_warning("recover_from_previous_crash() failed. Aborting execution.");
+        fail = 1;
+    }
+    if (res > 0)
+        mx_log_warning("total %d jobs recovered from previous crash.");
+
+    while (!global_sigint_cnt && !global_sigterm_cnt && !fail) {
         slots_returned = catchall(&server);
         if (slots_returned)
             mx_log_info("slots_returned=%lu :: Main Loop freed %lu slots.", slots_returned, slots_returned);
@@ -1658,8 +1698,7 @@ int main(int argc, char *argv[])
             }
             continue;
         }
-    } while (!global_sigint_cnt && !global_sigterm_cnt);
-
+    }
     /*** clean up ***/
 
     mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting.", global_sigint_cnt, global_sigterm_cnt);
