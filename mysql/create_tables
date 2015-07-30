@@ -1,3 +1,14 @@
+
+UPDATE mxq_group
+    SET group_date_end=group_mtime
+    WHERE group_date_end = 0
+        AND group_jobs_inq = 0
+        AND group_jobs_running = 0;
+
+ALTER TABLE mxq_group
+    ADD COLUMN group_date_end TIMESTAMP NOT NULL DEFAULT 0
+        AFTER group_mtime;
+
 ALTER TABLE mxq_group
    CHANGE COLUMN stats_total_idle_sec stats_idle_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
    ADD COLUMN stats_total_wait_sec_finished INT8 UNSIGNED NOT NULL DEFAULT 0
@@ -92,6 +103,8 @@ CREATE TABLE IF NOT EXISTS mxq_group (
 
    group_mtime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+   group_date_end    TIMESTAMP NOT NULL DEFAULT 0,
+
    stats_max_maxrss   INT4 NOT NULL DEFAULT 0,
 
    stats_max_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
@@ -179,6 +192,39 @@ CREATE TABLE IF NOT EXISTS mxq_job (
 
 LOCK TABLES mxq_job WRITE, mxq_group WRITE;
 DELIMITER |
+DROP TRIGGER mxq_add_group|
+CREATE TRIGGER mxq_add_group BEFORE INSERT ON mxq_group
+    FOR EACH ROW BEGIN
+        SET NEW.group_mtime = NOW();
+
+        IF (NEW.group_jobs_running = 0 AND NEW.group_jobs_inq = 0) THEN
+            SET NEW.group_date_end = NEW.group_mtime;
+        ELSEIF  (NEW.group_jobs_running > 0 OR NEW.group_jobs_inq > 0) THEN
+            SET NEW.group_date_end = 0;
+        END IF;
+    END;
+|
+DROP TRIGGER mxq_update_group|
+CREATE TRIGGER mxq_update_group BEFORE UPDATE ON mxq_group
+    FOR EACH ROW BEGIN
+        SET NEW.group_mtime = NOW();
+
+        IF OLD.group_jobs_inq > 0 AND OLD.group_jobs_running = 0 THEN
+            SET NEW.stats_wait_sec = OLD.stats_wait_sec + (UNIX_TIMESTAMP(NEW.group_mtime) - UNIX_TIMESTAMP(OLD.group_mtime));
+        ELSEIF OLD.group_jobs_running > 0 THEN
+            SET NEW.stats_run_sec = OLD.stats_run_sec + (UNIX_TIMESTAMP(NEW.group_mtime) - UNIX_TIMESTAMP(OLD.group_mtime));
+        END IF;
+
+        IF (NEW.group_jobs_running = 0 AND NEW.group_jobs_inq = 0) AND
+           (OLD.group_jobs_running > 0 OR OLD.group_jobs_inq > 0) THEN
+            SET NEW.group_date_end = NEW.group_mtime;
+        ELSEIF  (OLD.group_jobs_running = 0 AND OLD.group_jobs_inq = 0) AND
+                (NEW.group_jobs_running > 0 OR NEW.group_jobs_inq > 0) THEN
+            SET NEW.stats_idle_sec = OLD.stats_idle_sec + (UNIX_TIMESTAMP(NEW.group_mtime) - UNIX_TIMESTAMP(OLD.group_date_end));
+            SET NEW.group_date_end = 0;
+        END IF;
+    END;
+|
 DROP TRIGGER mxq_add_job|
 CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
     FOR EACH ROW BEGIN
