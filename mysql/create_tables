@@ -280,7 +280,6 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 WHERE group_id=NEW.group_id;
             ELSEIF NEW.job_status = 999 AND OLD.job_status IN (400, 750) THEN
                 UPDATE mxq_group SET
-                   group_slots_running=group_slots_running-NEW.host_slots,
                    group_jobs_failed=group_jobs_failed-1,
                    group_jobs_unknown=group_jobs_unknown+1,
                    group_mtime=NULL
