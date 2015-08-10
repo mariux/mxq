@@ -410,6 +410,15 @@ install:: mxqdctl-hostconfig.sh
 
 ########################################################################
 
+build: mxqsub.1
+
+mrproper: CLEAN += manpages/mxqsub.1
+clean: CLEAN += mxqsub.1
+#install:: mxqsub.1
+#	$(call quiet-install,0644,mxqsub.1,${DESTDIR}${MAN1DIR}/mxqsub.1)
+
+########################################################################
+
 test_mx_util.o: $(mx_util.h)
 clean: CLEAN += test_mx_util.o
 

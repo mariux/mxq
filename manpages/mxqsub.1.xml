@@ -1,0 +1,97 @@
+<?xml version='1.0'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+    manpage of mxqsub
+
+    Copyright (C) 2015 Marius Tolzmann <tolzmann@molgen.mpg.de>
+
+    This file is part of MXQ.
+-->
+
+<refentry id="mxqsub">
+        <refentryinfo>
+                <title>MXQ - mariux64 queueing system</title>
+                <productname>MXQ @MXQ_VERSION@</productname>
+
+                <authorgroup>
+                    <author>
+                        <contrib>Developer</contrib>
+                        <firstname>Marius</firstname>
+                        <surname>Tolzmann</surname>
+                        <email>tolzmann@molgen.mpg.de</email>
+                    </author>
+                </authorgroup>
+        </refentryinfo>
+
+        <refmeta>
+                <refentrytitle>mxqsub</refentrytitle>
+                <manvolnum>1</manvolnum>
+        </refmeta>
+
+        <refnamediv>
+                <refname>mxqsub</refname>
+                <refpurpose>Submit a job</refpurpose>
+        </refnamediv>
+
+        <refsynopsisdiv>
+                <cmdsynopsis>
+                        <command>mxqsub</command>
+                        <arg choice="opt">options</arg>
+                        <arg choice="plain"><replaceable>&lt;command&gt;</replaceable></arg>
+                        <arg choice="opt"><replaceable>arguments</replaceable></arg>
+                </cmdsynopsis>
+        </refsynopsisdiv>
+
+        <refsect1>
+                <title>Description</title>
+
+                <para>
+                    <command>mxqsub</command> is used to
+                      queue a job to be executed on a cluster node.
+  &lt;command&gt; [arguments] will be executed on a node that offers
+  enough resources to run the job. The [options] can
+  influence the job environment and the scheduling decisions made
+  by the cluster
+                </para>
+        </refsect1>
+
+        <refsect1>
+                <title>Options</title>
+
+                <variablelist>
+                        <varlistentry>
+                                <term><option>-t <replaceable>&lt;time&gt;</replaceable></option></term>
+                                <term><option>--runtime=<replaceable>&lt;time&gt;</replaceable></option></term>
+
+                                <listitem><para>specify the estimated runtime.</para></listitem>
+                        </varlistentry>
+                </variablelist>
+        </refsect1>
+
+        <refsect1>
+                <title>Environment</title>
+
+                <variablelist>
+                    <varlistentry>
+                        <term><option>MXQ_MYSQL_DEFAULTFILE</option></term>
+                        <listitem><para>default for --mysql-default-file</para></listitem>
+                    </varlistentry>
+                </variablelist>
+        </refsect1>
+
+        <refsect1>
+                <title>Bugs</title>
+                <para>
+                Please report bugs to helpdesk@molgen.mpg.de or directly to the author.
+                </para>
+        </refsect1>
+
+        <refsect1>
+                <title>See Also</title>
+                <para>
+                        <citerefentry><refentrytitle>MXQ</refentrytitle><manvolnum>1</manvolnum></citerefentry>,
+                </para>
+        </refsect1>
+</refentry>

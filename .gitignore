@@ -15,6 +15,7 @@ mxq_log.o
 mx_mysql.o
 
 mxqsub
+/mxqsub.1
 mxqdump
 mxqkill
 mxqd
