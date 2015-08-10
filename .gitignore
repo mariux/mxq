@@ -1,18 +1,4 @@
-mx_getopt.o
-mx_flock.o
-mx_log.o
-mx_util.o
-mxq_group.o
-mxqdump.o
-mxq_job.o
-mxqd.o
-mxqsub.o
-mxqkill.o
-test_mx_util.o
-test_mx_log.o
-test_mx_mysql.o
-mxq_log.o
-mx_mysql.o
+*.o
 
 mxqsub
 mxqdump
