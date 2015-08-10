@@ -19,6 +19,47 @@ ALTER TABLE mxq_group
    MODIFY COLUMN stats_max_stime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
    MODIFY COLUMN stats_max_real_sec  INT8 UNSIGNED NOT NULL DEFAULT 0;
 
+UPDATE mxq_job
+    JOIN mxq_group
+        ON mxq_job.group_id = mxq_group.group_id
+    SET mxq_job.date_start = GREATEST(date_start, date_submit),
+        mxq_job.date_end   = GREATEST(date_start, date_submit),
+        mxq_job.job_status = 755
+    WHERE job_status IN (750, 400)
+        AND group_jobs_running > 0
+        AND stats_real_sec     = 0
+        AND date_end           = 0;
+
+UPDATE mxq_job
+    JOIN mxq_group
+        ON mxq_job.group_id = mxq_group.group_id
+    SET mxq_job.date_start = LEAST(GREATEST(date_start,date_submit), group_date_end),
+        mxq_job.date_end   = GREATEST(date_start,date_submit,group_date_end),
+        mxq_job.job_status = 755
+    WHERE job_status IN (750, 400)
+        AND group_jobs_running = 0
+        AND stats_real_sec     = 0
+        AND date_end           = 0;
+UPDATE mxq_job
+    SET job_status = 999
+    WHERE job_status = 755;
+
+
+UPDATE mxq_job
+    JOIN mxq_group
+        ON mxq_job.group_id = mxq_group.group_id
+    SET mxq_job.date_end = mxq_group.group_date_end
+    WHERE job_status = 1000
+        AND date_end = 0;
+
+UPDATE mxq_job
+    JOIN mxq_group
+        ON mxq_job.group_id = mxq_group.group_id
+    SET mxq_job.date_start = mxq_group.group_date_end,
+        mxq_job.date_end = mxq_group.group_date_end
+    WHERE job_status = 990
+        AND (date_start = 0 OR date_end = 0);
+
 UPDATE mxq_group
     SET group_date_end=group_mtime
     WHERE group_date_end = 0
@@ -297,7 +338,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    group_jobs_unknown=group_jobs_unknown+1,
                    group_mtime=NULL
                 WHERE group_id=NEW.group_id;
-            ELSEIF NEW.job_status = 999 AND OLD.job_status IN (400, 750) THEN
+            ELSEIF NEW.job_status = 999 AND OLD.job_status IN (400, 750, 755) THEN
                 UPDATE mxq_group SET
                    group_jobs_failed=group_jobs_failed-1,
                    group_jobs_unknown=group_jobs_unknown+1,
@@ -320,7 +361,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    stats_total_real_sec_finished=stats_total_real_sec_finished+NEW.stats_real_sec,
                    group_mtime=NULL
                 WHERE group_id=NEW.group_id;
-            ELSEIF NEW.job_status != 990 THEN
+            ELSEIF NEW.job_status != 990 AND NEW.job_status != 755 THEN
                 UPDATE mxq_group SET
                    stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
                    stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
