@@ -1,0 +1,513 @@
+#! /usr/bin/perl
+use strict;
+use warnings;
+use LWP;
+use CGI qw(:standard);
+use CGI::Carp qw(fatalsToBrowser);
+use DBI;
+
+our %GROUP_STATUS_NAME;         # ( 0=>'OK',...)
+our %JOB_STATUS_NAME;
+our $dbh;
+our $q;
+
+sub style {
+	return <<'EOF';
+<style>
+body { background:#ddd;  }
+
+
+div.dumper {border: 2px solid black; border-radius: 5px;  margin: 10px 0; padding: 0 10px;background: #faa; }
+
+table.jobs, table.jobs th,table.jobs td { border: 1px solid black;	border-collapse: collapse;}
+table.groups, table.groups th,table.groups td { border: 1px solid black;	border-collapse: collapse;}
+
+td.number { text-align: right; }
+
+</style>
+EOF
+}
+
+sub head {
+	return <<'EOF'.style().<<'EOF';
+<head>
+  <!-- <link rel="stylesheet" href="jquery-ui-1.10.4/css/ui-lightness/jquery-ui-1.10.4.min.css"></link> -->
+  <link rel="stylesheet" href="jquery-ui-themes-1.10.4/themes/sunny/jquery-ui.min.css"></link>
+  <script src="/jquery-2.1.0.min.js"></script>
+  <script src="jquery-ui-1.10.4/js/jquery-ui-1.10.4.min.js"></script>
+
+  <script>
+	var timeoutFunction=function() {
+		var i=$("#progress").progressbar("value");
+		if (i>=100) {
+			$('#inner').load(window.location.pathname+"/inner",function() {
+				$("#progress").progressbar("value",0);
+				window.setTimeout(timeoutFunction,1000);
+				
+			});
+		} else {
+			$("#progress").progressbar("value",i+1);
+			window.setTimeout(timeoutFunction,1000);
+		}
+	};
+
+	$(function() {
+		$("#progress").progressbar({
+			value: 10
+		});
+		window.setTimeout(timeoutFunction,1000);
+	});
+  </script>
+EOF
+</head>
+EOF
+
+
+}
+
+
+
+
+
+
+
+
+
+
+sub db_init {
+		
+	$dbh= DBI->connect('DBI:mysql:mysql_read_default_file=/etc/mxq/mysql.cnf',undef,undef, { RaiseError => 1, AutoCommit => 1 });
+	# mxq_group.h
+	register_group_status(
+		OK          =>     0,
+		CANCELLED   =>    99,
+	);
+	# mxq_job.h
+	register_job_status(
+		INQ         =>    0,
+		ASSIGNED    =>  100,
+		LOADED      =>  150,
+		RUNNING     =>  200,
+		UNKNOWN_RUN =>  250,
+		EXTRUNNING  =>  300,
+		STOPPED     =>  350,
+		EXIT        => 1024,
+		KILLED      =>  400,
+		FAILED      =>  750,
+		CANCELLED   =>  990,
+		UNKNOWN     =>  999,
+		FINISHED    => 1000,
+	);
+}
+
+
+
+sub register_status {
+        my ($hashref)=shift;
+        while (my ($name,$value)=splice(@_,0,2)) {
+                $hashref->{$value}=$name;
+        }
+}
+sub get_status {
+        my ($hashref,$in)=@_;
+        return $hashref->{$in}||sprintf('UNKNOWN(%d)',$in);
+}
+
+sub register_group_status { register_status(\%GROUP_STATUS_NAME,@_) }
+sub register_job_status   { register_status(\%JOB_STATUS_NAME,@_) }
+sub group_status          { return get_status(\%GROUP_STATUS_NAME,@_) }
+sub job_status            { return get_status(\%JOB_STATUS_NAME,@_) }
+
+
+
+sub humanSeconds {
+	my ($seconds)=@_;
+
+	$seconds<60    and return sprintf ('%2d s',$seconds);
+	$seconds<3600  and return sprintf ('%2d m %2d s',$seconds/60,$seconds%60);
+	$seconds<86400 and return sprintf ('%2d h %2d m',$seconds/3600,$seconds%3600/60);
+	return sprintf('%2d d %2d h',$seconds/86400,$seconds%86400/3600);
+}
+
+sub split_cmd {
+	my ($in)=@_;
+	$in=~s/\\0/ /g;
+	return $in;
+}
+
+
+
+sub DataDumper {
+	use Data::Dumper;
+	$Data::Dumper::Indent=0;
+	return $q->div({class=>'dumper'},escapeHTML(Dumper(@_)));
+}
+
+sub job_table_pending {
+
+	my ($sql_clause,@bind_args)=@_;
+
+	my $out;
+
+	my @cols=qw(job_id user_name date_submit job_threads);
+
+	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_job,mxq_group WHERE mxq_job.group_id=mxq_group.group_id AND job_status=0 ORDER BY job_status,date_submit');
+	$sth->execute(@bind_args);
+
+	$out.='<table class="jobs">';
+
+	$out.=$q->Tr($q->th(\@cols));
+
+	while (my $row=$sth->fetchrow_arrayref()) {
+		my ($job_id,$user_name,$date_submit,$job_threads)=@$row;
+
+		$out.=$q->Tr(
+			$q->td({class=>'number'},$q->a({href=>selfurl("/job/$job_id")},$job_id)),
+			$q->td($user_name),
+			$q->td($date_submit),
+			$q->td({class=>'number'},$job_threads),
+		);
+	}
+	$out.='</table>';
+}
+
+sub job_table_running {
+
+	my ($sql_clause,@bind_args)=@_;
+
+	my $out;
+
+	my @cols=qw(job_id user_name date_start host_hostname host_pid host_slots);
+
+	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_job,mxq_group WHERE mxq_job.group_id=mxq_group.group_id AND job_status=200 ORDER BY job_status,date_start');
+	$sth->execute(@bind_args);
+
+	$out.='<table class="jobs">';
+
+	$out.=$q->Tr($q->th(\@cols));
+
+	while (my $row=$sth->fetchrow_arrayref()) {
+		my ($job_id,$user_name,$date_start,$host_hostname,$host_pid,$host_slots)=@$row;
+
+		$out.=$q->Tr(
+			$q->td({class=>'number'},$q->a({href=>selfurl("/job/$job_id")},$job_id)),
+			$q->td($user_name),
+			$q->td($date_start),
+			$q->td($host_hostname),
+			$q->td({class=>'number'},$host_pid),
+			$q->td({class=>'number'},$host_slots),
+		);
+	}
+	$out.='</table>';
+}
+
+sub job_table_of_group {
+
+	my ($group_id)=@_;
+
+	my $out;
+
+	my @cols=qw(job_id job_status date_submit date_start host_hostname host_pid);
+
+	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_job,mxq_group WHERE mxq_job.group_id=mxq_group.group_id AND mxq_job.group_id=? ORDER BY job_id DESC');
+	$sth->execute($group_id);
+
+	$out.='<table class="jobs">';
+
+	$out.=$q->Tr($q->th(\@cols));
+
+	while (my $row=$sth->fetchrow_arrayref()) {
+		my ($job_id,$job_status,$date_submit,$date_start,$host_hostname,$host_pid)=@$row;
+
+		$out.=$q->Tr(
+			$q->td({class=>'number'},$q->a({href=>selfurl("/job/$job_id")},$job_id)),
+			$q->td(job_status($job_status)),
+			$q->td($date_submit),
+			$q->td($date_start),
+			$q->td($host_hostname),
+			$q->td({class=>'number'},$host_pid),
+		);
+	}
+	$out.='</table>';
+}
+
+
+
+sub group_detail {
+	my ($group_id)=@_;
+	$dbh or db_init();
+
+	my $out='';
+
+	my $sth=$dbh->prepare('SELECT * FROM mxq_group WHERE group_id=? LIMIT 1',undef);
+	$sth->execute($group_id);
+	my %o=%{$sth->fetchrow_hashref('NAME_lc')};
+
+	$out.=h2("Group Detail group_id $o{group_id}");
+
+	my $group_status_text=group_status($o{'group_status'});
+
+	$out.=<<"EOF";
+<pre>
+group_name     : $o{group_name}
+group_status   : $group_status_text
+group_flags    : $o{group_flags}
+group_priority : $o{group_priority}
+
+user_uid       : $o{user_uid}
+user_name      : $o{user_name}
+user_gid       : $o{user_gid}
+user_group     : $o{user_group}
+
+job_command    : $o{job_command}
+job_threads    : $o{job_threads}
+job_memory     : $o{job_memory}
+job_time       : $o{job_time}
+
+group_jobs            : $o{group_jobs}
+group_jobs_inq        : $o{group_jobs_inq}
+group_jobs_running    : $o{group_jobs_running}
+group_jobs_finished   : $o{group_jobs_finished}
+group_jobs_failed     : $o{group_jobs_failed}
+group_jobs_cancelled  : $o{group_jobs_cancelled}
+group_jobs_unknown    : $o{group_jobs_unknown}
+group_jobs_restarted  : $o{group_jobs_restarted}
+
+group_slots_running:  : $o{group_slots_running}
+
+group_mtime           : $o{group_mtime}
+ 
+group_date_end        : $o{group_date_end}
+
+stats_max_maxrss                 : $o{stats_max_maxrss}
+stats_max_utime_sec              : $o{stats_max_utime_sec}
+stats_max_stime_sec              : $o{stats_max_stime_sec}
+stats_max_real_sec               : $o{stats_max_real_sec}
+
+stats_total_utime_sec            : $o{stats_total_utime_sec}
+stats_total_stime_sec            : $o{stats_total_stime_sec}
+stats_total_real_sec             : $o{stats_total_real_sec}
+stats_total_wait_sec             : $o{stats_total_wait_sec}
+
+stats_total_utime_sec_finished   : $o{stats_total_utime_sec_finished}
+stats_total_stime_sec_finished   : $o{stats_total_stime_sec_finished}
+stats_total_real_sec_finished    : $o{stats_total_real_sec_finished}
+stats_total_wait_sec_finished    : $o{stats_total_wait_sec_finished}
+</pre>
+EOF
+
+		return $out;
+}
+
+
+
+sub group {
+	my ($group_id)=@_;
+
+	my $out=h1('MXQ Group '.$group_id);
+
+	$out.=group_detail($group_id);
+	$out.=h2('Jobs of this group').job_table_of_group($group_id);
+
+	return $out;
+}
+
+
+
+
+
+
+
+sub job {
+	my ($job_id)=@_;
+
+	my $out=h1('MXQ JOB '.$job_id);
+
+	$dbh or db_init();
+
+	my $sth=$dbh->prepare('SELECT * FROM mxq_job WHERE job_id=? LIMIT 1',undef);
+	$sth->execute($job_id);
+	my %o=%{$sth->fetchrow_hashref('NAME_lc')};
+
+	$out.=group_detail($o{group_id});
+
+	my $job_status_text=job_status($o{'job_status'});
+	my $job_umask_text=sprintf('%03O',$o{job_umask});
+	my $link_group_id=a({href=>selfurl("/group/$o{group_id}")},$o{group_id});
+	my $argv=split_cmd($o{job_argv});
+
+	$out.=h2("Job Details $o{job_id}");
+	$out.=<<"EOF";
+<pre>
+job_status       : $job_status_text
+job_flags        : $o{job_flags}
+job_priority     : $o{job_priority}
+
+group_id         : $link_group_id
+
+job_workdir      : $o{job_workdir}
+job_argc         ; $o{job_argc}
+job_argv         ; $argv
+job_stdout       : $o{job_stdout}
+job_stderr       : $o{job_stderr}
+job_umask:       : $job_umask_text;
+
+host_submit      : $o{host_submit}
+
+server_id        : $o{server_id} 
+
+host_hostname    : $o{host_hostname}
+host_pid         : $o{host_pid}
+host_slots       : $o{host_slots}
+
+date_submit      : $o{date_submit}
+date_start       : $o{date_start}
+date_end         : $o{date_start}
+
+job_id_new       : $o{job_id_new}
+job_id_old       : $o{job_id_old}
+job_id_first     : $o{job_id_first}
+
+stats_status     : $o{stats_status}
+
+stats_utim_sec   : $o{stats_utime_sec}
+stats_utime_usec : $o{stats_utime_usec}
+stats_stim_sec   : $o{stats_stime_sec}
+stats_stime_usec : $o{stats_stime_usec}
+stats_real_sec   : $o{stats_real_sec}
+stats_real_usec  : $o{stats_real_usec}
+stats_maxrss     : $o{stats_maxrss}
+stats_minflt     : $o{stats_minflt}
+stats_majflt     : $o{stats_majflt}
+stats_nswap      : $o{stats_nswap}
+stats_inblock    : $o{stats_inblock}
+stats_oublock    : $o{stats_oublock}
+stats_nvcsw      : $o{stats_nvcsw}
+stats_nivcsw     : $o{stats_nivcsw}
+</pre>
+EOF
+	return $out;
+}
+
+sub group_table_rows {
+	my ($sth,$head)=@_;
+	my $out='';
+
+	$out.='<table class="groups">';
+
+	$out.=$q->Tr($q->th($head));
+
+	while (my $row=$sth->fetchrow_arrayref()) {
+		my ($group_id,$group_name,$user_name,$group_mtime,$group_status,
+			$group_jobs,$group_jobs_inq,$group_jobs_running,$group_jobs_finished,$group_jobs_failed,$group_jobs_cancelled,$group_jobs_unknown		
+		)=@$row;
+
+		$out.=$q->Tr(
+			$q->td({class=>'number'},$q->a({href=>selfurl("/group/$group_id")},$group_id)),
+			$q->td($group_name),
+			$q->td($user_name),
+			$q->td($group_mtime),
+			$q->td(group_status($group_status)),
+
+			$q->td({class=>'number'},$group_jobs),
+			$q->td({class=>'number'},$group_jobs_inq),
+			$q->td({class=>'number'},$group_jobs_running),
+			$q->td({class=>'number'},$group_jobs_finished),
+			$q->td({class=>'number'},$group_jobs_failed),
+			$q->td({class=>'number'},$group_jobs_cancelled),
+			$q->td({class=>'number'},$group_jobs_unknown)		
+						
+		);
+	}
+	$out.='</table>';
+	return $out;
+}
+
+sub group_table {
+
+	my ($sql_clause,@bind_args)=@_;
+
+	my $out;
+
+	my @cols=qw(
+		group_id group_name user_name group_mtime group_status
+		group_jobs group_jobs_inq group_jobs_running group_jobs_finished group_jobs_failed group_jobs_cancelled group_jobs_unknown
+	);
+	my @head=qw(
+		group_id group_name user_name group_mtime group_status
+		jobs inq running finished failed cancelled unknown
+	);
+
+
+	$out .= '<h2>Active Groups</h2>';
+
+	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running>0 OR group_jobs_inq>0) ORDER BY group_id DESC');
+	$sth->execute(@bind_args);
+	$out.=group_table_rows($sth,\@head);
+
+	$out .= '<h2>Finished Groups</h2>';
+
+	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) ORDER BY group_id DESC');
+	$sth->execute(@bind_args);
+	$out.=group_table_rows($sth,\@head);
+
+	return $out;
+}
+
+
+
+sub groups {
+	my $out=h1('MXQ Groups');
+
+	$dbh or db_init();
+
+	$out.=group_table('true');
+
+	return $out;
+}
+
+sub active_jobs() {
+	$dbh or db_init();
+	return h1('MXQ Running Jobs').job_table_running().h1('MXQ Pending Jobs').job_table_pending();
+}
+
+
+
+sub selfurl {
+	my ($path_info)=@_;
+	return $q->url().$path_info;
+}
+
+sub top {
+	return $q->ul(
+		$q->li(a({href=>selfurl('/groups')},'groups')),
+		$q->li(a({href=>selfurl('/active_jobs')},'active_jobs')),
+	);
+}
+
+$q=new CGI;
+my $path_info=$q->path_info()||'';
+
+#print header();
+#print "path info: $path_info<br>";
+#print "url    : ".$q->url()."<br>";
+#print "url rel: ".$q->url(-relative=>1)."<br>";
+#print "xx ",selfurl('/groups').'<br>';
+#exit;
+
+$path_info=~s/\/$//;
+if ($path_info eq '') {
+	print header().head.top();
+} elsif ($path_info eq '/groups') {
+	print header().head().groups();
+} elsif ($path_info eq '/active_jobs') {
+	print header().head().active_jobs();
+} elsif ($path_info =~ /\/group\/(\d+)$/) {
+	print header().head().group($1);
+} elsif ($path_info =~ /\/job\/(\d+)$/) {
+	print header().head().job($1);
+} else {
+	print header(-status => 404).head().'<h1>not found</h1>';
+}
+
+
