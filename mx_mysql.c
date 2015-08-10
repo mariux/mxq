@@ -157,7 +157,7 @@ static int mx__mysql_real_connect(struct mx_mysql *mysql, const char *host, cons
     if (m && m == mysql->mysql)
         return 0;
 
-    mx__mysql_log_debug(mysql);
+    mx__mysql_log_warning(mysql);
 
     switch (mx__mysql_errno(mysql)) {
         case CR_ALREADY_CONNECTED:
@@ -201,7 +201,7 @@ static inline int mx__mysql_ping(struct mx_mysql *mysql)
     if (res == 0)
         return 0;
 
-    mx__mysql_log_debug(mysql);
+    mx__mysql_log_warning(mysql);
 
     switch (mx__mysql_errno(mysql)) {
         case CR_COMMANDS_OUT_OF_SYNC:
@@ -249,7 +249,7 @@ static int mx__mysql_real_query(struct mx_mysql *mysql, const char *stmt_str, un
     if (res == 0)
         return 0;
 
-    mx__mysql_log_debug(mysql);
+    mx__mysql_log_warning(mysql);
 
     switch (mx__mysql_errno(mysql)) {
         case CR_COMMANDS_OUT_OF_SYNC:
@@ -280,7 +280,7 @@ static int mx__mysql_stmt_init(struct mx_mysql_stmt *stmt)
     if (stmt->stmt)
         return 0;
 
-    mx__mysql_log_debug(stmt->mysql);
+    mx__mysql_log_warning(stmt->mysql);
 
     if (mx__mysql_errno(stmt->mysql) == CR_OUT_OF_MEMORY)
         return -(errno=ENOMEM);
@@ -309,7 +309,7 @@ static int mx__mysql_stmt_prepare(struct mx_mysql_stmt *stmt, char *statement)
         stmt->statement = statement;
         return 0;
     }
-    mx__mysql_stmt_log_debug(stmt);
+    mx__mysql_stmt_log_warning(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_OUT_OF_MEMORY:
@@ -349,7 +349,7 @@ static int mx__mysql_stmt_bind_param(struct mx_mysql_stmt *stmt)
     if (res == 0)
         return 0;
 
-    mx__mysql_stmt_log_debug(stmt);
+    mx__mysql_stmt_log_warning(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_OUT_OF_MEMORY:
@@ -380,7 +380,7 @@ static int mx__mysql_stmt_bind_result(struct mx_mysql_stmt *stmt)
     if (res == 0)
         return 0;
 
-    mx__mysql_stmt_log_debug(stmt);
+    mx__mysql_stmt_log_warning(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_OUT_OF_MEMORY:
@@ -410,7 +410,7 @@ static int mx__mysql_stmt_execute(struct mx_mysql_stmt *stmt)
     if (res == 0)
         return 0;
 
-    mx__mysql_stmt_log_debug(stmt);
+    mx__mysql_stmt_log_warning(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_COMMANDS_OUT_OF_SYNC:
@@ -444,7 +444,7 @@ static int mx__mysql_stmt_store_result(struct mx_mysql_stmt *stmt)
     if (res == 0)
         return 0;
 
-    mx__mysql_stmt_log_debug(stmt);
+    mx__mysql_stmt_log_warning(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_COMMANDS_OUT_OF_SYNC:
@@ -497,7 +497,7 @@ static int mx__mysql_stmt_fetch(struct mx_mysql_stmt *stmt)
         return 0;
 
     if (res == 1) {
-        mx__mysql_stmt_log_debug(stmt);
+        mx__mysql_stmt_log_warning(stmt);
 
         switch (mx__mysql_stmt_errno(stmt)) {
             case CR_OUT_OF_MEMORY:
@@ -545,7 +545,7 @@ static int mx__mysql_stmt_fetch_column(struct mx_mysql_stmt *stmt, unsigned int 
     res = mysql_stmt_fetch_column(stmt->stmt, &(stmt->result.bind[column]), column, offset);
     if (res == 0)
         return 0;
-    mx__mysql_stmt_log_debug(stmt);
+    mx__mysql_stmt_log_warning(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_INVALID_PARAMETER_NO:
@@ -652,7 +652,7 @@ static int mx__mysql_stmt_close(struct mx_mysql_stmt *stmt)
         return 0;
     }
 
-    mx__mysql_stmt_log_debug(stmt);
+    mx__mysql_stmt_log_warning(stmt);
 
     switch (mx__mysql_stmt_errno(stmt)) {
         case CR_SERVER_GONE_ERROR:
