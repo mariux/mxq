@@ -113,6 +113,18 @@ quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4}
 
 ########################################################################
 
+.SECONDARY:
+
+MAN1DIR := ${MANDIR}/man1
+
+manpages/%: manpages/%.xml
+	$(call quiet-command,xmlto --stringparam man.output.quietly=1 man $^ -o manpages, "  XMLTO $@")
+
+%: manpages/% Makefile
+	$(call quiet-command,sed -e "s/@MXQ_VERSION@/${MXQ_VERSION}/" $< >$@, "    GEN $@")
+
+########################################################################
+
 .PHONY: all
 .PHONY: build
 
@@ -129,8 +141,11 @@ test:
 
 ########################################################################
 
+.PHONY: mrproper
+mrproper: clean
+
 .PHONY: clean
-clean:
+mrproper clean:
 	@for i in $(CLEAN) ; do \
 	    if [ -e "$$i" ] ; then \
 			if [ "$(V)" = 1 ] ; then \
@@ -146,7 +161,7 @@ clean:
 
 .PHONY: fix
 fix:
-	@for i in *.c *.h Makefile mysql/create_tables mxqdctl-hostconfig.sh ; do \
+	@for i in *.c *.h Makefile mysql/create_tables mxqdctl-hostconfig.sh manpages/*.xml ; do \
 	    if grep -q -m 1 -E '\s+$$' $$i ; then \
 	        echo "FIX   $$i" ; \
 	        sed -i $$i -e 's/\s*$$//g' ; \
@@ -156,10 +171,14 @@ fix:
 ########################################################################
 
 .PHONY: install
+
 install:: build
+
+install::
 	$(call quiet-installdir,0755,${DESTDIR}${BINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SBINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
+	$(call quiet-installdir,0755,${DESTDIR}${MAN1DIR})
 
 ########################################################################
 
