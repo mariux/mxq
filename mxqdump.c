@@ -111,7 +111,7 @@ static int print_group(struct mxq_group *g)
                     " finished=%lu cancelled=%lu unknown=%lu inq=%lu"
                     " job_threads=%u job_memory=%lukiB job_time=%us"
                     " memory_load=%lu%% time_load=%lu%%"
-                    " max_utime=%lu max_real=%lu max_memory=%ukiB job_command=%s group_name=%s\n",
+                    " max_utime=%lu max_real=%lu max_memory=%lukiB job_command=%s group_name=%s\n",
         g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
         g->group_jobs_running, g->group_slots_running, g->group_jobs_failed,
         g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,

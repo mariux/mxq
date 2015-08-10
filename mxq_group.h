@@ -43,7 +43,7 @@ struct mxq_group {
 
    uint64_t  group_slots_running;
 
-   uint32_t  stats_max_maxrss;
+   uint64_t  stats_max_maxrss;
 
    struct timeval stats_max_utime;
    struct timeval stats_max_stime;

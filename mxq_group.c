@@ -78,7 +78,7 @@ static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_gro
 
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_slots_running));
 
-    res += mx_mysql_bind_var(result, idx++, uint32, &(g->stats_max_maxrss));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(g->stats_max_maxrss));
     res += mx_mysql_bind_var(result, idx++, int64, &(g->stats_max_utime.tv_sec));
     res += mx_mysql_bind_var(result, idx++, int64, &(g->stats_max_stime.tv_sec));
     res += mx_mysql_bind_var(result, idx++, int64, &(g->stats_max_real.tv_sec));

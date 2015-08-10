@@ -1,4 +1,24 @@
 
+ALTER TABLE mxq_job
+   MODIFY COLUMN stats_utime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_stime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_real_sec   INT8 UNSIGNED NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_maxrss   INT8 NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_minflt   INT8 NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_majflt   INT8 NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_nswap    INT8 NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_inblock  INT8 NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_oublock  INT8 NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_nvcsw    INT8 NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_nivcsw   INT8 NOT NULL DEFAULT 0;
+
+
+ALTER TABLE mxq_group
+   MODIFY COLUMN stats_max_maxrss    INT8 UNSIGNED NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_max_utime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_max_stime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
+   MODIFY COLUMN stats_max_real_sec  INT8 UNSIGNED NOT NULL DEFAULT 0;
+
 UPDATE mxq_group
     SET group_date_end=group_mtime
     WHERE group_date_end = 0
@@ -105,11 +125,10 @@ CREATE TABLE IF NOT EXISTS mxq_group (
 
    group_date_end    TIMESTAMP NOT NULL DEFAULT 0,
 
-   stats_max_maxrss   INT4 NOT NULL DEFAULT 0,
-
-   stats_max_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
-   stats_max_stime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
-   stats_max_real_sec   INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_maxrss     INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_utime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_stime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   stats_max_real_sec   INT8 UNSIGNED NOT NULL DEFAULT 0,
 
    stats_total_utime_sec    INT8 UNSIGNED NOT NULL DEFAULT 0,
    stats_total_stime_sec    INT8 UNSIGNED NOT NULL DEFAULT 0,
@@ -165,21 +184,21 @@ CREATE TABLE IF NOT EXISTS mxq_job (
 
    stats_status   INT4 UNSIGNED NOT NULL DEFAULT 0,
 
-   stats_utime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_utime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
    stats_utime_usec INT4 UNSIGNED NOT NULL DEFAULT 0,
-   stats_stime_sec  INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_stime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
    stats_stime_usec INT4 UNSIGNED NOT NULL DEFAULT 0,
-   stats_real_sec   INT4 UNSIGNED NOT NULL DEFAULT 0,
+   stats_real_sec   INT8 UNSIGNED NOT NULL DEFAULT 0,
    stats_real_usec  INT4 UNSIGNED NOT NULL DEFAULT 0,
 
-   stats_maxrss   INT4 NOT NULL DEFAULT 0,
-   stats_minflt   INT4 NOT NULL DEFAULT 0,
-   stats_majflt   INT4 NOT NULL DEFAULT 0,
-   stats_nswap    INT4 NOT NULL DEFAULT 0,
-   stats_inblock  INT4 NOT NULL DEFAULT 0,
-   stats_oublock  INT4 NOT NULL DEFAULT 0,
-   stats_nvcsw    INT4 NOT NULL DEFAULT 0,
-   stats_nivcsw   INT4 NOT NULL DEFAULT 0,
+   stats_maxrss   INT8 NOT NULL DEFAULT 0,
+   stats_minflt   INT8 NOT NULL DEFAULT 0,
+   stats_majflt   INT8 NOT NULL DEFAULT 0,
+   stats_nswap    INT8 NOT NULL DEFAULT 0,
+   stats_inblock  INT8 NOT NULL DEFAULT 0,
+   stats_oublock  INT8 NOT NULL DEFAULT 0,
+   stats_nvcsw    INT8 NOT NULL DEFAULT 0,
+   stats_nivcsw   INT8 NOT NULL DEFAULT 0,
 
    INDEX (job_id),
    INDEX (group_id),
