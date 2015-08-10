@@ -1347,7 +1347,7 @@ int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_b
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
         mx_mysql_statement_close(&stmt);
-        return res;
+        return -(errno=-res);
     }
 
     if (result && result->count && num_rows) {
@@ -1359,7 +1359,7 @@ int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_b
                 mx_log_err("mx_mysql_statement_fetch(): %m");
                 mx_free_null(tmpdata);
                 mx_mysql_statement_close(&stmt);
-                return res;
+                return -(errno=-res);
             }
             memcpy(tmpdata+(cnt*size), from, size);
         }
