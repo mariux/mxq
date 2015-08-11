@@ -76,7 +76,7 @@ EOF
 
 sub db_init {
 		
-	$dbh= DBI->connect('DBI:mysql:mysql_read_default_file=/etc/mxq/mysql.cnf',undef,undef, { RaiseError => 1, AutoCommit => 1 });
+	$dbh= DBI->connect('DBI:mysql:mysql_read_default_file=@MXQ_MYSQL_DEFAULT_FILE@',undef,undef, { RaiseError => 1, AutoCommit => 1 });
 	# mxq_group.h
 	register_group_status(
 		OK          =>     0,

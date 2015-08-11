@@ -443,6 +443,8 @@ clean: CLEAN += mxqsub.1
 
 build: web/pages/mxq/mxq
 
+clean: CLEAN += web/pages/mxq/mxq
+
 install:: web/pages/mxq/mxq
 	$(call quiet-install,0755,$^,${DESTDIR}${CGIDIR}/mxq)
 
