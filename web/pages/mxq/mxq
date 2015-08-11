@@ -445,6 +445,32 @@ sub group_table {
 	$sth->execute(@bind_args);
 	$out.=group_table_rows($sth,\@head);
 
+	@cols=qw(
+        group_id
+        group_name
+        user_name
+        group_mtime
+        group_status
+        group_jobs
+        group_jobs_finished
+        group_jobs_failed
+        group_jobs_cancelled
+        group_jobs_unknown
+	);
+
+	@head=qw(
+        group_id
+        group_name
+        user_name
+        group_mtime
+        group_status
+        jobs
+        finished
+        failed
+        cancelled
+        unknown
+	);
+
 	$out .= '<h2>Finished Groups</h2>';
 
 	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) ORDER BY group_id DESC');
