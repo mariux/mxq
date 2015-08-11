@@ -551,8 +551,10 @@ int main(int argc, char *argv[])
 
             case 'a':
                 p = strchr(optctl.optarg, ' ');
-                if (p)
-                    *p = 0;
+                if (p) {
+                    mx_log_crit("--command-alias '%s': String contains whitespace characters.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 if (!(*optctl.optarg)) {
                     mx_log_crit("--command-alias '%s': String is empty.", optctl.optarg);
                     exit(EX_CONFIG);
@@ -647,6 +649,15 @@ int main(int argc, char *argv[])
 
     /* from this point values in argc,argv are the ones of the cluster job  */
 
+    if (!arg_program_name) {
+        p = strchr(argv[0], ' ');
+        if (p) {
+            mx_log_crit("<command> contains whitespace characters. Please set --command-alias if this is intended.", optctl.optarg);
+            exit(EX_CONFIG);
+        }
+        arg_program_name = argv[0];
+    }
+
     if (!arg_time) {
         arg_time = 15;
         mx_log_warning("option '--runtime' or '-t' not used. Your job will get killed if it runs longer than the default of %d minutes.", arg_time);
@@ -655,9 +666,6 @@ int main(int argc, char *argv[])
     if (arg_time > 60*24) {
         mx_log_warning("option '--runtime' specifies a runtime longer than 24h. Your job may get killed. Be sure to implement some check pointing.");
     }
-
-    if (!arg_program_name)
-        arg_program_name = argv[0];
 
     if (!(*arg_program_name)) {
         mx_log_crit("<command> is empty. Please check usage with '%s --help'.", program_invocation_short_name);
