@@ -449,7 +449,7 @@ sub group_table {
         group_id
         group_name
         user_name
-        group_mtime
+        group_date_emd
         group_status
         group_jobs
         group_jobs_finished
@@ -462,7 +462,7 @@ sub group_table {
         group_id
         group_name
         user_name
-        group_mtime
+        date_end
         group_status
         jobs
         finished
