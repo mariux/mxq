@@ -1,136 +1,4 @@
 
-ALTER TABLE mxq_job
-   MODIFY COLUMN stats_utime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_stime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_real_sec   INT8 UNSIGNED NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_maxrss   INT8 NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_minflt   INT8 NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_majflt   INT8 NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_nswap    INT8 NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_inblock  INT8 NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_oublock  INT8 NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_nvcsw    INT8 NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_nivcsw   INT8 NOT NULL DEFAULT 0;
-
-
-ALTER TABLE mxq_group
-   MODIFY COLUMN stats_max_maxrss    INT8 UNSIGNED NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_max_utime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_max_stime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
-   MODIFY COLUMN stats_max_real_sec  INT8 UNSIGNED NOT NULL DEFAULT 0;
-
-UPDATE mxq_job
-    JOIN mxq_group
-        ON mxq_job.group_id = mxq_group.group_id
-    SET mxq_job.date_start = GREATEST(date_start, date_submit),
-        mxq_job.date_end   = GREATEST(date_start, date_submit),
-        mxq_job.job_status = 755
-    WHERE job_status IN (750, 400)
-        AND group_jobs_running > 0
-        AND stats_real_sec     = 0
-        AND date_end           = 0;
-
-UPDATE mxq_job
-    JOIN mxq_group
-        ON mxq_job.group_id = mxq_group.group_id
-    SET mxq_job.date_start = LEAST(GREATEST(date_start,date_submit), group_date_end),
-        mxq_job.date_end   = GREATEST(date_start,date_submit,group_date_end),
-        mxq_job.job_status = 755
-    WHERE job_status IN (750, 400)
-        AND group_jobs_running = 0
-        AND stats_real_sec     = 0
-        AND date_end           = 0;
-UPDATE mxq_job
-    SET job_status = 999
-    WHERE job_status = 755;
-
-
-UPDATE mxq_job
-    JOIN mxq_group
-        ON mxq_job.group_id = mxq_group.group_id
-    SET mxq_job.date_end = mxq_group.group_date_end
-    WHERE job_status = 1000
-        AND date_end = 0;
-
-UPDATE mxq_job
-    JOIN mxq_group
-        ON mxq_job.group_id = mxq_group.group_id
-    SET mxq_job.date_start = mxq_group.group_date_end,
-        mxq_job.date_end = mxq_group.group_date_end
-    WHERE job_status = 990
-        AND (date_start = 0 OR date_end = 0);
-
-UPDATE mxq_group
-    SET group_date_end=group_mtime
-    WHERE group_date_end = 0
-        AND group_jobs_inq = 0
-        AND group_jobs_running = 0;
-
-ALTER TABLE mxq_group
-    ADD COLUMN group_date_end TIMESTAMP NOT NULL DEFAULT 0
-        AFTER group_mtime;
-
-ALTER TABLE mxq_group
-   CHANGE COLUMN stats_total_idle_sec stats_idle_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
-   ADD COLUMN stats_total_wait_sec_finished INT8 UNSIGNED NOT NULL DEFAULT 0
-      AFTER stats_total_real_sec_finished,
-   ADD COLUMN stats_wait_sec INT8 UNSIGNED NOT NULL DEFAULT 0
-      AFTER stats_total_wait_sec,
-   ADD COLUMN stats_run_sec INT8 UNSIGNED NOT NULL DEFAULT 0
-      AFTER stats_wait_sec;
-
-ALTER TABLE mxq_job
-   ADD COLUMN job_id_first INT8 UNSIGNED   NULL DEFAULT NULL
-   AFTER job_id_old;
-
-ALTER TABLE mxq_job
-   ADD COLUMN job_id_old INT8 UNSIGNED   NULL DEFAULT NULL
-   AFTER job_id_new;
-
-ALTER TABLE mxq_group
-   ADD COLUMN group_jobs_restarted INT8 UNSIGNED NOT NULL DEFAULT 0
-   AFTER group_jobs_unknown;
-
-ALTER TABLE mxq_group
-   ADD COLUMN group_flags INT8 UNSIGNED NOT NULL DEFAULT 0
-   AFTER group_status;
-
-ALTER TABLE mxq_group
-   ADD COLUMN group_jobs_inq INT8 UNSIGNED NOT NULL DEFAULT 0
-   AFTER group_jobs;
-
-ALTER TABLE mxq_group
-   ADD COLUMN stats_total_utime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
-   ADD COLUMN stats_total_stime_sec INT8 UNSIGNED NOT NULL DEFAULT 0,
-   ADD COLUMN stats_total_real_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
-   ADD COLUMN stats_total_wait_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
-   ADD COLUMN stats_total_idle_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
-
-   ADD COLUMN stats_total_utime_sec_finished    INT8 UNSIGNED NOT NULL DEFAULT 0,
-   ADD COLUMN stats_total_stime_sec_finished    INT8 UNSIGNED NOT NULL DEFAULT 0,
-   ADD COLUMN stats_total_real_sec_finished     INT8 UNSIGNED NOT NULL DEFAULT 0;
-
-ALTER TABLE mxq_job
-   ADD INDEX (group_id);
-
-ALTER TABLE mxq_job
-   ADD COLUMN job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL
-   AFTER date_end;
-
-ALTER TABLE mxq_job
-   ADD COLUMN job_flags INT8 UNSIGNED NOT NULL DEFAULT 0
-   AFTER job_status;
-
-ALTER TABLE mxq_group
-   ADD COLUMN group_jobs_cancelled INT8 UNSIGNED NOT NULL DEFAULT 0
-   AFTER group_jobs_failed;
-
-ALTER TABLE mxq_group
-   ADD COLUMN group_jobs_unknown INT8 UNSIGNED NOT NULL DEFAULT 0
-   AFTER group_jobs_cancelled;
-
-DROP TRIGGER mxq_update_group;
-
 DROP TABLE mxq_group;
 CREATE TABLE IF NOT EXISTS mxq_group (
    group_id       INT8 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -248,6 +116,27 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    INDEX (host_hostname(64)),
    INDEX (server_id(767))
 );
+
+DROP TABLE mxq_server;
+CREATE TABLE IF NOT EXISTS mxq_server (
+   host_id          INT4 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   host_hostname    VARCHAR(511)  NOT NULL DEFAULT 'localhost',
+
+   server_id        VARCHAR(511)  NOT NULL DEFAULT 'default',
+
+   host_slots       INT2 UNSIGNED NOT NULL DEFAULT 1,
+   host_memory      INT8 UNSIGNED NOT NULL DEFAULT 1024,
+   host_time        INT4 UNSIGNED NOT NULL DEFAULT 15,
+
+   host_jobs_running    INT2 UNSIGNED NOT NULL DEFAULT 0,
+   host_slots_running   INT2 UNSIGNED NOT NULL DEFAULT 0,
+
+   host_mtime       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+   server_start     TIMESTAMP DEFAULT 0,
+   server_stop      TIMESTAMP DEFAULT 0,
+);
+
 
 
 LOCK TABLES mxq_job WRITE, mxq_group WRITE;
@@ -378,24 +267,3 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
 |
 DELIMITER ;
 UNLOCK TABLES;
-
-DROP TABLE mxq_server;
-CREATE TABLE IF NOT EXISTS mxq_server (
-   host_id          INT4 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   host_hostname    VARCHAR(511)  NOT NULL DEFAULT 'localhost',
-
-   server_id        VARCHAR(511)  NOT NULL DEFAULT 'default',
-
-   host_slots       INT2 UNSIGNED NOT NULL DEFAULT 1,
-   host_memory      INT8 UNSIGNED NOT NULL DEFAULT 1024,
-   host_time        INT4 UNSIGNED NOT NULL DEFAULT 15,
-
-   host_jobs_running    INT2 UNSIGNED NOT NULL DEFAULT 0,
-   host_slots_running   INT2 UNSIGNED NOT NULL DEFAULT 0,
-
-   host_mtime       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-   server_start     TIMESTAMP DEFAULT 0,
-   server_stop      TIMESTAMP DEFAULT 0,
-);
-
