@@ -23,6 +23,8 @@ test_mx_util
 test_mx_log
 test_mx_mysql
 
+/web/pages/mxq/mxq
+
 *~
 
 gmon.out

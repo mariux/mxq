@@ -76,7 +76,7 @@ EOF
 
 sub db_init {
 		
-	$dbh= DBI->connect('DBI:mysql:mysql_read_default_file=/etc/mxq/mysql.cnf',undef,undef, { RaiseError => 1, AutoCommit => 1 });
+	$dbh= DBI->connect('DBI:mysql:mysql_read_default_file=@MXQ_MYSQL_DEFAULT_FILE@',undef,undef, { RaiseError => 1, AutoCommit => 1 });
 	# mxq_group.h
 	register_group_status(
 		OK          =>     0,
@@ -444,6 +444,32 @@ sub group_table {
 	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running>0 OR group_jobs_inq>0) ORDER BY group_id DESC');
 	$sth->execute(@bind_args);
 	$out.=group_table_rows($sth,\@head);
+
+	@cols=qw(
+        group_id
+        group_name
+        user_name
+        group_date_emd
+        group_status
+        group_jobs
+        group_jobs_finished
+        group_jobs_failed
+        group_jobs_cancelled
+        group_jobs_unknown
+	);
+
+	@head=qw(
+        group_id
+        group_name
+        user_name
+        date_end
+        group_status
+        jobs
+        finished
+        failed
+        cancelled
+        unknown
+	);
 
 	$out .= '<h2>Finished Groups</h2>';
 

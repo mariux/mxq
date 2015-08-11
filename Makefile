@@ -39,6 +39,8 @@ ifeq ($(notdir ${LIBEXECDIR}),mxq)
     override LIBEXECDIR := $(patsubst %/,%,$(dir ${LIBEXECDIR}))
 endif
 
+CGIDIR = ${LIBEXECDIR}/mxq/cgi
+
 ##############################################################################
 
 MXQ_MYSQL_DEFAULT_FILE  = ${SYSCONFDIR}/mxq/mysql.cnf
@@ -103,6 +105,22 @@ quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4}
 
 ########################################################################
 
+sed-rules = -e 's,@PREFIX@,${PREFIX},g' \
+            -e 's,@EPREFIX@,${EPREFIX},g' \
+            -e 's,@BINDIR@,${BINDIR},g' \
+            -e 's,@SBINDIR@,${SBINDIR},g' \
+            -e 's,@LIBDIR@,${LIBDIR},g' \
+            -e 's,@SYSCONFDIR@,${SYSCONFDIR},g' \
+            -e 's,@DEFCONFDIR@,${DEFCONFDIR},g' \
+            -e 's,@LIBEXECDIR@,${LIBEXECDIR},g' \
+            -e 's,@BEE_VERSION@,${BEE_VERSION},g' \
+            -e 's,@DATADIR@,${DATADIR},g' \
+            -e 's,@MXQ_VERSION@,${MXQ_VERSION},g' \
+            -e 's,@MXQ_MYSQL_DEFAULT_FILE@,${MXQ_MYSQL_DEFAULT_FILE},g' \
+
+
+########################################################################
+
 %.o: %.c Makefile
 	$(call quiet-command,${CC} ${CFLAGS} -o $@ -c $<,"     CC $@")
 
@@ -110,6 +128,9 @@ quiet-installforuser = $(call quiet-command,install -m ${1} -o ${2} -g ${3} ${4}
 
 %: %.o
 	$(call quiet-command,${CC} -o $@ $^ $(LDFLAGS) $(LDLIBS), "   LINK $@")
+
+%: %.in Makefile
+	$(call quiet-command,sed ${sed-rules} $< >$@, "    GEN $@")
 
 ########################################################################
 
@@ -121,7 +142,7 @@ manpages/%: manpages/%.xml
 	$(call quiet-command,xmlto --stringparam man.output.quietly=1 man $^ -o manpages, "  XMLTO $@")
 
 %: manpages/% Makefile
-	$(call quiet-command,sed -e "s/@MXQ_VERSION@/${MXQ_VERSION}/" $< >$@, "    GEN $@")
+	$(call quiet-command,sed ${sed-rules} $< >$@, "    GEN $@")
 
 ########################################################################
 
@@ -179,6 +200,7 @@ install::
 	$(call quiet-installdir,0755,${DESTDIR}${SBINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
 	$(call quiet-installdir,0755,${DESTDIR}${MAN1DIR})
+	$(call quiet-installdir,0755,${DESTDIR}${CGIDIR})
 
 ########################################################################
 
@@ -416,6 +438,15 @@ mrproper: CLEAN += manpages/mxqsub.1
 clean: CLEAN += mxqsub.1
 #install:: mxqsub.1
 #	$(call quiet-install,0644,mxqsub.1,${DESTDIR}${MAN1DIR}/mxqsub.1)
+
+########################################################################
+
+build: web/pages/mxq/mxq
+
+clean: CLEAN += web/pages/mxq/mxq
+
+install:: web/pages/mxq/mxq
+	$(call quiet-install,0755,$^,${DESTDIR}${CGIDIR}/mxq)
 
 ########################################################################
 
