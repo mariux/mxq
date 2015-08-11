@@ -39,6 +39,8 @@ ifeq ($(notdir ${LIBEXECDIR}),mxq)
     override LIBEXECDIR := $(patsubst %/,%,$(dir ${LIBEXECDIR}))
 endif
 
+CGIDIR = ${LIBEXECDIR}/mxq/cgi
+
 ##############################################################################
 
 MXQ_MYSQL_DEFAULT_FILE  = ${SYSCONFDIR}/mxq/mysql.cnf
@@ -179,6 +181,7 @@ install::
 	$(call quiet-installdir,0755,${DESTDIR}${SBINDIR})
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
 	$(call quiet-installdir,0755,${DESTDIR}${MAN1DIR})
+	$(call quiet-installdir,0755,${DESTDIR}${CGIDIR})
 
 ########################################################################
 
@@ -416,6 +419,13 @@ mrproper: CLEAN += manpages/mxqsub.1
 clean: CLEAN += mxqsub.1
 #install:: mxqsub.1
 #	$(call quiet-install,0644,mxqsub.1,${DESTDIR}${MAN1DIR}/mxqsub.1)
+
+########################################################################
+
+build: web/pages/mxq/mxq
+
+install:: web/pages/mxq/mxq
+	$(call quiet-install,0755,$^,${DESTDIR}${CGIDIR}/mxq)
 
 ########################################################################
 
