@@ -449,9 +449,11 @@ clean: CLEAN += mxqsub.1
 
 ########################################################################
 
-build: web/pages/mxq/mxq web/lighttpd.conf
+build: web/pages/mxq/mxq
+build: web/lighttpd.conf
 
-clean: CLEAN += web/pages/mxq/mxq web/lighttpd.conf
+clean: CLEAN += web/pages/mxq/mxq
+clean: CLEAN += web/lighttpd.conf
 
 install:: web/pages/mxq/mxq
 	$(call quiet-install,0755,$^,${DESTDIR}${CGIDIR}/mxq)
