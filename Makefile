@@ -7,7 +7,7 @@ MXQ_VERSION = ${MXQ_VERSION_MAJOR}.${MXQ_VERSION_MINOR}.${MXQ_VERSION_PATCH}
 MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (${MXQ_VERSION_EXTRA})"
 MXQ_VERSIONDATE = 2013-2015
 
-##############################################################################
+########################################################################
 
 PREFIX     = /usr
 EPREFIX    = ${PREFIX}
@@ -21,7 +21,7 @@ SYSCONFDIR = ${PREFIX}/etc
 
 DESTDIR=
 
-##############################################################################
+########################################################################
 
 UNPRIV_USER = nobody
 
@@ -29,14 +29,14 @@ HTTP_PORT  = 3000
 HTTP_USER  = nobody
 HTTP_GROUP = nogroup
 
-##############################################################################
+########################################################################
 
 ### set sysconfdir /etc if prefix /usr || /usr/local
 ifneq (, $(filter /usr /usr/local, ${PREFIX}))
     SYSCONFDIR = /etc
 endif
 
-##############################################################################
+########################################################################
 
 ### strip /mxq from LIBEXECDIR if set
 ifeq ($(notdir ${LIBEXECDIR}),mxq)
@@ -45,7 +45,7 @@ endif
 
 CGIDIR = ${LIBEXECDIR}/mxq/cgi
 
-##############################################################################
+########################################################################
 
 MXQ_MYSQL_DEFAULT_FILE  = ${SYSCONFDIR}/mxq/mysql.cnf
 MXQ_MYSQL_DEFAULT_GROUP = mxqclient
@@ -66,7 +66,7 @@ ifeq (${OS_RELEASE}, mariux64)
 
 endif
 
-##############################################################################
+########################################################################
 
 UID_SERVER := $(shell id --user  $(USER))
 GID_SERVER := $(shell id --group $(USER))
@@ -83,7 +83,7 @@ else
     SUID_MODE    = 0755
 endif
 
-##############################################################################
+########################################################################
 
 CFLAGS_MYSQL := $(shell $(MYSQL_CONFIG) --cflags)
 LDLIBS_MYSQL := $(shell $(MYSQL_CONFIG) --libs)
@@ -212,7 +212,7 @@ install::
 
 ########################################################################
 
-### mx_log.h ----------------------------------------------------------
+### mx_log.h -----------------------------------------------------------
 
 mx_log.h += mx_log.h
 
@@ -237,28 +237,28 @@ mx_mxq.h += mx_mxq.h
 
 mxq_group.h += mxq_group.h
 
-### mxq_job.h ---------------------------------------------------------
+### mxq_job.h ----------------------------------------------------------
 
 mxq_job.h += mxq_job.h
 mxq_job.h += mxq_group.h
 
-### mxqd.h ------------------------------------------------------------
+### mxqd.h -------------------------------------------------------------
 
 mxqd.h += mxqd.h
 
-### mx_getopt.h ------------------------------------------------------
+### mx_getopt.h --------------------------------------------------------
 
 mx_getopt.h += mx_getopt.h
 
 ########################################################################
 
-### mx_getopt.o -------------------------------------------------------
+### mx_getopt.o --------------------------------------------------------
 
 mx_getopt.o: $(mx_getopt.h)
 
 clean: CLEAN += mx_getopt.o
 
-### mx_log.o ----------------------------------------------------------
+### mx_log.o -----------------------------------------------------------
 
 mx_log.o: $(mx_log.h)
 
@@ -270,7 +270,7 @@ mx_util.o: $(mx_log.h)
 
 clean: CLEAN += mx_util.o
 
-### mx_flock.o -------------------------------------------------------
+### mx_flock.o ---------------------------------------------------------
 
 mx_flock.o: $(mx_flock.h)
 
@@ -291,7 +291,7 @@ mxq_log.o: $(mx_log.h)
 
 clean: CLEAN += mxq_log.o
 
-### mxqdump.o ---------------------------------------------------
+### mxqdump.o ----------------------------------------------------------
 
 mxqdump.o: $(mx_log.h)
 mxqdump.o: $(mx_util.h)
@@ -301,7 +301,7 @@ mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxqdump.o
 
-### mxqkill.o ---------------------------------------------------
+### mxqkill.o ----------------------------------------------------------
 
 mxqkill.o: $(mx_log.h)
 mxqkill.o: $(mx_util.h)
@@ -350,7 +350,7 @@ mxqd.o: CFLAGS += -Wno-unused-but-set-variable
 
 clean: CLEAN += mxqd.o
 
-### mxqsub.o -------------------------------------------------------
+### mxqsub.o -----------------------------------------------------------
 
 mxqsub.o: $(mx_getopt.h)
 mxqsub.o: $(mx_util.h)
@@ -366,7 +366,7 @@ clean: CLEAN += mxqsub.o
 
 ########################################################################
 
-### mxqd ------------------------------------------------------------
+### mxqd ---------------------------------------------------------------
 
 mxqd: mx_flock.o
 mxqd: mx_util.o
@@ -385,7 +385,7 @@ clean: CLEAN += mxqd
 install:: mxqd
 	$(call quiet-installforuser,0755,$(UID_SERVER),$(GID_SERVER),mxqd,${DESTDIR}${SBINDIR}/mxqd)
 
-### mxqsub ------------------------------------------------------------
+### mxqsub -------------------------------------------------------------
 
 mxqsub: mx_getopt.o
 mxqsub: mx_util.o
@@ -400,7 +400,7 @@ clean: CLEAN += mxqsub
 install:: mxqsub
 	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqsub,${DESTDIR}${BINDIR}/mxqsub)
 
-### mxqdump -----------------------------------------------------
+### mxqdump ------------------------------------------------------------
 
 mxqdump: mx_log.o
 mxqdump: mx_mysql.o
@@ -418,7 +418,7 @@ clean: CLEAN += mxqdump
 install:: mxqdump
 	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqdump,${DESTDIR}${BINDIR}/mxqdump)
 
-### mxqkill -----------------------------------------------------
+### mxqkill ------------------------------------------------------------
 
 mxqkill: mx_log.o
 mxqkill: mx_mysql.o
