@@ -1,0 +1,26 @@
+# lighttpd.conf
+
+# start with:
+#   lighttpd [-D] -f @LIBEXECDIR@/mxq/lighttpd.conf
+
+server.document-root = "@CGIDIR@"
+
+server.username="@HTTP_USER@"
+server.groupname="@HTTP_GROUP@"
+
+server.port = @HTTP_PORT@
+
+mimetype.assign = (
+  ".html" => "text/html", 
+  ".txt" => "text/plain",
+  ".css" => "text/css",
+  ".jpg" => "image/jpeg",
+  ".png" => "image/png" ,
+  ""     => "text/plain",
+)
+
+server.modules = ( "mod_cgi" )
+
+ 
+cgi.assign = ( "" => "" )
+cgi.execute-x-only="enable"

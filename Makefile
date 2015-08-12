@@ -25,6 +25,10 @@ DESTDIR=
 
 UNPRIV_USER = nobody
 
+HTTP_PORT  = 3000
+HTTP_USER  = nobody
+HTTP_GROUP = nogroup
+
 ##############################################################################
 
 ### set sysconfdir /etc if prefix /usr || /usr/local
@@ -117,6 +121,10 @@ sed-rules = -e 's,@PREFIX@,${PREFIX},g' \
             -e 's,@DATADIR@,${DATADIR},g' \
             -e 's,@MXQ_VERSION@,${MXQ_VERSION},g' \
             -e 's,@MXQ_MYSQL_DEFAULT_FILE@,${MXQ_MYSQL_DEFAULT_FILE},g' \
+            -e 's,@CGIDIR@,${CGIDIR},g' \
+            -e 's,@HTTP_USER@,${HTTP_USER},g' \
+            -e 's,@HTTP_GROUP@,${HTTP_GROUP},g' \
+            -e 's,@HTTP_PORT@,${HTTP_PORT},g' \
 
 
 ########################################################################
@@ -441,12 +449,15 @@ clean: CLEAN += mxqsub.1
 
 ########################################################################
 
-build: web/pages/mxq/mxq
+build: web/pages/mxq/mxq web/lighttpd.conf
 
-clean: CLEAN += web/pages/mxq/mxq
+clean: CLEAN += web/pages/mxq/mxq web/lighttpd.conf
 
 install:: web/pages/mxq/mxq
 	$(call quiet-install,0755,$^,${DESTDIR}${CGIDIR}/mxq)
+
+install:: web/lighttpd.conf
+	$(call quiet-install,0644,$^,${DESTDIR}${LIBEXECDIR}/mxq/lighttpd.conf)
 
 ########################################################################
 
