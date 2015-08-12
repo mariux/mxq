@@ -11,7 +11,7 @@ our %JOB_STATUS_NAME;
 our $dbh;
 our $q;
 
-sub style {
+sub STYLE {
 	return <<'EOF';
 <style>
 body { background:#ddd;  }
@@ -28,8 +28,8 @@ td.number { text-align: right; }
 EOF
 }
 
-sub head {
-	return <<'EOF'.style().<<'EOF';
+sub HEAD {
+	return <<'EOF'.STYLE().<<'EOF';
 <head>
   <!-- <link rel="stylesheet" href="jquery-ui-1.10.4/css/ui-lightness/jquery-ui-1.10.4.min.css"></link> -->
   <link rel="stylesheet" href="jquery-ui-themes-1.10.4/themes/sunny/jquery-ui.min.css"></link>
@@ -61,18 +61,7 @@ sub head {
 EOF
 </head>
 EOF
-
-
 }
-
-
-
-
-
-
-
-
-
 
 sub db_init {
 		
@@ -100,8 +89,6 @@ sub db_init {
 	);
 }
 
-
-
 sub register_status {
         my ($hashref)=shift;
         while (my ($name,$value)=splice(@_,0,2)) {
@@ -118,8 +105,6 @@ sub register_job_status   { register_status(\%JOB_STATUS_NAME,@_) }
 sub group_status          { return get_status(\%GROUP_STATUS_NAME,@_) }
 sub job_status            { return get_status(\%JOB_STATUS_NAME,@_) }
 
-
-
 sub humanSeconds {
 	my ($seconds)=@_;
 
@@ -134,8 +119,6 @@ sub split_cmd {
 	$in=~s/\\0/ /g;
 	return $in;
 }
-
-
 
 sub DataDumper {
 	use Data::Dumper;
@@ -231,8 +214,6 @@ sub job_table_of_group {
 	$out.='</table>';
 }
 
-
-
 sub group_detail {
 	my ($group_id)=@_;
 	$dbh or db_init();
@@ -299,8 +280,6 @@ EOF
 		return $out;
 }
 
-
-
 sub group {
 	my ($group_id)=@_;
 
@@ -311,12 +290,6 @@ sub group {
 
 	return $out;
 }
-
-
-
-
-
-
 
 sub job {
 	my ($job_id)=@_;
@@ -473,14 +446,12 @@ sub group_table {
 
 	$out .= '<h2>Finished Groups</h2>';
 
-	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) ORDER BY group_id DESC');
+	$sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) ORDER BY group_id DESC');
 	$sth->execute(@bind_args);
 	$out.=group_table_rows($sth,\@head);
 
 	return $out;
 }
-
-
 
 sub groups {
 	my $out=h1('MXQ Groups');
@@ -496,8 +467,6 @@ sub active_jobs() {
 	$dbh or db_init();
 	return h1('MXQ Running Jobs').job_table_running().h1('MXQ Pending Jobs').job_table_pending();
 }
-
-
 
 sub selfurl {
 	my ($path_info)=@_;
@@ -523,17 +492,17 @@ my $path_info=$q->path_info()||'';
 
 $path_info=~s/\/$//;
 if ($path_info eq '') {
-	print header().head.top();
+	print header().HEAD().top();
 } elsif ($path_info eq '/groups') {
-	print header().head().groups();
+	print header().HEAD().groups();
 } elsif ($path_info eq '/active_jobs') {
-	print header().head().active_jobs();
+	print header().HEAD().active_jobs();
 } elsif ($path_info =~ /\/group\/(\d+)$/) {
-	print header().head().group($1);
+	print header().HEAD().group($1);
 } elsif ($path_info =~ /\/job\/(\d+)$/) {
-	print header().head().job($1);
+	print header().HEAD().job($1);
 } else {
-	print header(-status => 404).head().'<h1>not found</h1>';
+	print header(-status => 404).HEAD().'<h1>not found</h1>';
 }
 
 
