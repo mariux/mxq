@@ -486,7 +486,7 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
         return -1;
     }
 
-    if (job->job_status != MXQ_JOB_STATUS_RUNNING) {
+    if (job->job_status != MXQ_JOB_STATUS_RUNNING && job->job_status != MXQ_JOB_STATUS_KILLING) {
         mx_log_warning("new status==exited but old status(=%d) is != running ", job->job_status);
     }
 
@@ -510,7 +510,7 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
             " stats_nvcsw = ?, "
             " stats_nivcsw = ?"
             " WHERE job_id = ?"
-            " AND job_status IN (" status_str(MXQ_JOB_STATUS_LOADED) ", " status_str(MXQ_JOB_STATUS_RUNNING) ")"
+            " AND job_status IN (" status_str(MXQ_JOB_STATUS_LOADED) ", " status_str(MXQ_JOB_STATUS_RUNNING) ", " status_str(MXQ_JOB_STATUS_KILLING) ")"
             " AND host_hostname = ?"
             " AND server_id = ?"
             " AND host_pid = ?";
@@ -567,7 +567,7 @@ int mxq_set_job_status_unknown_for_server(struct mx_mysql *mysql, char *hostname
             "UPDATE mxq_job SET"
             " job_status = " status_str(MXQ_JOB_STATUS_UNKNOWN) ","
             " date_end = NULL"
-            " WHERE job_status IN (" status_str(MXQ_JOB_STATUS_LOADED) "," status_str(MXQ_JOB_STATUS_RUNNING) ")"
+            " WHERE job_status IN (" status_str(MXQ_JOB_STATUS_LOADED) "," status_str(MXQ_JOB_STATUS_RUNNING) "," status_str(MXQ_JOB_STATUS_KILLING) ")"
             " AND host_hostname = ?"
             " AND server_id = ?";
 
