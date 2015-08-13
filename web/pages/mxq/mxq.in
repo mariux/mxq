@@ -82,6 +82,7 @@ sub db_init {
 		EXTRUNNING  =>  300,
 		STOPPED     =>  350,
 		EXIT        => 1024,
+		KILLING     =>  399,
 		KILLED      =>  400,
 		FAILED      =>  750,
 		UNKNOWN_PRE =>  755,

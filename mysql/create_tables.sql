@@ -200,7 +200,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    group_slots_running=group_slots_running-OLD.host_slots+NEW.host_slots,
                    group_mtime=NULL
                 WHERE group_id=NEW.group_id;
-            ELSEIF NEW.job_status IN (400, 750) AND OLD.job_status IN (150, 200, 250, 300, 350) THEN
+            ELSEIF NEW.job_status IN (400, 750) AND OLD.job_status IN (150, 200, 250, 300, 350, 399) THEN
                 UPDATE mxq_group SET
                    group_slots_running=group_slots_running-NEW.host_slots,
                    group_jobs_running=group_jobs_running-1,
@@ -220,7 +220,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    group_jobs_cancelled=group_jobs_cancelled+1,
                    group_mtime=NULL
                 WHERE group_id=NEW.group_id;
-            ELSEIF NEW.job_status = 999 AND OLD.job_status IN (150, 200, 250) THEN
+            ELSEIF NEW.job_status = 999 AND OLD.job_status IN (150, 200, 250, 399) THEN
                 UPDATE mxq_group SET
                    group_slots_running=group_slots_running-NEW.host_slots,
                    group_jobs_running=group_jobs_running-1,
@@ -233,7 +233,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    group_jobs_unknown=group_jobs_unknown+1,
                    group_mtime=NULL
                 WHERE group_id=NEW.group_id;
-            ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (150, 200, 250, 300, 350) THEN
+            ELSEIF NEW.job_status = 1000 AND OLD.job_status IN (150, 200, 250, 300, 350, 399) THEN
                 UPDATE mxq_group SET
                    group_slots_running=group_slots_running-NEW.host_slots,
                    group_jobs_running=group_jobs_running-1,
@@ -250,7 +250,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    stats_total_real_sec_finished=stats_total_real_sec_finished+NEW.stats_real_sec,
                    group_mtime=NULL
                 WHERE group_id=NEW.group_id;
-            ELSEIF NEW.job_status NOT IN (755, 989, 990) THEN
+            ELSEIF NEW.job_status NOT IN (399, 755, 989, 990) THEN
                 UPDATE mxq_group SET
                    stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
                    stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
