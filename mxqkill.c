@@ -133,7 +133,7 @@ static int update_job_status_cancelled_by_group(struct mx_mysql *mysql, struct m
             "UPDATE mxq_job SET"
                 " job_status = " status_str(MXQ_JOB_STATUS_CANCELLED)
                 " WHERE group_id = ?"
-                " AND job_status = " status_str(MXQ_JOB_STATUS_INQ)
+                " AND job_status = IN (" status_str(MXQ_JOB_STATUS_INQ) "," status_str(MXQ_JOB_STATUS_ASSIGNED) ")"
                 " AND host_hostname = ''"
                 " AND server_id = ''"
                 " AND host_pid = 0"
@@ -180,7 +180,7 @@ static int update_job_status_cancelling_by_job_id_for_user(struct mx_mysql *mysq
                     " job_status = " status_str(MXQ_JOB_STATUS_CANCELLING)
                 " WHERE job_id = ?"
                 " AND user_uid = ?"
-                " AND job_status = " status_str(MXQ_JOB_STATUS_INQ)
+                " AND job_status IN (" status_str(MXQ_JOB_STATUS_INQ) "," status_str(MXQ_JOB_STATUS_ASSIGNED) ")"
                 " AND host_hostname = ''"
                 " AND server_id = ''"
                 " AND host_pid = 0"
