@@ -571,10 +571,9 @@ struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job 
     user   = group->user;
     server = user->server;
 
-    j = calloc(1, sizeof(*j));
-    if (!j) {
-        return NULL;
-    }
+    j = mx_calloc_forever(1, sizeof(*j));
+    assert(j);
+
     jlist = group->jobs;
 
     memcpy(&j->job, job, sizeof(*job));
@@ -607,6 +606,7 @@ struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job 
     user->memory_used += mxqgrp->job_memory;
     server->memory_used += mxqgrp->job_memory;
 
+    assert(j);
     return j;
 }
 /**********************************************************************/
@@ -618,10 +618,9 @@ struct mxq_group_list *user_add_group(struct mxq_user_list *user, struct mxq_gro
 
     assert(user);
 
-    g = calloc(1, sizeof(*g));
-    if (!g) {
-        return NULL;
-    }
+    g = mx_calloc_forever(1, sizeof(*g));
+    assert(g);
+
     glist = user->groups;
 
     memcpy(&g->group, group, sizeof(*group));
@@ -637,6 +636,7 @@ struct mxq_group_list *user_add_group(struct mxq_user_list *user, struct mxq_gro
 
     group_init(g);
 
+    assert(g);
     return g;
 }
 
@@ -651,17 +651,13 @@ struct mxq_group_list *server_add_user(struct mxq_server *server, struct mxq_gro
     assert(server);
     assert(group);
 
-    user = calloc(1, sizeof(*user));
-    if (!user)
-        return NULL;
+    user = mx_calloc_forever(1, sizeof(*user));
+    assert(user);
 
     user->server = server;
 
     glist = user_add_group(user, group);
-    if (!glist) {
-        free(user);
-        return NULL;
-    }
+    assert(glist);
 
     ulist = server->users;
 
@@ -670,6 +666,7 @@ struct mxq_group_list *server_add_user(struct mxq_server *server, struct mxq_gro
     server->users = user;
     server->user_cnt++;
 
+    assert(glist);
     return glist;
 }
 
@@ -1050,9 +1047,8 @@ unsigned long start_job(struct mxq_group_list *group)
         mx_log_err("job=%s(%d):%lu:%lu  mxq_job_update_status_running(): Job not found.",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
-    do {
-        job = group_add_job(group, &mxqjob);
-    } while (!job);
+    job = group_add_job(group, &mxqjob);
+    assert(job);
 
     mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
         group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
