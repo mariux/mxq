@@ -134,6 +134,8 @@ char *mxq_job_status_to_name(uint64_t status)
             return "killed";
         case MXQ_JOB_STATUS_FAILED:
             return "failed";
+        case MXQ_JOB_STATUS_UNKNOWN_PRE:
+            return "unknownpre";
         case MXQ_JOB_STATUS_CANCELLED:
             return "cancelled";
         case MXQ_JOB_STATUS_UNKNOWN:
