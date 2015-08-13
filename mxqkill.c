@@ -48,7 +48,7 @@ static void print_usage(void)
     "\n"
     "options:\n"
     "\n"
-    "  -g | --group-id=GROUPID   cancel/kill group <group-id>\n"
+    "  -g | --group-id=GROUPID   cancel/kill group <GROUPID>\n"
     "  -u | --user=NAME|UID      cancel group for user. (root only)\n"
     "\n"
     "  -v | --verbose   be more verbose\n"
