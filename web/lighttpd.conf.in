@@ -11,7 +11,7 @@ server.groupname="@HTTP_GROUP@"
 server.port = @HTTP_PORT@
 
 mimetype.assign = (
-  ".html" => "text/html", 
+  ".html" => "text/html",
   ".txt" => "text/plain",
   ".css" => "text/css",
   ".jpg" => "image/jpeg",
@@ -21,6 +21,6 @@ mimetype.assign = (
 
 server.modules = ( "mod_cgi" )
 
- 
+
 cgi.assign = ( "" => "" )
 cgi.execute-x-only="enable"

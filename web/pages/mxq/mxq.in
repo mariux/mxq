@@ -43,7 +43,7 @@ sub HEAD {
 			$('#inner').load(window.location.pathname+"/inner",function() {
 				$("#progress").progressbar("value",0);
 				window.setTimeout(timeoutFunction,1000);
-				
+
 			});
 		} else {
 			$("#progress").progressbar("value",i+1);
@@ -64,7 +64,7 @@ EOF
 }
 
 sub db_init {
-		
+
 	open my $test,"<@MXQ_MYSQL_DEFAULT_FILE@" or die "@MXQ_MYSQL_DEFAULT_FILE@: $!\n";
 	$dbh= DBI->connect('DBI:mysql:mysql_read_default_file=@MXQ_MYSQL_DEFAULT_FILE@',undef,undef, { RaiseError => 1, AutoCommit => 1 });
 	# mxq_group.h
@@ -258,7 +258,7 @@ group_jobs_restarted  : $o{group_jobs_restarted}
 group_slots_running:  : $o{group_slots_running}
 
 group_mtime           : $o{group_mtime}
- 
+
 group_date_end        : $o{group_date_end}
 
 stats_max_maxrss                 : $o{stats_max_maxrss}
@@ -328,7 +328,7 @@ job_umask:       : $job_umask_text;
 
 host_submit      : $o{host_submit}
 
-server_id        : $o{server_id} 
+server_id        : $o{server_id}
 
 host_hostname    : $o{host_hostname}
 host_pid         : $o{host_pid}
@@ -373,7 +373,7 @@ sub group_table_rows {
 
 	while (my $row=$sth->fetchrow_arrayref()) {
 		my ($group_id,$group_name,$user_name,$group_mtime,$group_status,
-			$group_jobs,$group_jobs_inq,$group_jobs_running,$group_jobs_finished,$group_jobs_failed,$group_jobs_cancelled,$group_jobs_unknown		
+			$group_jobs,$group_jobs_inq,$group_jobs_running,$group_jobs_finished,$group_jobs_failed,$group_jobs_cancelled,$group_jobs_unknown
 		)=@$row;
 
 		$out.=$q->Tr(
@@ -389,8 +389,8 @@ sub group_table_rows {
 			$q->td({class=>'number'},$group_jobs_finished),
 			$q->td({class=>'number'},$group_jobs_failed),
 			$q->td({class=>'number'},$group_jobs_cancelled),
-			$q->td({class=>'number'},$group_jobs_unknown)		
-						
+			$q->td({class=>'number'},$group_jobs_unknown)
+
 		);
 	}
 	$out.='</table>';
