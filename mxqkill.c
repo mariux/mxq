@@ -48,7 +48,8 @@ static void print_usage(void)
     "\n"
     "options:\n"
     "\n"
-    "  -g | --group-id=GROUPID   cancel/kill group <group-id>\n"
+    "  -g | --group-id=GROUPID   cancel/kill group <GROUPID>\n"
+    "  -J | --job-id=JOBID       cancel job <JOBID>\n"
     "  -u | --user=NAME|UID      cancel group for user. (root only)\n"
     "\n"
     "  -v | --verbose   be more verbose\n"
@@ -159,6 +160,96 @@ static int update_job_status_cancelled_by_group(struct mx_mysql *mysql, struct m
     return (int)num_rows;
 }
 
+static int update_job_status_cancelling_by_job_id_for_user(struct mx_mysql *mysql, uint64_t job_id, uint64_t user_uid)
+{
+    struct mx_mysql_stmt *stmt = NULL;
+    unsigned long long num_rows = 0;
+    int res;
+
+    assert(job_id);
+
+    res = mx_mysql_statement_init(mysql, &stmt);
+    if (res < 0)
+        return res;
+
+    stmt = mx_mysql_statement_prepare(mysql,
+            "UPDATE mxq_job AS j"
+                " LEFT JOIN mxq_group AS g"
+                    " ON j.group_id = g.group_id"
+                " SET"
+                    " job_status = " status_str(MXQ_JOB_STATUS_CANCELLING)
+                " WHERE job_id = ?"
+                " AND user_uid = ?"
+                " AND job_status = " status_str(MXQ_JOB_STATUS_INQ)
+                " AND host_hostname = ''"
+                " AND server_id = ''"
+                " AND host_pid = 0"
+            );
+    if (res < 0) {
+        mx_log_err("mx_mysql_statement_prepare(): %m");
+        mx_mysql_statement_close(&stmt);
+        return -(errno=-res);
+    }
+
+    res += mx_mysql_statement_param_bind(stmt, 0, uint64, &(job_id));
+    res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(user_uid));
+    assert(res == 0);
+
+    res = mx_mysql_statement_execute(stmt, &num_rows);
+
+    if (res < 0)
+        mx_log_err("mx_mysql_statement_execute(): %m");
+
+    mx_mysql_statement_close(&stmt);
+
+    if (res < 0)
+        return -(errno=-res);
+
+    return (int)num_rows;
+}
+
+static int update_job_status_cancelled_by_job_id(struct mx_mysql *mysql, uint64_t job_id)
+{
+    struct mx_mysql_stmt *stmt = NULL;
+    unsigned long long num_rows = 0;
+    int res;
+
+    assert(job_id);
+
+    res = mx_mysql_statement_init(mysql, &stmt);
+    if (res < 0)
+        return res;
+
+    stmt = mx_mysql_statement_prepare(mysql,
+            "UPDATE mxq_job SET"
+                    " job_status = " status_str(MXQ_JOB_STATUS_CANCELLED)
+                " WHERE job_id = ?"
+                " AND job_status = " status_str(MXQ_JOB_STATUS_CANCELLING)
+                " AND host_hostname = ''"
+                " AND server_id = ''"
+                " AND host_pid = 0"
+            );
+    if (res < 0) {
+        mx_log_err("mx_mysql_statement_prepare(): %m");
+        mx_mysql_statement_close(&stmt);
+        return -(errno=-res);
+    }
+
+    res += mx_mysql_statement_param_bind(stmt, 0, uint64, &(job_id));
+    assert(res == 0);
+
+    res = mx_mysql_statement_execute(stmt, &num_rows);
+
+    if (res < 0)
+        mx_log_err("mx_mysql_statement_execute(): %m");
+
+    mx_mysql_statement_close(&stmt);
+
+    if (res < 0)
+        return -(errno=-res);
+
+    return (int)num_rows;
+}
 
 int main(int argc, char *argv[])
 {
@@ -171,6 +262,7 @@ int main(int argc, char *argv[])
     int res;
 
     uint64_t arg_group_id;
+    uint64_t arg_job_id;
     char     arg_debug;
     uint64_t arg_uid;
 
@@ -189,6 +281,7 @@ int main(int argc, char *argv[])
 
                 MX_OPTION_REQUIRED_ARG("user",     'u'),
                 MX_OPTION_REQUIRED_ARG("group-id", 'g'),
+                MX_OPTION_REQUIRED_ARG("job-id",   'J'),
 
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
@@ -204,6 +297,7 @@ int main(int argc, char *argv[])
         arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     arg_group_id = 0;
+    arg_job_id   = 0;
     arg_debug    = 0;
     arg_uid      = UINT64_UNSET;
 
@@ -278,6 +372,15 @@ int main(int argc, char *argv[])
                 }
                 break;
 
+            case 'J':
+                if (mx_strtou64(optctl.optarg, &arg_job_id) < 0 || !arg_job_id) {
+                    if (!arg_job_id)
+                        errno = ERANGE;
+                    mx_log_err("Invalid argument for --job-id '%s': %m", optctl.optarg);
+                    exit(1);
+                }
+                break;
+
             case 'M':
                 arg_mysql_default_file = optctl.optarg;
                 break;
@@ -290,7 +393,7 @@ int main(int argc, char *argv[])
 
     MX_GETOPT_FINISH(optctl, argc, argv);
 
-    if (!arg_group_id) {
+    if (!arg_group_id && !arg_job_id) {
         print_usage();
         exit(EX_USAGE);
     }
@@ -327,6 +430,51 @@ int main(int argc, char *argv[])
     assert(res == 0);
 
     mx_log_info("MySQL: Connection to database established.");
+
+    if (arg_job_id) {
+        int res1, res2;
+
+        res1 = update_job_status_cancelling_by_job_id_for_user(mysql, arg_job_id, passwd->pw_uid);
+        res2 = update_job_status_cancelled_by_job_id(mysql, arg_job_id);
+
+        mx_mysql_finish(&mysql);
+        mx_log_info("MySQL: Connection to database closed.");
+
+        if (res1 == -ENOENT)
+            res1=0;
+
+        if (res2 == -ENOENT)
+            res1=0;
+
+        if (res1 < 0)
+            mx_log_err("setting status of job %lu to CANCELLING failed: %s", arg_job_id, strerror(-res1));
+
+        if (res2 < 0)
+            mx_log_err("setting status of job %lu to CANCELLED failed: %s", arg_job_id, strerror(-res1));
+
+        if (res2 > 0) {
+            mx_log_notice("Job %lu cancelled!", arg_job_id);
+            return 0;
+        }
+
+        if (res1 > 0) {
+            mx_log_notice("Updated status of job %lu to CANCELLING.", arg_job_id);
+            if (res2 == 0) {
+                mx_log_warning("Updating status of job %lu to CANCELLED failed. Job vanished. Please retry.", arg_job_id);
+                return 2;
+            }
+            return 1;
+        }
+
+        if (res1 == 0 && res2 == 0) {
+            mx_log_notice("No queued job with job_id=%lu for user %s(%d) found in q.", arg_job_id, passwd->pw_name, passwd->pw_uid);
+            mx_log_warning("Killing a single job is not implemented yet.");
+            mx_log_warning("See https://github.molgen.mpg.de/mariux64/mxq/issues/4 for more details.");
+            return 0;
+        }
+
+        return 1;
+    }
 
     if (arg_group_id) {
         memset(&group, 0, sizeof(group));
