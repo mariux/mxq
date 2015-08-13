@@ -146,6 +146,8 @@ sed-rules = -e 's,@PREFIX@,${PREFIX},g' \
 
 MAN1DIR := ${MANDIR}/man1
 
+fix: FIX += manpages/*.xml
+
 manpages/%: manpages/%.xml
 	$(call quiet-command,xmlto --stringparam man.output.quietly=1 man $^ -o manpages, "  XMLTO $@")
 
@@ -189,8 +191,14 @@ mrproper clean:
 ########################################################################
 
 .PHONY: fix
+
+fix: FIX += *.c
+fix: FIX += *.h
+fix: FIX += Makefile
+fix: FIX += mysql/*.sql
+
 fix:
-	@for i in *.c *.h Makefile mysql/create_tables mxqdctl-hostconfig.sh manpages/*.xml ; do \
+	@for i in $(FIX) ; do \
 	    if grep -q -m 1 -E '\s+$$' $$i ; then \
 	        echo "FIX   $$i" ; \
 	        sed -i $$i -e 's/\s*$$//g' ; \
@@ -435,6 +443,8 @@ install:: mxqkill
 
 ########################################################################
 
+fix: FIX += mxqdctl-hostconfig.sh
+
 install:: mxqdctl-hostconfig.sh
 	$(call quiet-install,0755,mxqdctl-hostconfig.sh,${DESTDIR}${SBINDIR}/mxqdctl-hostconfig)
 
@@ -451,6 +461,9 @@ clean: CLEAN += mxqsub.1
 
 build: web/pages/mxq/mxq
 build: web/lighttpd.conf
+
+fix: FIX += web/pages/mxq/mxq.in
+fix: FIX += web/lighttpd.conf.in
 
 clean: CLEAN += web/pages/mxq/mxq
 clean: CLEAN += web/lighttpd.conf
