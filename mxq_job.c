@@ -138,6 +138,8 @@ char *mxq_job_status_to_name(uint64_t status)
             return "unknownpre";
         case MXQ_JOB_STATUS_CANCELLED:
             return "cancelled";
+        case MXQ_JOB_STATUS_CANCELLING:
+            return "cancelling";
         case MXQ_JOB_STATUS_UNKNOWN:
             return "unknown";
         case MXQ_JOB_STATUS_FINISHED:

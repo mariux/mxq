@@ -85,6 +85,7 @@ sub db_init {
 		KILLED      =>  400,
 		FAILED      =>  750,
 		UNKNOWN_PRE =>  755,
+		CANCELLING  =>  989,
 		CANCELLED   =>  990,
 		UNKNOWN     =>  999,
 		FINISHED    => 1000,
