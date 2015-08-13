@@ -24,6 +24,7 @@ test_mx_log
 test_mx_mysql
 
 /web/pages/mxq/mxq
+web/lighttpd.conf
 
 *~
 
