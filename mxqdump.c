@@ -107,20 +107,57 @@ static void print_usage(void)
 
 static int print_group(struct mxq_group *g)
 {
-    return printf("user=%s uid=%u group_id=%lu pri=%d jobs_total=%lu run_jobs=%lu run_slots=%lu failed=%lu"
-                    " finished=%lu cancelled=%lu unknown=%lu inq=%lu"
-                    " job_threads=%u job_memory=%lukiB job_time=%us"
-                    " memory_load=%lu%% time_load=%lu%%"
-                    " max_utime=%lu max_real=%lu max_memory=%lukiB job_command=%s group_name=%s\n",
-        g->user_name, g->user_uid, g->group_id, g->group_priority, g->group_jobs,
-        g->group_jobs_running, g->group_slots_running, g->group_jobs_failed,
-        g->group_jobs_finished, g->group_jobs_cancelled, g->group_jobs_unknown,
+    return printf("user=%s"
+        " uid=%u"
+        " group_id=%lu"
+        " pri=%d"
+        " jobs_total=%lu"
+        " run_jobs=%lu"
+        " run_slots=%lu"
+        " failed=%lu"
+        " finished=%lu"
+        " cancelled=%lu"
+        " unknown=%lu"
+        " inq=%lu"
+        " job_threads=%u"
+        " job_memory=%lukiB"
+        " job_time=%us"
+        " memory_load=%lu%%"
+        " time_load=%lu%%"
+        " max_utime=%lu"
+        " max_real=%lu"
+        " max_memory=%lukiB"
+        " wait_sec=%lu"
+        " run_sec=%lu"
+        " idle_sec=%lu"
+        " job_command=%s"
+        " group_name=%s"
+        "\n",
+        g->user_name,
+        g->user_uid,
+        g->group_id,
+        g->group_priority,
+        g->group_jobs,
+        g->group_jobs_running,
+        g->group_slots_running,
+        g->group_jobs_failed,
+        g->group_jobs_finished,
+        g->group_jobs_cancelled,
+        g->group_jobs_unknown,
         g->group_jobs_inq,
-        g->job_threads, g->job_memory*1024, g->job_time*60,
+        g->job_threads,
+        g->job_memory*1024,
+        g->job_time*60,
         (100UL*(uint64_t)g->stats_max_maxrss/1024UL/g->job_memory),
         (100UL*(uint64_t)g->stats_max_real.tv_sec/60UL/g->job_time),
-        g->stats_max_utime.tv_sec, g->stats_max_real.tv_sec,
-        g->stats_max_maxrss, g->job_command, g->group_name);
+        g->stats_max_utime.tv_sec,
+        g->stats_max_real.tv_sec,
+        g->stats_max_maxrss,
+        g->stats_wait_sec,
+        g->stats_run_sec,
+        g->stats_idle_sec,
+        g->job_command,
+        g->group_name);
 }
 
 static char *restart_to_string(uint64_t flags)
@@ -169,20 +206,49 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         run_sec = (j->date_end - j->date_start);
     }
 
-    return printf("job=%s(%u):%lu:%lu host_pid=%u server=%s::%s group_name=%s waittime=%lus runtime=%lus utime=%lus stime=%lus runtime_requested=%us time_load=%lu%% "
-                    "memory_requested=%lukiB max_rss=%lukiB memory_load=%lu%% threads=%d slots=%u status=%s(%d) stats_status=%u restart=%s workdir=%s command=%s"
-                    "\n",
-        g->user_name, g->user_uid, g->group_id, j->job_id,
+    return printf("job=%s(%u):%lu:%lu"
+        " host_pid=%u"
+        " server=%s::%s"
+        " group_name=%s"
+        " waittime=%lus"
+        " runtime=%lus"
+        " utime=%lus"
+        " stime=%lus"
+        " runtime_requested=%us"
+        " time_load=%lu%%"
+        " memory_requested=%lukiB"
+        " max_rss=%lukiB"
+        " memory_load=%lu%%"
+        " threads=%d"
+        " slots=%u"
+        " status=%s(%d)"
+        " stats_status=%u"
+        " restart=%s"
+        " workdir=%s"
+        " command=%s"
+        "\n",
+        g->user_name,
+        g->user_uid,
+        g->group_id,
+        j->job_id,
         j->host_pid,
-        j->host_hostname, j->server_id,
+        j->host_hostname,
+        j->server_id,
         g->group_name,
-        wait_sec, run_sec,
-        j->stats_rusage.ru_utime.tv_sec,j->stats_rusage.ru_stime.tv_sec,g->job_time*60,
+        wait_sec,
+        run_sec,
+        j->stats_rusage.ru_utime.tv_sec,
+        j->stats_rusage.ru_stime.tv_sec,
+        g->job_time*60,
         (100UL*(run_sec)/60UL/g->job_time),
-        g->job_memory*1024, j->stats_rusage.ru_maxrss,
+        g->job_memory*1024,
+        j->stats_rusage.ru_maxrss,
         (100UL*j->stats_rusage.ru_maxrss/1024UL/g->job_memory),
-        g->job_threads, j->host_slots,
-        mxq_job_status_to_name(j->job_status), j->job_status, j->stats_status,
+        g->job_threads,
+        j->host_slots,
+        mxq_job_status_to_name(j->job_status),
+        j->job_status,
+        j->stats_status,
         restart_to_string(j->job_flags),
         j->job_workdir,
         j->job_argv_str);

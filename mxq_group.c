@@ -12,7 +12,7 @@
 #include "mx_util.h"
 #include "mx_mysql.h"
 
-#define GROUP_FIELDS_CNT 26
+#define GROUP_FIELDS_CNT 29
 #define GROUP_FIELDS \
             " group_id," \
             " group_name," \
@@ -39,7 +39,11 @@
             " stats_max_maxrss," \
             " stats_max_utime_sec," \
             " stats_max_stime_sec," \
-            " stats_max_real_sec"
+            " stats_max_real_sec," \
+            " stats_wait_sec," \
+            " stats_run_sec," \
+            " stats_idle_sec"
+
 
 static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_group *g)
 {
@@ -82,6 +86,10 @@ static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_gro
     res += mx_mysql_bind_var(result, idx++, int64, &(g->stats_max_utime.tv_sec));
     res += mx_mysql_bind_var(result, idx++, int64, &(g->stats_max_stime.tv_sec));
     res += mx_mysql_bind_var(result, idx++, int64, &(g->stats_max_real.tv_sec));
+
+    res += mx_mysql_bind_var(result, idx++, uint64, &(g->stats_wait_sec));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(g->stats_run_sec));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(g->stats_idle_sec));
 
     return res;
 }
