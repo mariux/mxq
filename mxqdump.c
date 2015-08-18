@@ -127,6 +127,9 @@ static int print_group(struct mxq_group *g)
         " max_utime=%lu"
         " max_real=%lu"
         " max_memory=%lukiB"
+        " wait_sec=%lu"
+        " run_sec=%lu"
+        " idle_sec=%lu"
         " job_command=%s"
         " group_name=%s"
         "\n",
@@ -150,6 +153,9 @@ static int print_group(struct mxq_group *g)
         g->stats_max_utime.tv_sec,
         g->stats_max_real.tv_sec,
         g->stats_max_maxrss,
+        g->stats_wait_sec,
+        g->stats_run_sec,
+        g->stats_idle_sec,
         g->job_command,
         g->group_name);
 }
