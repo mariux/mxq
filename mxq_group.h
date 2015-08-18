@@ -48,6 +48,10 @@ struct mxq_group {
    struct timeval stats_max_utime;
    struct timeval stats_max_stime;
    struct timeval stats_max_real;
+
+   uint64_t  stats_wait_sec;
+   uint64_t  stats_run_sec;
+   uint64_t  stats_idle_sec;
 };
 
 #define MXQ_GROUP_STATUS_OK            0
