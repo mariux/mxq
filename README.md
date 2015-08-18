@@ -10,5 +10,5 @@ make install [DESTDIR=...]
 ### Install using `bee`
 ```
 bee init $(bee download git://github.molgen.mpg.de/mariux64/mxq.git) -e
-bee install mxq
+bee update mxq
 ```
