@@ -98,7 +98,8 @@ CREATE TEMPORARY TABLE IF NOT EXISTS mytemp AS
                                             stats_run_sec,
                                             stats_idle_sec
                                         FROM
-                                            mxq_job, mxq_group
+                                            mxq_job,
+                                            mxq_group
                                         WHERE
                                             mxq_job.group_id = mxq_group.group_id
                                     )
@@ -117,7 +118,8 @@ CREATE TEMPORARY TABLE IF NOT EXISTS mytemp AS
                                             stats_run_sec,
                                             stats_idle_sec
                                         FROM
-                                            mxq_job, mxq_group
+                                            mxq_job,
+                                            mxq_group
                                         WHERE
                                             mxq_job.group_id = mxq_group.group_id
                                             AND date_start > 0
@@ -137,7 +139,8 @@ CREATE TEMPORARY TABLE IF NOT EXISTS mytemp AS
                                             stats_run_sec,
                                             stats_idle_sec
                                         FROM
-                                            mxq_job, mxq_group
+                                            mxq_job,
+                                            mxq_group
                                         WHERE
                                             mxq_job.group_id = mxq_group.group_id
                                             AND date_end > 0
