@@ -450,7 +450,7 @@ int main(int argc, char *argv[])
             mx_log_err("setting status of job %lu to CANCELLING failed: %s", arg_job_id, strerror(-res1));
 
         if (res2 < 0)
-            mx_log_err("setting status of job %lu to CANCELLED failed: %s", arg_job_id, strerror(-res1));
+            mx_log_err("setting status of job %lu to CANCELLED failed: %s", arg_job_id, strerror(-res2));
 
         if (res2 > 0) {
             mx_log_notice("Job %lu cancelled!", arg_job_id);
