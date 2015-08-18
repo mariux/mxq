@@ -1400,8 +1400,9 @@ int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
             if (group->group.group_status != MXQ_GROUP_STATUS_CANCELLED)
                 continue;
 
-            mx_log_debug("Cancelling all running jobs in group=%s(%d):%lu",
-                group->group.user_name, group->group.user_uid, group->group.group_id);
+            if (group->jobs)
+                mx_log_debug("Cancelling all running jobs in group=%s(%d):%lu",
+                    group->group.user_name, group->group.user_uid, group->group.group_id);
 
             for (job=group->jobs; job; job=job->next) {
                 pid = job->job.host_pid;
