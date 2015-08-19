@@ -215,6 +215,8 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    group_mtime=NULL
                 WHERE group_id=NEW.group_id;
             ELSEIF NEW.job_status = 990 AND OLD.job_status IN (0, 100, 989) THEN
+                SET NEW.date_start = NOW();
+                SET NEW.date_end = NEW.date_start;
                 UPDATE mxq_group SET
                    group_jobs_inq=group_jobs_inq-1,
                    group_jobs_cancelled=group_jobs_cancelled+1,
