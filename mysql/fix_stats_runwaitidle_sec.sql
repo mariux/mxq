@@ -12,7 +12,9 @@ SET
     @srun=0,
     @gid=0,
     @dt=0,
-    @ot=0
+    @ot=0,
+    @gidchange=0,
+    @last="none"
     ;
 
 CREATE TEMPORARY TABLE IF NOT EXISTS
@@ -141,7 +143,15 @@ AS
 )
 ;
 
-SET @sinq=0,@srun=0,@gid=0,@dt=0,@ot=0;
+SET
+    @sinq=0,
+    @srun=0,
+    @gid=0,
+    @dt=0,
+    @ot=0,
+    @gidchange=0,
+    @last="none"
+    ;
 
 UPDATE
         mxq_group AS g
