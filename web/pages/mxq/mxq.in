@@ -327,7 +327,7 @@ job_argc         ; $o{job_argc}
 job_argv         ; $argv
 job_stdout       : $o{job_stdout}
 job_stderr       : $o{job_stderr}
-job_umask:       : $job_umask_text;
+job_umask:       : $job_umask_text
 
 host_submit      : $o{host_submit}
 
