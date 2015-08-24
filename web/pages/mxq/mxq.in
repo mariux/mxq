@@ -274,6 +274,10 @@ stats_total_stime_sec            : $o{stats_total_stime_sec}
 stats_total_real_sec             : $o{stats_total_real_sec}
 stats_total_wait_sec             : $o{stats_total_wait_sec}
 
+stats_wait_sec                   : $o{stats_wait_sec}
+stats_run_sec                    : $o{stats_run_sec}
+stats_idle_sec                   : $o{stats_idle_sec}
+
 stats_total_utime_sec_finished   : $o{stats_total_utime_sec_finished}
 stats_total_stime_sec_finished   : $o{stats_total_stime_sec_finished}
 stats_total_real_sec_finished    : $o{stats_total_real_sec_finished}
