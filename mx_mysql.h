@@ -147,6 +147,7 @@ int mx_mysql_statement_fetch(struct mx_mysql_stmt *stmt);
 int mx_mysql_statement_field_count(struct mx_mysql_stmt *stmt);
 int mx_mysql_statement_param_count(struct mx_mysql_stmt *stmt);
 int mx_mysql_statement_close(struct mx_mysql_stmt **stmt);
+int mx_mysql_statement_close_no_bind_cleanup(struct mx_mysql_stmt **stmt);
 
 #define mx_mysql_bind_init_param(b, c)  mx_mysql_bind_init((b), (c), MX_MYSQL_BIND_TYPE_PARAM)
 #define mx_mysql_bind_init_result(b, c) mx_mysql_bind_init((b), (c), MX_MYSQL_BIND_TYPE_RESULT)

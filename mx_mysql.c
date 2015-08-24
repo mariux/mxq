@@ -1276,7 +1276,6 @@ int mx_mysql_bind_cleanup(struct mx_mysql_bind *bind)
 {
     mx_assert_return_minus_errno(bind, EINVAL);
 
-
     mx_free_null(bind->bind);
     mx_free_null(bind->data);
 
@@ -1325,7 +1324,7 @@ int mx_mysql_bind_init(struct mx_mysql_bind *bind, unsigned long count, enum mx_
     return 0;
 }
 
-int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size)
+static int _mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size, char cleanup)
 {
     struct mx_mysql_stmt *stmt = NULL;
     unsigned long long num_rows = 0;
@@ -1341,13 +1340,20 @@ int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_b
     if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare_with_bindings(): %m");
         mx_log_err("mx_mysql_statement_prepare_with_bindings(): query was: %s", query);
+        if (cleanup) {
+            mx_mysql_bind_cleanup(param);
+            mx_mysql_bind_cleanup(result);
+        }
         return -errno;
     }
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
     if (res < 0) {
         mx_log_err("mx_mysql_statement_execute(): %m");
-        mx_mysql_statement_close(&stmt);
+        if (cleanup)
+            mx_mysql_statement_close(&stmt);
+        else
+            mx_mysql_statement_close_no_bind_cleanup(&stmt);
         return -(errno=-res);
     }
 
@@ -1359,16 +1365,32 @@ int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_b
             if (res < 0) {
                 mx_log_err("mx_mysql_statement_fetch(): %m");
                 mx_free_null(tmpdata);
-                mx_mysql_statement_close(&stmt);
+                if (cleanup)
+                    mx_mysql_statement_close(&stmt);
+                else
+                    mx_mysql_statement_close_no_bind_cleanup(&stmt);
                 return -(errno=-res);
             }
             memcpy(tmpdata+(cnt*size), from, size);
         }
         *to = tmpdata;
     }
-    mx_mysql_statement_close(&stmt);
+    if (cleanup)
+        mx_mysql_statement_close(&stmt);
+    else
+        mx_mysql_statement_close_no_bind_cleanup(&stmt);
 
     return num_rows;
+}
+
+int mx_mysql_do_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size)
+{
+    return _mx_mysql_do_statement(mysql, query, param, result, from, to, size, 1);
+}
+
+static int mx_mysql_do_statement_no_bind_cleanup(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size)
+{
+    return _mx_mysql_do_statement(mysql, query, param, result, from, to, size, 0);
 }
 
 int mx_mysql_do_statement_retry_on_fail(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mx_mysql_bind *result, void *from, void **to, size_t size)
@@ -1378,7 +1400,7 @@ int mx_mysql_do_statement_retry_on_fail(struct mx_mysql *mysql, char *query, str
     mx_log_debug("entered");
 
     while (1) {
-        res = mx_mysql_do_statement(mysql, query, param, result, from, to, size);
+        res = mx_mysql_do_statement_no_bind_cleanup(mysql, query, param, result, from, to, size);
 
         if (res >= 0)
             break;
@@ -1392,6 +1414,8 @@ int mx_mysql_do_statement_retry_on_fail(struct mx_mysql *mysql, char *query, str
 
         mx_mysql_ping_forever(mysql);
     }
+    mx_mysql_bind_cleanup(param);
+    mx_mysql_bind_cleanup(result);
 
     return res;
 }
@@ -1437,7 +1461,7 @@ struct mx_mysql_stmt *mx_mysql_statement_prepare_with_bindings(struct mx_mysql *
     if (res < 0)
         mx__mysql_stmt_log_warning(stmt);
 
-    mx_mysql_statement_close(&stmt);
+    mx_mysql_statement_close_no_bind_cleanup(&stmt);
 
     return NULL;
 }
@@ -1461,6 +1485,19 @@ int mx_mysql_statement_close(struct mx_mysql_stmt **stmt)
 
     mx_mysql_bind_cleanup(&(*stmt)->param);
     mx_mysql_bind_cleanup(&(*stmt)->result);
+    mx_free_null(*stmt);
+
+    return 0;
+}
+
+int mx_mysql_statement_close_no_bind_cleanup(struct mx_mysql_stmt **stmt)
+{
+    mx_assert_return_minus_errno(stmt, EINVAL);
+    mx_assert_return_minus_errno(*stmt, EINVAL);
+
+    mx__mysql_stmt_free_result(*stmt);
+    mx__mysql_stmt_close(*stmt);
+
     mx_free_null(*stmt);
 
     return 0;
