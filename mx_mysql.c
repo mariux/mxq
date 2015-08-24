@@ -1274,7 +1274,8 @@ inline int mx_mysql_stmt_param_count_get(struct mx_mysql_stmt *stmt, unsigned lo
 
 int mx_mysql_bind_cleanup(struct mx_mysql_bind *bind)
 {
-    mx_assert_return_minus_errno(bind, EINVAL);
+    if (!bind)
+        return 0;
 
     mx_free_null(bind->bind);
     mx_free_null(bind->data);
