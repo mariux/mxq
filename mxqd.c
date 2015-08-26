@@ -74,7 +74,7 @@ static void print_usage(void)
     "\n"
     "options:\n"
     "  -j, --slots     <slots>           default: 1\n"
-    "  -m, --memory    <memory>          default: 2048 (in MiB)\n"
+    "  -m, --memory    <memory>          default: 2G\n"
     "  -x, --max-memory-per-slot <mem>   default: <memory>/<slots>\n"
     "\n"
     "  -N, --server-id <id>              default: main\n"
