@@ -290,8 +290,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 'm':
                 if (mx_strtoul(optctl.optarg, &memory_total) < 0) {
-                    mx_log_err("Invalid argument supplied for option --memory '%s': %m", optctl.optarg);
-                    exit(1);
+                    unsigned long long int bytes;
+
+                    if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
+                        mx_log_err("Invalid argument supplied for option --memory '%s': %m", optctl.optarg);
+                        exit(1);
+                    }
+                    memory_total = bytes/1024/1024;
                 }
                 if (!memory_total)
                     memory_total = 2048;
@@ -299,8 +304,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 'x':
                 if (mx_strtoul(optctl.optarg, &memory_max) < 0) {
-                    mx_log_err("Invalid argument supplied for option --max-memory-per-slot '%s': %m", optctl.optarg);
-                    exit(1);
+                    unsigned long long int bytes;
+
+                    if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
+                        mx_log_err("Invalid argument supplied for option --max-memory-per-slot '%s': %m", optctl.optarg);
+                        exit(1);
+                    }
+                    memory_max = bytes/1024/1024;
                 }
                 break;
 
