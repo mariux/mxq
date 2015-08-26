@@ -89,7 +89,7 @@ static void print_usage(void)
     "  amount of resources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
     "\n"
-    "  -g, --group-id=ID  Add job to group with group_id ID"
+    "  -g, --group-id=ID  Add job to group with group_id ID\n"
     "  -n, --new-group    Add job to a new group if it does not match any running or waiting group\n"
     "                     (default: Add job to a group based on automatic grouping)\n"
     "\n"
