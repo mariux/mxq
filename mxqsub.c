@@ -775,8 +775,13 @@ int main(int argc, char *argv[])
 
             case 'm':
                 if (mx_strtou64(optctl.optarg, &arg_memory) < 0) {
-                    mx_log_crit("--memory '%s': %m", optctl.optarg);
-                    exit(EX_CONFIG);
+                    unsigned long long int bytes;
+
+                    if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
+                        mx_log_crit("--memory '%s': %m", optctl.optarg);
+                        exit(EX_CONFIG);
+                    }
+                    arg_memory = bytes/1024/1024;
                 }
                 break;
 
