@@ -79,6 +79,72 @@ inline int mx_stribeginswithany(char *str, char **starts, char **endptr)
     return _mx_strbeginswithany(str, starts, endptr, 1);
 }
 
+inline int mx_strtobytes(char *str, unsigned long long int *bytes)
+{
+    unsigned long long int s = 0;
+    unsigned long long int t;
+
+    char *end;
+
+    if (!str || !*str)
+        return -(errno=EINVAL);
+
+    if (strchr(str, '-'))
+        return -(errno=ERANGE);
+
+    do {
+        errno = 0;
+        t = strtoull(str, &end, 10);
+
+        if (errno)
+            return -errno;
+
+        if (str == end)
+            return -(errno=EINVAL);
+
+        for (;*end && *end == ' '; end++)
+            /* empty */;
+
+        switch (*end) {
+
+            case 'T': /* tebi */
+                t *= 1024;
+
+            case 'G': /* gibi */
+                t *= 1024;
+
+            case 'M': /* mebi */
+                t *= 1024;
+
+            case 'k': /* kibi */
+            case 'K':
+                t *= 1024;
+
+            case 'B': /* bytes */
+                end++;
+                break;
+
+            default:
+                return -(errno=EINVAL);
+        }
+
+        if (s+t < s)
+            return -(errno=ERANGE);
+
+        s += t;
+
+        for (;*end && *end == ' '; end++)
+            /* empty */;
+
+        str = end;
+
+    } while (*str);
+
+    *bytes = s;
+
+    return 0;
+}
+
 inline int mx_strtoseconds(char *str, unsigned long long int *seconds)
 {
     unsigned long long int s = 0;

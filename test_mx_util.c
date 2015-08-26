@@ -244,6 +244,33 @@ static void test_mx_strtominutes(void)
     assert(mx_strtominutes("test", &l) == -EINVAL);
 }
 
+static void test_mx_strtobytes(void)
+{
+    unsigned long long int l;
+
+    assert(mx_strtobytes("123B", &l) == 0);
+    assert(l == 123);
+
+    assert(mx_strtobytes("2M", &l) == 0);
+    assert(l == 2*1024*1024);
+
+    assert(mx_strtobytes("1M1024k", &l) == 0);
+    assert(l == 2*1024*1024);
+
+    assert(mx_strtobytes("1024k1024K", &l) == 0);
+    assert(l == 2*1024*1024);
+
+    assert(mx_strtobytes("-1", &l) == -ERANGE);
+    assert(mx_strtobytes(" -1", &l) == -ERANGE);
+
+    assert(mx_strtobytes("2.5M", &l)  == -EINVAL);
+    assert(mx_strtobytes("123", &l)  == -EINVAL);
+    assert(mx_strtobytes("0123", &l)  == -EINVAL);
+    assert(mx_strtobytes("1.2", &l)  == -EINVAL);
+    assert(mx_strtobytes("1,2", &l)  == -EINVAL);
+    assert(mx_strtobytes("test", &l) == -EINVAL);
+}
+
 int main(int argc, char *argv[])
 {
     test_mx_strskipwhitespaces();
@@ -256,5 +283,6 @@ int main(int argc, char *argv[])
     test_mx_strbeginswithany();
     test_mx_strtoseconds();
     test_mx_strtominutes();
+    test_mx_strtobytes();
     return 0;
 }

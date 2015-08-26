@@ -67,6 +67,8 @@ int mx_strbeginswithany(char *str, char **starts, char **endptr);
 
 char *mx_strskipwhitespaces(char *str);
 
+int mx_strtobytes(char *str, unsigned long long int *bytes);
+
 int mx_strtoseconds(char *str, unsigned long long int *seconds);
 int mx_strtominutes(char *str, unsigned long long int *minutes);
 
