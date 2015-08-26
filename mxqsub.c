@@ -695,6 +695,10 @@ int main(int argc, char *argv[])
                     mx_log_crit("--group-id '%s': %m", optctl.optarg);
                     exit(EX_CONFIG);
                 }
+                if (arg_groupid == 0) {
+                    mx_log_crit("--group-id '%s': Invalid group-id.", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 break;
 
             case 'n':
