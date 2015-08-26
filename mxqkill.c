@@ -81,10 +81,6 @@ static int update_group_status_cancelled(struct mx_mysql *mysql, struct mxq_grou
 
     assert(g->group_id);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    if (res < 0)
-        return res;
-
     stmt = mx_mysql_statement_prepare(mysql,
             "UPDATE mxq_group SET"
                 " group_status = " status_str(MXQ_GROUP_STATUS_CANCELLED)
@@ -93,13 +89,12 @@ static int update_group_status_cancelled(struct mx_mysql *mysql, struct mxq_grou
                 " AND user_uid = ?"
                 " AND group_jobs-group_jobs_finished-group_jobs_failed-group_jobs_cancelled-group_jobs_unknown > 0"
             );
-    if (res < 0) {
+    if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
-        mx_mysql_statement_close(&stmt);
-        return -(errno=-res);
+        return -(errno=EIO);
     }
 
-    res += mx_mysql_statement_param_bind(stmt, 0, uint64, &(g->group_id));
+    res  = mx_mysql_statement_param_bind(stmt, 0, uint64, &(g->group_id));
     res += mx_mysql_statement_param_bind(stmt, 1, uint32, &(g->user_uid));
     assert(res == 0);
 
@@ -125,10 +120,6 @@ static int update_job_status_cancelled_by_group(struct mx_mysql *mysql, struct m
 
     assert(g->group_id);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    if (res < 0)
-        return res;
-
     stmt = mx_mysql_statement_prepare(mysql,
             "UPDATE mxq_job SET"
                 " job_status = " status_str(MXQ_JOB_STATUS_CANCELLED)
@@ -138,13 +129,12 @@ static int update_job_status_cancelled_by_group(struct mx_mysql *mysql, struct m
                 " AND server_id = ''"
                 " AND host_pid = 0"
             );
-    if (res < 0) {
+    if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
-        mx_mysql_statement_close(&stmt);
-        return -(errno=-res);
+        return -(errno=EIO);
     }
 
-    res += mx_mysql_statement_param_bind(stmt, 0, uint64, &(g->group_id));
+    res = mx_mysql_statement_param_bind(stmt, 0, uint64, &(g->group_id));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -168,10 +158,6 @@ static int update_job_status_cancelling_by_job_id_for_user(struct mx_mysql *mysq
 
     assert(job_id);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    if (res < 0)
-        return res;
-
     stmt = mx_mysql_statement_prepare(mysql,
             "UPDATE mxq_job AS j"
                 " LEFT JOIN mxq_group AS g"
@@ -185,13 +171,12 @@ static int update_job_status_cancelling_by_job_id_for_user(struct mx_mysql *mysq
                 " AND server_id = ''"
                 " AND host_pid = 0"
             );
-    if (res < 0) {
+    if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
-        mx_mysql_statement_close(&stmt);
-        return -(errno=-res);
+        return -(errno=EIO);
     }
 
-    res += mx_mysql_statement_param_bind(stmt, 0, uint64, &(job_id));
+    res  = mx_mysql_statement_param_bind(stmt, 0, uint64, &(job_id));
     res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(user_uid));
     assert(res == 0);
 
@@ -216,10 +201,6 @@ static int update_job_status_cancelled_by_job_id(struct mx_mysql *mysql, uint64_
 
     assert(job_id);
 
-    res = mx_mysql_statement_init(mysql, &stmt);
-    if (res < 0)
-        return res;
-
     stmt = mx_mysql_statement_prepare(mysql,
             "UPDATE mxq_job SET"
                     " job_status = " status_str(MXQ_JOB_STATUS_CANCELLED)
@@ -229,13 +210,12 @@ static int update_job_status_cancelled_by_job_id(struct mx_mysql *mysql, uint64_
                 " AND server_id = ''"
                 " AND host_pid = 0"
             );
-    if (res < 0) {
+    if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
-        mx_mysql_statement_close(&stmt);
-        return -(errno=-res);
+        return -(errno=EIO);
     }
 
-    res += mx_mysql_statement_param_bind(stmt, 0, uint64, &(job_id));
+    res = mx_mysql_statement_param_bind(stmt, 0, uint64, &(job_id));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
