@@ -44,6 +44,7 @@ static void test_mx_strtoul(void)
     assert(mx_strtoul("-1", &l) == -ERANGE);
     assert(mx_strtoul(" -1", &l) == -ERANGE);
 
+    assert(mx_strtoul("123s", &l) == -EINVAL);
     assert(mx_strtoul("0888", &l) == -EINVAL);
     assert(mx_strtoul("1.2", &l)  == -EINVAL);
     assert(mx_strtoul("1,2", &l)  == -EINVAL);

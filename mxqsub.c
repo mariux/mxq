@@ -784,8 +784,18 @@ int main(int argc, char *argv[])
                 mx_log_warning("option '--time' is deprecated. please use '--runtime' or '-t' in future calls.");
             case 't':
                 if (mx_strtou32(optctl.optarg, &arg_time) < 0) {
-                    mx_log_crit("--runtime '%s': %m", optctl.optarg);
-                    exit(EX_CONFIG);
+                    unsigned long long int minutes;
+
+                    if(mx_strtominutes(optctl.optarg, &minutes) < 0) {
+                        mx_log_crit("--runtime '%s': %m", optctl.optarg);
+                        exit(EX_CONFIG);
+                    }
+                    if ((unsigned long long int)(uint32_t)minutes != minutes) {
+                        errno = ERANGE;
+                        mx_log_crit("--runtime '%s': %m", optctl.optarg);
+                        exit(EX_CONFIG);
+                    }
+                    arg_time = (uint32_t)minutes;
                 }
                 break;
 
