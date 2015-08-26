@@ -201,6 +201,76 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     return (int)num_rows;
 }
 
+static int load_group_id_by_group_id(struct mx_mysql *mysql, struct mxq_group *g)
+{
+    struct mx_mysql_stmt *stmt = NULL;
+    unsigned long long num_rows = 0;
+    int res;
+
+    assert(mysql);
+    assert(g);
+    assert(g->group_id > 0);
+
+    assert(g->group_name); assert(*g->group_name);
+    assert(g->group_priority);
+    assert(g->user_uid); assert(g->user_name); assert(*g->user_name);
+    assert(g->user_gid); assert(g->user_group); assert(*g->user_group);
+    assert(g->job_command); assert(*g->job_command);
+    assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
+
+    stmt = mx_mysql_statement_prepare(mysql,
+            "SELECT"
+                " group_id"
+            " FROM mxq_group "
+            " WHERE group_name = ?"
+                " AND user_uid = ?"
+                " AND user_name = ?"
+                " AND user_gid = ?"
+                " AND user_group = ?"
+                " AND job_command = ?"
+                " AND job_threads = ?"
+                " AND job_memory = ?"
+                " AND job_time = ?"
+                " AND group_priority = ?"
+                " AND group_status = 0"
+                " AND group_id = ?"
+            " ORDER BY group_id DESC"
+            " LIMIT 1");
+    if (!stmt) {
+        mx_log_err("mx_mysql_statement_prepare(): %m");
+        return -errno;
+    }
+
+    res  = mx_mysql_statement_param_bind(stmt,  0, string, &(g->group_name));
+    res += mx_mysql_statement_param_bind(stmt,  1, uint32, &(g->user_uid));
+    res += mx_mysql_statement_param_bind(stmt,  2, string, &(g->user_name));
+    res += mx_mysql_statement_param_bind(stmt,  3, uint32, &(g->user_gid));
+    res += mx_mysql_statement_param_bind(stmt,  4, string, &(g->user_group));
+    res += mx_mysql_statement_param_bind(stmt,  5, string, &(g->job_command));
+    res += mx_mysql_statement_param_bind(stmt,  6, uint16, &(g->job_threads));
+    res += mx_mysql_statement_param_bind(stmt,  7, uint64, &(g->job_memory));
+    res += mx_mysql_statement_param_bind(stmt,  8, uint32, &(g->job_time));
+    res += mx_mysql_statement_param_bind(stmt,  9, uint16, &(g->group_priority));
+    res += mx_mysql_statement_param_bind(stmt, 10, uint64, &(g->group_id));
+    assert(res == 0);
+
+    res = mx_mysql_statement_execute(stmt, &num_rows);
+    if (res < 0) {
+        mx_log_err("mx_mysql_statement_execute(): %m");
+        mx_mysql_statement_close(&stmt);
+        return res;
+    }
+    assert(num_rows <= 1);
+
+    if (!num_rows) {
+        g->group_id = 0;
+    }
+
+    mx_mysql_statement_close(&stmt);
+
+    return (int)num_rows;
+}
+
 static int load_group_id_run_or_wait(struct mx_mysql *mysql, struct mxq_group *g)
 {
     struct mx_mysql_stmt *stmt = NULL;
@@ -428,7 +498,12 @@ static int mxq_submit_task(struct mx_mysql *mysql, struct mxq_job *j, int flags,
     } else if (group_id == 0) {
         res = load_group_id_run_or_wait(mysql, g);
     } else {
-        assert(0);
+        g->group_id = group_id;
+        res = load_group_id_by_group_id(mysql, g);
+        if (res == 0) {
+            mx_log_crit("Could not load group with group_id=%lu: No matching group found. Aborting.", group_id);
+            return -(errno=ENOENT);
+        }
     }
 
     if (res < 0)
@@ -528,6 +603,8 @@ int main(int argc, char *argv[])
 
                 MX_OPTION_NO_ARG("new-group",      'n'),
 
+                MX_OPTION_REQUIRED_ARG("group-id",       'g'),
+
                 MX_OPTION_REQUIRED_ARG("group-name",     'N'),
                 MX_OPTION_REQUIRED_ARG("group-priority", 'P'),
 
@@ -606,6 +683,17 @@ int main(int argc, char *argv[])
             case 'v':
                 if (!arg_debug)
                     mx_log_level_set(MX_LOG_INFO);
+                break;
+
+            case 'g':
+                if (arg_groupid == 0) {
+                    mx_log_crit("--group-id: invalid use after --new-group.");
+                    exit(EX_CONFIG);
+                }
+                if (mx_strtou64(optctl.optarg, &arg_groupid) < 0) {
+                    mx_log_crit("--group-id '%s': %m", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
                 break;
 
             case 'n':
