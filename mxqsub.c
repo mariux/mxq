@@ -158,7 +158,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
                 " AND job_time = ?"
                 " AND group_priority = ?"
                 " AND group_status = 0"
-            " ORDER BY group_id "
+            " ORDER BY group_id DESC"
             " LIMIT 1");
     if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
