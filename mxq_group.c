@@ -273,7 +273,7 @@ int mxq_load_active_groups_for_user(struct mx_mysql *mysql, struct mxq_group **m
                 GROUP_FIELDS
             " FROM mxq_group"
             " WHERE ((group_jobs_inq > 0 OR group_jobs_running > 0)"
-            "    OR (NOW()-group_date_end < 604800))"
+            "    OR (NOW()-group_date_end < 86400))"
             "   AND user_uid = ?"
             " ORDER BY user_name, group_mtime"
             " LIMIT 1000";
