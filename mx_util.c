@@ -79,6 +79,88 @@ inline int mx_stribeginswithany(char *str, char **starts, char **endptr)
     return _mx_strbeginswithany(str, starts, endptr, 1);
 }
 
+inline int mx_strtoseconds(char *str, unsigned long long int *seconds)
+{
+    unsigned long long int s = 0;
+    unsigned long long int t;
+
+    char *end;
+
+    if (!str || !*str)
+        return -(errno=EINVAL);
+
+    if (strchr(str, '-'))
+        return -(errno=ERANGE);
+
+    do {
+        errno = 0;
+        t = strtoull(str, &end, 10);
+
+        if (errno)
+            return -errno;
+
+        if (str == end)
+            return -(errno=EINVAL);
+
+        for (;*end && *end == ' '; end++)
+            /* empty */;
+
+        //if (mx_strtounit(end, &end));
+
+        switch (*end) {
+
+            case 'y': /* years */
+                t *= 52;
+
+            case 'w': /* weeks */
+                t *= 7;
+
+            case 'd': /* days */
+                t *= 24;
+
+            case 'h': /* hours */
+                t *= 60;
+
+            case 'm': /* minutes */
+                t *= 60;
+
+            case 's': /* seconds */
+                end++;
+                break;
+
+            default:
+                return -(errno=EINVAL);
+        }
+
+        if (s+t < s)
+            return -(errno=ERANGE);
+
+        s += t;
+
+        for (;*end && *end == ' '; end++)
+            /* empty */;
+
+        str = end;
+
+    } while (*str);
+
+    *seconds = s;
+
+    return 0;
+}
+
+inline int mx_strtominutes(char *str, unsigned long long int *minutes)
+{
+    int res;
+
+    res = mx_strtoseconds(str, minutes);
+
+    if (res >= 0)
+        *minutes /= 60;
+
+    return res;
+}
+
 inline char *mx_strskipwhitespaces(char *str)
 {
     char *s;
