@@ -59,6 +59,9 @@ struct mxq_group {
 
 #define MXQ_GROUP_FLAG_CLOSED (1<<0)
 
+#define MXQ_GROUP_FLAG_HAS_DEPENDENCY (1<<1)
+#define MXQ_GROUP_FLAG_IS_DEPENDENCY  (1<<2)
+
 void mxq_group_free_content(struct mxq_group *g);
 
 inline uint64_t mxq_group_jobs_done(struct mxq_group *g);
