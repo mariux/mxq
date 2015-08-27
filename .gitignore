@@ -3,6 +3,7 @@ mx_flock.o
 mx_log.o
 mx_util.o
 mxq_group.o
+mxqadmin.o
 mxqdump.o
 mxq_job.o
 mxqd.o
@@ -16,6 +17,7 @@ mx_mysql.o
 
 mxqsub
 /mxqsub.1
+mxqadmin
 mxqdump
 mxqkill
 mxqd

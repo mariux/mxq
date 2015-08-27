@@ -316,6 +316,18 @@ mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxqdump.o
 
+### mxqadmin.o ----------------------------------------------------------
+
+mxqadmin.o: $(mx_log.h)
+mxqadmin.o: $(mx_util.h)
+mxqadmin.o: $(mx_mysql.h)
+mxqadmin.o: $(mx_getopt.h)
+mxqadmin.o: $(mxq.h)
+mxqadmin.o: $(mxq_group.h)
+mxqadmin.o: CFLAGS += $(CFLAGS_MYSQL)
+
+clean: CLEAN += mxqadmin.o
+
 ### mxqkill.o ----------------------------------------------------------
 
 mxqkill.o: $(mx_log.h)
@@ -432,6 +444,21 @@ clean: CLEAN += mxqdump
 
 install:: mxqdump
 	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqdump,${DESTDIR}${BINDIR}/mxqdump)
+
+### mxqadmin ------------------------------------------------------------
+
+mxqadmin: mx_log.o
+mxqadmin: mx_mysql.o
+mxqadmin: mx_util.o
+mxqadmin: mx_getopt.o
+mxqadmin: LDLIBS += $(LDLIBS_MYSQL)
+
+build: mxqadmin
+
+clean: CLEAN += mxqadmin
+
+install:: mxqadmin
+	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqadmin,${DESTDIR}${BINDIR}/mxqadmin)
 
 ### mxqkill ------------------------------------------------------------
 
