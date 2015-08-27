@@ -57,6 +57,8 @@ struct mxq_group {
 #define MXQ_GROUP_STATUS_OK            0
 #define MXQ_GROUP_STATUS_CANCELLED    99
 
+#define MXQ_GROUP_FLAG_CLOSED (1<<0)
+
 void mxq_group_free_content(struct mxq_group *g);
 
 inline uint64_t mxq_group_jobs_done(struct mxq_group *g);

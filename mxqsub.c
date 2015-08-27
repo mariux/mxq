@@ -141,6 +141,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     struct mx_mysql_stmt *stmt = NULL;
     unsigned long long num_rows = 0;
     int res;
+    uint64_t flags;
 
     assert(mysql);
     assert(g);
@@ -152,6 +153,8 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     assert(g->user_gid); assert(g->user_group); assert(*g->user_group);
     assert(g->job_command); assert(*g->job_command);
     assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
+
+    flags = MXQ_GROUP_FLAG_CLOSED;
 
     stmt = mx_mysql_statement_prepare(mysql,
             "SELECT"
@@ -168,6 +171,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
                 " AND job_time = ?"
                 " AND group_priority = ?"
                 " AND group_status = 0"
+                " AND group_flags & ? = 0 "
             " ORDER BY group_id DESC"
             " LIMIT 1");
     if (!stmt) {
@@ -185,6 +189,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
     res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    res += mx_mysql_statement_param_bind(stmt, 10, uint64, &(flags));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -216,6 +221,7 @@ static int load_group_id_by_group_id(struct mx_mysql *mysql, struct mxq_group *g
     struct mx_mysql_stmt *stmt = NULL;
     unsigned long long num_rows = 0;
     int res;
+    uint64_t flags;
 
     assert(mysql);
     assert(g);
@@ -227,6 +233,8 @@ static int load_group_id_by_group_id(struct mx_mysql *mysql, struct mxq_group *g
     assert(g->user_gid); assert(g->user_group); assert(*g->user_group);
     assert(g->job_command); assert(*g->job_command);
     assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
+
+    flags = MXQ_GROUP_FLAG_CLOSED;
 
     stmt = mx_mysql_statement_prepare(mysql,
             "SELECT"
@@ -244,6 +252,7 @@ static int load_group_id_by_group_id(struct mx_mysql *mysql, struct mxq_group *g
                 " AND group_priority = ?"
                 " AND group_status = 0"
                 " AND group_id = ?"
+                " AND group_flags & ? = 0 "
             " ORDER BY group_id DESC"
             " LIMIT 1");
     if (!stmt) {
@@ -262,6 +271,7 @@ static int load_group_id_by_group_id(struct mx_mysql *mysql, struct mxq_group *g
     res += mx_mysql_statement_param_bind(stmt,  8, uint32, &(g->job_time));
     res += mx_mysql_statement_param_bind(stmt,  9, uint16, &(g->group_priority));
     res += mx_mysql_statement_param_bind(stmt, 10, uint64, &(g->group_id));
+    res += mx_mysql_statement_param_bind(stmt, 11, uint64, &(flags));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -286,6 +296,7 @@ static int load_group_id_run_or_wait(struct mx_mysql *mysql, struct mxq_group *g
     struct mx_mysql_stmt *stmt = NULL;
     unsigned long long num_rows = 0;
     int res;
+    uint64_t flags;
 
     assert(mysql);
     assert(g);
@@ -297,6 +308,8 @@ static int load_group_id_run_or_wait(struct mx_mysql *mysql, struct mxq_group *g
     assert(g->user_gid); assert(g->user_group); assert(*g->user_group);
     assert(g->job_command); assert(*g->job_command);
     assert(g->job_threads); assert(g->job_memory); assert(g->job_time);
+
+    flags = MXQ_GROUP_FLAG_CLOSED;
 
     stmt = mx_mysql_statement_prepare(mysql,
             "SELECT"
@@ -318,6 +331,7 @@ static int load_group_id_run_or_wait(struct mx_mysql *mysql, struct mxq_group *g
                     " OR group_jobs_inq > 0"
                     " OR group_jobs = 0"
                     ")"
+                " AND group_flags & ? = 0 "
             " ORDER BY group_id DESC"
             " LIMIT 1");
     if (!stmt) {
@@ -335,6 +349,7 @@ static int load_group_id_run_or_wait(struct mx_mysql *mysql, struct mxq_group *g
     res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
     res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    res += mx_mysql_statement_param_bind(stmt, 10, uint64, &(flags));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -511,7 +526,7 @@ static int mxq_submit_task(struct mx_mysql *mysql, struct mxq_job *j, int flags,
         g->group_id = group_id;
         res = load_group_id_by_group_id(mysql, g);
         if (res == 0) {
-            mx_log_crit("Could not load group with group_id=%lu: No matching group found. Aborting.", group_id);
+            mx_log_err("Could not load group with group_id=%lu: No matching open group found. Aborting.", group_id);
             return -(errno=ENOENT);
         }
     }
@@ -983,7 +998,8 @@ int main(int argc, char *argv[])
     mx_log_info("MySQL: Connection to database closed.");
 
     if (res < 0) {
-        mx_log_err("Job submission failed: %m");
+        if (res != -ENOENT)
+            mx_log_err("Job submission failed: %m");
         return 1;
     }
 

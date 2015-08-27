@@ -111,6 +111,7 @@ static int print_group(struct mxq_group *g)
         " uid=%u"
         " group_id=%lu"
         " pri=%d"
+        " flags=%lu"
         " jobs_total=%lu"
         " run_jobs=%lu"
         " run_slots=%lu"
@@ -137,6 +138,7 @@ static int print_group(struct mxq_group *g)
         g->user_uid,
         g->group_id,
         g->group_priority,
+        g->group_flags,
         g->group_jobs,
         g->group_jobs_running,
         g->group_slots_running,
