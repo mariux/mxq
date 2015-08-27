@@ -45,6 +45,11 @@ endif
 
 ########################################################################
 
+### strip /mxq from SYSCONFDIR if set
+ifeq ($(notdir ${SYSCONFDIR}),mxq)
+    override SYSCONFDIR := $(patsubst %/,%,$(dir ${SYSCONFDIR}))
+endif
+
 ### strip /mxq from LIBEXECDIR if set
 ifeq ($(notdir ${LIBEXECDIR}),mxq)
     override LIBEXECDIR := $(patsubst %/,%,$(dir ${LIBEXECDIR}))
@@ -506,7 +511,7 @@ install:: web/pages/mxq/mxq
 	$(call quiet-install,0755,$^,${DESTDIR}${CGIDIR}/mxq)
 
 install:: web/lighttpd.conf
-	$(call quiet-install,0644,$^,${DESTDIR}${LIBEXECDIR}/mxq/lighttpd.conf)
+	$(call quiet-install,0644,$^,${DESTDIR}${SYSCONFDIR}/mxq/lighttpd.conf)
 
 ########################################################################
 
