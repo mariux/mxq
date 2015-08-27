@@ -97,6 +97,7 @@ static void print_usage(void)
     "  and priority information, so that jobs using the same\n"
     "  amount of resources and having the same priority\n"
     "  are grouped and executed in parallel.\n"
+    "  (see 'mxqadmin --help' for details on how to close groups)\n"
     "\n"
     "  -g, --group-id=ID  Add job to group with group_id ID\n"
     "  -n, --new-group    Add job to a new group if it does not match any running or waiting group\n"
