@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    stats_total_real_sec_finished    INT8 UNSIGNED NOT NULL DEFAULT 0,
    stats_total_wait_sec_finished    INT8 UNSIGNED NOT NULL DEFAULT 0,
 
+   depends_on_group     INT8 UNSIGNED NULL DEFAULT NULL,
+   dependency_of_group  INT8 UNSIGNED NULL DEFAULT NULL,
+
    INDEX(group_id),
    INDEX(group_name)
 );
