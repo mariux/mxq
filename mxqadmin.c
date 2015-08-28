@@ -118,8 +118,10 @@ static int update_group_flags_reopen(struct mx_mysql *mysql, uint64_t group_id, 
     struct mx_mysql_stmt *stmt = NULL;
     unsigned long long num_rows = 0;
     int res;
+    uint64_t flagsnottobeset;
     uint64_t newflags = 0;
 
+    flagsnottobeset = MXQ_GROUP_FLAG_IS_DEPENDENCY;
     newflags |= MXQ_GROUP_FLAG_CLOSED;
 
     stmt = mx_mysql_statement_prepare(mysql,
@@ -127,6 +129,7 @@ static int update_group_flags_reopen(struct mx_mysql *mysql, uint64_t group_id, 
                 " group_flags = group_flags & ~(?)"
                 " WHERE group_id = ?"
                 " AND user_uid = ?"
+                " AND group_flags & ? = 0"
             );
     if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
@@ -136,6 +139,7 @@ static int update_group_flags_reopen(struct mx_mysql *mysql, uint64_t group_id, 
     res  = mx_mysql_statement_param_bind(stmt, 0, uint64, &(newflags));
     res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(group_id));
     res += mx_mysql_statement_param_bind(stmt, 2, uint32, &(user_uid));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint64, &(flagsnottobeset));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
