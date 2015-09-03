@@ -779,6 +779,9 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenv_forever("USERNAME", g->user_name);
     mx_setenv_forever("LOGNAME",  g->user_name);
     mx_setenv_forever("PATH",     MXQ_INITIAL_PATH);
+#ifdef MXQ_INITIAL_TMPDIR
+    mx_setenv_forever("TMPDIR", MXQ_INITIAL_TMPDIR);
+#endif
     mx_setenv_forever("PWD",      j->job_workdir);
     mx_setenv_forever("HOME",     passwd->pw_dir);
     mx_setenv_forever("SHELL",    passwd->pw_shell);

@@ -74,8 +74,8 @@ OS_RELEASE = $(shell ./os-release)
 
 # special defaults for mariux64
 ifeq (${OS_RELEASE}, mariux64)
-   MXQ_INITIAL_PATH := ${MXQ_INITIAL_PATH}:/usr/local/package/bin
-
+   MXQ_INITIAL_PATH   := ${MXQ_INITIAL_PATH}:/usr/local/package/bin
+   CFLAGS_MXQ_INITIAL_TMPDIR      = -DMXQ_INITIAL_TMPDIR=\"/scratch/local\"
 endif
 
 ########################################################################
@@ -378,6 +378,7 @@ mxqd.o: $(mxq_job.h)
 mxqd.o: $(mx_mysql.h)
 mxqd.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
+mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_TMPDIR)
 mxqd.o: CFLAGS += -Wno-unused-but-set-variable
 
 clean: CLEAN += mxqd.o
