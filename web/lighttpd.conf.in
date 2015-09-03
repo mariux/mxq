@@ -1,7 +1,7 @@
 # lighttpd.conf
 
 # start with:
-#   lighttpd [-D] -f @LIBEXECDIR@/mxq/lighttpd.conf
+#   lighttpd [-D] -f @SYSCONFDIR@/mxq/lighttpd.conf
 
 server.document-root = "@CGIDIR@"
 
