@@ -327,8 +327,8 @@ job_priority     : $o{job_priority}
 group_id         : $link_group_id
 
 job_workdir      : $o{job_workdir}
-job_argc         ; $o{job_argc}
-job_argv         ; $argv
+job_argc         : $o{job_argc}
+job_argv         : $argv
 job_stdout       : $o{job_stdout}
 job_stderr       : $o{job_stderr}
 job_umask:       : $job_umask_text
@@ -351,9 +351,9 @@ job_id_first     : $o{job_id_first}
 
 stats_status     : $o{stats_status}
 
-stats_utim_sec   : $o{stats_utime_sec}
+stats_utime_sec  : $o{stats_utime_sec}
 stats_utime_usec : $o{stats_utime_usec}
-stats_stim_sec   : $o{stats_stime_sec}
+stats_stime_sec  : $o{stats_stime_sec}
 stats_stime_usec : $o{stats_stime_usec}
 stats_real_sec   : $o{stats_real_sec}
 stats_real_usec  : $o{stats_real_usec}
