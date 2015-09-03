@@ -232,9 +232,12 @@ sub group_detail {
 
 	my $group_status_text=group_status($o{'group_status'});
 
+	my $group_name=escapeHTML($o{group_name});
+	my $job_command=escapeHTML($o{job_command});
+
 	$out.=<<"EOF";
 <pre>
-group_name     : $o{group_name}
+group_name     : $group_name
 group_status   : $group_status_text
 group_flags    : $o{group_flags}
 group_priority : $o{group_priority}
@@ -244,7 +247,7 @@ user_name      : $o{user_name}
 user_gid       : $o{user_gid}
 user_group     : $o{user_group}
 
-job_command    : $o{job_command}
+job_command    : $job_command
 job_threads    : $o{job_threads}
 job_memory     : $o{job_memory}
 job_time       : $o{job_time}
@@ -315,9 +318,15 @@ sub job {
 	my $job_status_text=job_status($o{'job_status'});
 	my $job_umask_text=sprintf('%03O',$o{job_umask});
 	my $link_group_id=a({href=>selfurl("/group/$o{group_id}")},$o{group_id});
-	my $argv=split_cmd($o{job_argv});
+	my $job_argv=escapeHTML(split_cmd($o{job_argv}));
+	my $job_workdir=escapeHTML($o{job_workdir});
+	my $job_stdout=escapeHTML($o{job_stdout});
+	my $job_stderr=escapeHTML($o{job_stderr});
+
+	defined $_ or $_='&lt;null&gt;' for values %o;
 
 	$out.=h2("Job Details $o{job_id}");
+
 	$out.=<<"EOF";
 <pre>
 job_status       : $job_status_text
@@ -326,11 +335,11 @@ job_priority     : $o{job_priority}
 
 group_id         : $link_group_id
 
-job_workdir      : $o{job_workdir}
+job_workdir      : $job_workdir
 job_argc         : $o{job_argc}
-job_argv         : $argv
-job_stdout       : $o{job_stdout}
-job_stderr       : $o{job_stderr}
+job_argv         : $job_argv
+job_stdout       : $job_stdout
+job_stderr       : $job_stderr
 job_umask:       : $job_umask_text
 
 host_submit      : $o{host_submit}
