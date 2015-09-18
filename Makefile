@@ -62,11 +62,13 @@ CGIDIR = ${LIBEXECDIR}/mxq/cgi
 MXQ_MYSQL_DEFAULT_FILE  = ${SYSCONFDIR}/mxq/mysql.cnf
 MXQ_MYSQL_DEFAULT_GROUP = mxqclient
 
-MXQ_INITIAL_PATH = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+MXQ_INITIAL_PATH   = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+MXQ_INITIAL_TMPDIR = /tmp
 
 CFLAGS_MXQ_MYSQL_DEFAULT_FILE  = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
 CFLAGS_MXQ_MYSQL_DEFAULT_GROUP = -DMXQ_MYSQL_DEFAULT_GROUP=\"$(MXQ_MYSQL_DEFAULT_GROUP)\"
 CFLAGS_MXQ_INITIAL_PATH        = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
+CFLAGS_MXQ_INITIAL_TMPDIR      = -DMXQ_INITIAL_TMPDIR=\"$(MXQ_INITIAL_TMPDIR)\"
 
 MYSQL_CONFIG = mysql_config
 
@@ -75,7 +77,7 @@ OS_RELEASE = $(shell ./os-release)
 # special defaults for mariux64
 ifeq (${OS_RELEASE}, mariux64)
    MXQ_INITIAL_PATH   := ${MXQ_INITIAL_PATH}:/usr/local/package/bin
-   CFLAGS_MXQ_INITIAL_TMPDIR      = -DMXQ_INITIAL_TMPDIR=\"/scratch/local\"
+   MXQ_INITIAL_TMPDIR := /scratch/local
 endif
 
 ########################################################################
