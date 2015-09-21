@@ -50,6 +50,10 @@
 #define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
 #define MYSQL_DEFAULT_GROUP    "mxqd"
 
+#ifndef MXQ_INITIAL_PATH
+#  define MXQ_INITIAL_PATH      "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+#endif
+
 #ifndef MXQ_INITIAL_TMPDIR
 #  define MXQ_INITIAL_TMPDIR    "/tmp"
 #endif
