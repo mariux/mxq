@@ -34,43 +34,31 @@
 #include "mxq_job.h"
 #include "mx_mysql.h"
 #include "mxqd.h"
-
-#ifndef MXQ_VERSION
-#define MXQ_VERSION "0.00"
-#endif
-
-#ifndef MXQ_VERSIONFULL
-#define MXQ_VERSIONFULL "MXQ v0.00 super alpha 0"
-#endif
-
-#ifndef MXQ_VERSIONDATE
-#define MXQ_VERSIONDATE "2015"
-#endif
+#include "mxq.h"
 
 #define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
 #define MYSQL_DEFAULT_GROUP    "mxqd"
+
+#ifndef MXQ_INITIAL_PATH
+#  define MXQ_INITIAL_PATH      "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+#endif
+
+#ifndef MXQ_INITIAL_TMPDIR
+#  define MXQ_INITIAL_TMPDIR    "/tmp"
+#endif
 
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
 
 int mxq_redirect_output(char *stdout_fname, char *stderr_fname);
 
-static void print_version(void)
-{
-    printf(
-    "mxqd - " MXQ_VERSIONFULL "\n"
-    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
-    "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n"
-    );
-}
-
 static void print_usage(void)
 {
-    print_version();
+    mxq_print_generic_version();
     printf(
     "\n"
     "Usage:\n"
-    "  mxqd [options]\n"
+    "  %s [options]\n"
     "\n"
     "options:\n"
     "  -j, --slots     <slots>           default: 1\n"
@@ -90,13 +78,16 @@ static void print_usage(void)
     "\n"
     "Change how to connect to the mysql server:\n"
     "\n"
-    "  -M, --mysql-default-file [mysql-file]    default: " MYSQL_DEFAULT_FILE "\n"
-    "  -S, --mysql-default-group [mysql-group]  default: " MYSQL_DEFAULT_GROUP "\n"
+    "  -M, --mysql-default-file [mysql-file]    default: %s\n"
+    "  -S, --mysql-default-group [mysql-group]  default: %s\n"
     "\n"
     "Environment:\n"
     "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
     "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
-    "\n"
+    "\n",
+    program_invocation_short_name,
+    MXQ_MYSQL_DEFAULT_FILE_STR,
+    MXQ_MYSQL_DEFAULT_GROUP_STR
     );
 }
 
@@ -272,7 +263,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 break;
 
             case 'V':
-                print_version();
+                mxq_print_generic_version();
                 exit(EX_USAGE);
 
             case 'h':
@@ -779,9 +770,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenv_forever("USERNAME", g->user_name);
     mx_setenv_forever("LOGNAME",  g->user_name);
     mx_setenv_forever("PATH",     MXQ_INITIAL_PATH);
-#ifdef MXQ_INITIAL_TMPDIR
-    mx_setenv_forever("TMPDIR", MXQ_INITIAL_TMPDIR);
-#endif
+    mx_setenv_forever("TMPDIR",   MXQ_INITIAL_TMPDIR);
     mx_setenv_forever("PWD",      j->job_workdir);
     mx_setenv_forever("HOME",     passwd->pw_dir);
     mx_setenv_forever("SHELL",    passwd->pw_shell);
