@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    job_memory     INT8 UNSIGNED NOT NULL DEFAULT 1024,
    job_time       INT4 UNSIGNED NOT NULL DEFAULT 15,
 
+   job_max_per_node     INT2 UNSIGNED NOT NULL DEFAULT 0,
+
    group_jobs           INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_jobs_inq       INT8 UNSIGNED NOT NULL DEFAULT 0,
    group_jobs_running   INT8 UNSIGNED NOT NULL DEFAULT 0,
