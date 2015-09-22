@@ -31,6 +31,8 @@ struct mxq_group {
    uint64_t  job_memory;
    uint32_t  job_time;
 
+   uint16_t  job_max_per_node;
+
    uint64_t  group_jobs;
    uint64_t  group_jobs_inq;
    uint64_t  group_jobs_running;
