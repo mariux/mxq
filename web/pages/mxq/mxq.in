@@ -252,6 +252,8 @@ job_threads    : $o{job_threads}
 job_memory     : $o{job_memory}
 job_time       : $o{job_time}
 
+job_max_per_node      : $o{job_max_per_node}
+
 group_jobs            : $o{group_jobs}
 group_jobs_inq        : $o{group_jobs_inq}
 group_jobs_running    : $o{group_jobs_running}
