@@ -73,6 +73,9 @@ static void print_usage(void)
     "      --no-log                      default: write a logfile\n"
     "      --debug                       default: info log level\n"
     "\n"
+    "      --initial-path <path>         default: %s\n"
+    "      --initial-tmpdir <directory>  default: %s\n"
+    "\n"
     "  -V, --version\n"
     "  -h, --help\n"
     "\n"
@@ -86,6 +89,8 @@ static void print_usage(void)
     "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
     "\n",
     program_invocation_short_name,
+    MXQ_INITIAL_PATH,
+    MXQ_INITIAL_TMPDIR,
     MXQ_MYSQL_DEFAULT_FILE_STR,
     MXQ_MYSQL_DEFAULT_GROUP_STR
     );
@@ -194,6 +199,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
     char *arg_pidfile = NULL;
+    char *arg_initial_path;
+    char *arg_initial_tmpdir;
     char arg_daemonize = 0;
     char arg_nolog = 0;
     int opt;
@@ -210,6 +217,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("no-log",               3),
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
+                MX_OPTION_REQUIRED_ARG("initial-path",   7),
+                MX_OPTION_REQUIRED_ARG("initial-tmpdir", 8),
                 MX_OPTION_REQUIRED_ARG("slots",        'j'),
                 MX_OPTION_REQUIRED_ARG("memory",       'm'),
                 MX_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
@@ -222,6 +231,9 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
+
+    arg_initial_path = MXQ_INITIAL_PATH;
+    arg_initial_tmpdir = MXQ_INITIAL_TMPDIR;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
@@ -309,6 +321,14 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 arg_server_id = optctl.optarg;
                 break;
 
+            case 7:
+                arg_initial_path = optctl.optarg;
+                break;
+
+            case 8:
+                arg_initial_tmpdir = optctl.optarg;
+                break;
+
             case 'M':
                 arg_mysql_default_file = optctl.optarg;
                 break;
@@ -342,6 +362,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     server->hostname = arg_hostname;
     server->server_id = arg_server_id;
+    server->initial_path = arg_initial_path;
+    server->initial_tmpdir = arg_initial_tmpdir;
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
     if (!server->flock) {
@@ -769,8 +791,8 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenv_forever("USER",     g->user_name);
     mx_setenv_forever("USERNAME", g->user_name);
     mx_setenv_forever("LOGNAME",  g->user_name);
-    mx_setenv_forever("PATH",     MXQ_INITIAL_PATH);
-    mx_setenv_forever("TMPDIR",   MXQ_INITIAL_TMPDIR);
+    mx_setenv_forever("PATH",     s->initial_path);
+    mx_setenv_forever("TMPDIR",   s->initial_tmpdir);
     mx_setenv_forever("PWD",      j->job_workdir);
     mx_setenv_forever("HOME",     passwd->pw_dir);
     mx_setenv_forever("SHELL",    passwd->pw_shell);

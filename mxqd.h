@@ -76,6 +76,9 @@ struct mxq_server {
     char *pidfilename;
     struct mx_flock *flock;
 
+    char *initial_path;
+    char *initial_tmpdir;
+
     int is_running;
 };
 
