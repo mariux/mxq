@@ -780,6 +780,68 @@ int mx_read_first_line_from_file(char *fname, char **line)
     return res;
 }
 
+int mx_strscan_ull(char **str, unsigned long long int *to)
+{
+    unsigned long long int l;
+    char *s;
+    char *p;
+    char o = 0;
+    int res;
+
+    s = *str;
+
+    p = strchr(s, ' ');
+    if (p) {
+        o = *p;
+        *p = 0;
+        p++;
+    } else {
+        p = s + strlen(s);
+    }
+
+    res = mx_strtoull(s, &l);
+    if (o)
+        *(p-1) = o;
+
+    if (res == 0) {
+        *to = l;
+        *str = p;
+    }
+
+    return res;
+}
+
+int mx_strscan_ll(char **str, long long int *to)
+{
+    long long int l;
+    char *s;
+    char *p;
+    char o = 0;
+    int res;
+
+    s = *str;
+
+    p = strchr(s, ' ');
+    if (p) {
+        o = *p;
+        *p = 0;
+        p++;
+    } else {
+        p = s + strlen(s);
+    }
+
+    res = mx_strtoll(s, &l);
+    if (o)
+        *(p-1) = o;
+
+    if (res == 0) {
+        *to = l;
+        *str = p;
+    }
+
+    return res;
+}
+
 int mx_sleep(unsigned int seconds)
 {
     if (seconds)

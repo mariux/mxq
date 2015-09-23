@@ -292,6 +292,47 @@ static void test_mx_read_first_line_from_file(void)
     mx_free_null(str);
 }
 
+static void test_mx_strscan(void)
+{
+    _mx_cleanup_free_ char *s = NULL;
+    char *str;
+    unsigned long long int ull;
+    long long int ll;
+
+    assert(s = strdup("123 456 -789 246 abc"));
+    str = s;
+
+    assert(mx_strscan_ull(&str, &ull) == 0);
+    assert(ull == 123);
+
+    assert(mx_strscan_ull(&str, &ull) == 0);
+    assert(ull == 456);
+
+    assert(mx_strscan_ull(&str, &ull) == -ERANGE);
+    assert(mx_streq(str, "-789 246 abc"));
+
+    assert(mx_strscan_ll(&str, &ll) == 0);
+    assert(ll == -789);
+    assert(mx_streq(str, "246 abc"));
+
+    assert(mx_strscan_ll(&str, &ll) == 0);
+    assert(ll == 246);
+    assert(mx_streq(str, "abc"));
+
+    assert(mx_strscan_ull(&str, &ull) == -EINVAL);
+    assert(mx_streq(str, "abc"));
+    assert(mx_streq(s, "123 456 -789 246 abc"));
+    mx_free_null(s);
+
+    assert(s = strdup("123"));
+    str = s;
+    assert(mx_strscan_ull(&str, &ull) == 0);
+    assert(ull == 123);
+    assert(mx_streq(str, ""));
+    assert(mx_streq(s, "123"));
+
+}
+
 int main(int argc, char *argv[])
 {
     test_mx_strskipwhitespaces();
@@ -306,5 +347,6 @@ int main(int argc, char *argv[])
     test_mx_strtominutes();
     test_mx_strtobytes();
     test_mx_read_first_line_from_file();
+    test_mx_strscan();
     return 0;
 }

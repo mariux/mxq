@@ -117,6 +117,9 @@ int mx_open_newfile(char *fname);
 
 int mx_read_first_line_from_file(char *fname, char **line);
 
+int mx_strscan_ull(char **str, unsigned long long int *to);
+int mx_strscan_ll(char **str, long long int *to);
+
 int mx_sleep(unsigned int seconds);
 int mx_sleep_nofail(unsigned int seconds);
 
