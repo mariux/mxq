@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "mx_log.h"
 
@@ -46,8 +47,16 @@ static inline void __mx_free(void *ptr) {
     free(*(void **)ptr);
 }
 
+static inline void __mx_fclose(FILE **ptr) {
+    if (*ptr)
+        fclose(*ptr);
+}
+
 #undef _mx_cleanup_free_
 #define _mx_cleanup_free_ _mx_cleanup_(__mx_free)
+
+#undef _mx_cleanup_fclose_
+#define _mx_cleanup_fclose_ _mx_cleanup_(__mx_fclose)
 
 #undef likely
 #define likely(x)       __builtin_expect((x),1)
@@ -105,6 +114,8 @@ int mx_setenv_forever(const char *name, const char *value);
 int mx_setenvf_forever(const char *name, char *fmt, ...) __attribute__ ((format(printf, 2, 3)));
 
 int mx_open_newfile(char *fname);
+
+int mx_read_first_line_from_file(char *fname, char **line);
 
 int mx_sleep(unsigned int seconds);
 int mx_sleep_nofail(unsigned int seconds);

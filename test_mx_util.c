@@ -44,6 +44,7 @@ static void test_mx_strtoul(void)
     assert(mx_strtoul("-1", &l) == -ERANGE);
     assert(mx_strtoul(" -1", &l) == -ERANGE);
 
+    assert(mx_strtoul("123 123", &l) == -EINVAL);
     assert(mx_strtoul("123s", &l) == -EINVAL);
     assert(mx_strtoul("0888", &l) == -EINVAL);
     assert(mx_strtoul("1.2", &l)  == -EINVAL);
@@ -271,6 +272,26 @@ static void test_mx_strtobytes(void)
     assert(mx_strtobytes("test", &l) == -EINVAL);
 }
 
+static void test_mx_read_first_line_from_file(void)
+{
+    char *str;
+
+    assert(mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str) == 36);
+    assert(str);
+    mx_free_null(str);
+
+    assert(mx_read_first_line_from_file("/proc/sys/kernel/random/uuid", &str) == 36);
+    assert(str);
+    mx_free_null(str);
+
+    assert(mx_read_first_line_from_file("/proc/no_such_file", &str) == -ENOENT);
+    assert(str == NULL);
+
+    assert(mx_read_first_line_from_file("/proc/self/stat", &str) > 0);
+    assert(str);
+    mx_free_null(str);
+}
+
 int main(int argc, char *argv[])
 {
     test_mx_strskipwhitespaces();
@@ -284,5 +305,6 @@ int main(int argc, char *argv[])
     test_mx_strtoseconds();
     test_mx_strtominutes();
     test_mx_strtobytes();
+    test_mx_read_first_line_from_file();
     return 0;
 }

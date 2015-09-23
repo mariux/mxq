@@ -752,6 +752,34 @@ int mx_open_newfile(char *fname)
     return fh;
 }
 
+int mx_read_first_line_from_file(char *fname, char **line)
+{
+    _mx_cleanup_fclose_ FILE *fp;
+    char *buf = NULL;
+    size_t n = 0;
+    ssize_t res;
+
+    fp = fopen(fname, "r");
+    if (!fp)
+        return -errno;
+
+    res = getline(&buf, &n, fp);
+    if (res == -1)
+        return -errno;
+
+    *line = buf;
+
+    if (!res)
+        return res;
+
+    res--;
+
+    if (buf[res] == '\n')
+        buf[res] = 0;
+
+    return res;
+}
+
 int mx_sleep(unsigned int seconds)
 {
     if (seconds)
