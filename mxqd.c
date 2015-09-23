@@ -808,6 +808,8 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenvf_forever("MXQ_MEMORY",  "%lu",    g->job_memory);
     mx_setenvf_forever("MXQ_TIME",    "%d",     g->job_time);
     mx_setenvf_forever("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
+    mx_setenv_forever("MXQ_HOSTNAME", s->hostname);
+    mx_setenv_forever("MXQ_SERVERID", s->server_id);
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {
