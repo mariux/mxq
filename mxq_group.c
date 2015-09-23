@@ -12,7 +12,7 @@
 #include "mx_util.h"
 #include "mx_mysql.h"
 
-#define GROUP_FIELDS_CNT 29
+#define GROUP_FIELDS_CNT 30
 #define GROUP_FIELDS \
             " group_id," \
             " group_name," \
@@ -27,6 +27,7 @@
             " job_threads," \
             " job_memory," \
             " job_time," \
+            " job_max_per_node," \
             " group_jobs," \
             " group_jobs_inq," \
             " group_jobs_running," \
@@ -69,6 +70,8 @@ static int bind_result_group_fields(struct mx_mysql_bind *result, struct mxq_gro
     res += mx_mysql_bind_var(result, idx++, uint16, &(g->job_threads));
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->job_memory));
     res += mx_mysql_bind_var(result, idx++, uint32, &(g->job_time));
+
+    res += mx_mysql_bind_var(result, idx++, uint16, &(g->job_max_per_node));
 
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_jobs));
     res += mx_mysql_bind_var(result, idx++, uint64, &(g->group_jobs_inq));

@@ -82,6 +82,9 @@ static void print_usage(void)
     "               to specify years, weeks, days, hours and minutes\n"
     "               Defaults to minutes if no suffix is set.\n"
     "\n"
+    "      --max-jobs-per-node=NUMBER  limit the number of jobs executed on each cluster node\n"
+    "                                  (default: 0 [limited by the server])\n"
+    "\n"
     "Job handling:\n"
     "  Define what to do if something bad happens:\n"
     "\n"
@@ -170,6 +173,7 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
                 " AND job_threads = ?"
                 " AND job_memory = ?"
                 " AND job_time = ?"
+                " AND job_max_per_node = ?"
                 " AND group_priority = ?"
                 " AND group_status = 0"
                 " AND group_flags & ? = 0 "
@@ -189,8 +193,9 @@ static int load_group_id(struct mx_mysql *mysql, struct mxq_group *g)
     res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
     res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
-    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
-    res += mx_mysql_statement_param_bind(stmt, 10, uint64, &(flags));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->job_max_per_node));
+    res += mx_mysql_statement_param_bind(stmt, 10, uint16, &(g->group_priority));
+    res += mx_mysql_statement_param_bind(stmt, 11, uint64, &(flags));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -250,6 +255,7 @@ static int load_group_id_by_group_id(struct mx_mysql *mysql, struct mxq_group *g
                 " AND job_threads = ?"
                 " AND job_memory = ?"
                 " AND job_time = ?"
+                " AND job_max_per_node = ?"
                 " AND group_priority = ?"
                 " AND group_status = 0"
                 " AND group_id = ?"
@@ -270,9 +276,10 @@ static int load_group_id_by_group_id(struct mx_mysql *mysql, struct mxq_group *g
     res += mx_mysql_statement_param_bind(stmt,  6, uint16, &(g->job_threads));
     res += mx_mysql_statement_param_bind(stmt,  7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt,  8, uint32, &(g->job_time));
-    res += mx_mysql_statement_param_bind(stmt,  9, uint16, &(g->group_priority));
-    res += mx_mysql_statement_param_bind(stmt, 10, uint64, &(g->group_id));
-    res += mx_mysql_statement_param_bind(stmt, 11, uint64, &(flags));
+    res += mx_mysql_statement_param_bind(stmt,  9, uint16, &(g->job_max_per_node));
+    res += mx_mysql_statement_param_bind(stmt, 10, uint16, &(g->group_priority));
+    res += mx_mysql_statement_param_bind(stmt, 11, uint64, &(g->group_id));
+    res += mx_mysql_statement_param_bind(stmt, 12, uint64, &(flags));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -325,6 +332,7 @@ static int load_group_id_run_or_wait(struct mx_mysql *mysql, struct mxq_group *g
                 " AND job_threads = ?"
                 " AND job_memory = ?"
                 " AND job_time = ?"
+                " AND job_max_per_node = ?"
                 " AND group_priority = ?"
                 " AND group_status = 0"
                 " AND ("
@@ -349,8 +357,9 @@ static int load_group_id_run_or_wait(struct mx_mysql *mysql, struct mxq_group *g
     res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
     res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
-    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
-    res += mx_mysql_statement_param_bind(stmt, 10, uint64, &(flags));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->job_max_per_node));
+    res += mx_mysql_statement_param_bind(stmt, 10, uint16, &(g->group_priority));
+    res += mx_mysql_statement_param_bind(stmt, 11, uint64, &(flags));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -405,6 +414,7 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
                 " job_threads = ?,"
                 " job_memory = ?,"
                 " job_time = ?,"
+                " job_max_per_node = ?,"
                 " group_priority = ?");
     if (!stmt) {
         mx_log_err("mx_mysql_statement_prepare(): %m");
@@ -420,7 +430,8 @@ static int add_group(struct mx_mysql *mysql, struct mxq_group *g)
     res += mx_mysql_statement_param_bind(stmt, 6, uint16, &(g->job_threads));
     res += mx_mysql_statement_param_bind(stmt, 7, uint64, &(g->job_memory));
     res += mx_mysql_statement_param_bind(stmt, 8, uint32, &(g->job_time));
-    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->group_priority));
+    res += mx_mysql_statement_param_bind(stmt, 9, uint16, &(g->job_max_per_node));
+    res += mx_mysql_statement_param_bind(stmt, 10, uint16, &(g->group_priority));
     assert(res == 0);
 
     res = mx_mysql_statement_execute(stmt, &num_rows);
@@ -585,6 +596,7 @@ int main(int argc, char *argv[])
     u_int16_t  arg_threads;
     u_int64_t  arg_memory;
     u_int32_t  arg_time;
+    u_int16_t  arg_max_per_node;
     u_int64_t  arg_groupid;
     char      *arg_workdir;
     char      *arg_stdout;
@@ -646,6 +658,8 @@ int main(int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("memory",       'm'),
                 MX_OPTION_REQUIRED_ARG("runtime",      't'),
 
+                MX_OPTION_REQUIRED_ARG("max-jobs-per-node", 6),
+
                 MX_OPTION_REQUIRED_ARG("define",       'D'),
 
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
@@ -666,6 +680,7 @@ int main(int argc, char *argv[])
     arg_threads        = 1;
     arg_memory         = 2048;
     arg_time           = 0;
+    arg_max_per_node   = 0;
     arg_workdir        = current_workdir;
     arg_stdout         = "/dev/null";
     arg_stderr         = "stdout";
@@ -829,6 +844,13 @@ int main(int argc, char *argv[])
                 }
                 break;
 
+            case 6:
+                if (mx_strtou16(optctl.optarg, &arg_max_per_node) < 0) {
+                    mx_log_crit("--max-jobs-per-node '%s': %m", optctl.optarg);
+                    exit(EX_CONFIG);
+                }
+                break;
+
             case 'w':
                 if (!(*optctl.optarg)) {
                     mx_log_crit("--workdir '%s': String is empty.", optctl.optarg);
@@ -943,6 +965,8 @@ int main(int argc, char *argv[])
     group.job_threads    = arg_threads;
     group.job_memory     = arg_memory;
     group.job_time       = arg_time;
+
+    group.job_max_per_node = arg_max_per_node;
 
     job.job_flags      = arg_jobflags;
     job.job_priority   = arg_priority;
