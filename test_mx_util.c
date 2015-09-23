@@ -1,7 +1,11 @@
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "mx_util.h"
 
@@ -275,6 +279,7 @@ static void test_mx_strtobytes(void)
 static void test_mx_read_first_line_from_file(void)
 {
     char *str;
+    long long int l;
 
     assert(mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str) == 36);
     assert(str);
@@ -289,6 +294,7 @@ static void test_mx_read_first_line_from_file(void)
 
     assert(mx_read_first_line_from_file("/proc/self/stat", &str) > 0);
     assert(str);
+    mx_strtoll(str, &l);
     mx_free_null(str);
 }
 
@@ -298,6 +304,9 @@ static void test_mx_strscan(void)
     char *str;
     unsigned long long int ull;
     long long int ll;
+    _mx_cleanup_free_ char *line = NULL;
+    struct proc_pid_stat pps = {0};
+    struct proc_pid_stat pps2 = {0};
 
     assert(s = strdup("123 456 -789 246 abc"));
     str = s;
@@ -331,7 +340,22 @@ static void test_mx_strscan(void)
     assert(mx_streq(str, ""));
     assert(mx_streq(s, "123"));
 
+    assert(mx_read_first_line_from_file("/proc/self/stat", &line) > 0);
+    assert(mx_strscan_proc_pid_stat(line, &pps) == 0);
+    assert(pps.pid == getpid());
+    assert(pps.ppid == getppid());
+    assert(pps.state == 'R');
+    assert(mx_streq(pps.comm, program_invocation_short_name) || mx_streq(pps.comm, "memcheck-amd64-"));
+    mx_proc_pid_stat_free(&pps);
+
+    assert(mx_proc_pid_stat(&pps2, getpid()) == 0);
+    assert(pps2.pid == getpid());
+    assert(pps2.ppid == getppid());
+    assert(pps2.state == 'R');
+    assert(mx_streq(pps2.comm, program_invocation_short_name) || mx_streq(pps2.comm, "memcheck-amd64-"));
+    mx_proc_pid_stat_free(&pps2);
 }
+
 
 int main(int argc, char *argv[])
 {
