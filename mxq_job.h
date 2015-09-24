@@ -40,6 +40,7 @@ struct mxq_job {
     char *     host_submit;
     unsigned long _host_submit_length;
 
+    char *     host_id;
     char *     server_id;
     unsigned long _server_id_length;
 
