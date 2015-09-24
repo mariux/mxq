@@ -347,6 +347,7 @@ job_umask:       : $job_umask_text
 host_submit      : $o{host_submit}
 
 server_id        : $o{server_id}
+host_id          : $o{host_id}
 
 host_hostname    : $o{host_hostname}
 host_pid         : $o{host_pid}
