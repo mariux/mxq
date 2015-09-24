@@ -70,6 +70,9 @@ struct mxq_server {
 
     struct mx_mysql *mysql;
 
+    char *boot_id;
+    unsigned long long int starttime;
+    char *host_id;
     char *hostname;
     char *server_id;
     char *lockfilename;

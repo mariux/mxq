@@ -19,18 +19,14 @@ struct mxq_job {
     struct mxq_group * group_ptr;
 
     char *     job_workdir;
-    unsigned long _job_workdir_length;
 
     uint16_t   job_argc;
 
     char **    job_argv;
     char *     job_argv_str;
-    unsigned long _job_argv_str_length;
 
     char *     job_stdout;
-    unsigned long _job_stdout_length;
     char *     job_stderr;
-    unsigned long _job_stderr_length;
 
     char *     tmp_stdout;
     char *     tmp_stderr;
@@ -38,13 +34,11 @@ struct mxq_job {
     uint32_t   job_umask;
 
     char *     host_submit;
-    unsigned long _host_submit_length;
 
+    char *     host_id;
     char *     server_id;
-    unsigned long _server_id_length;
 
     char *     host_hostname;
-    unsigned long _host_hostname_length;
 
     uint32_t   host_pid;
     uint32_t   host_slots;
@@ -107,6 +101,6 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job);
 int mxq_set_job_status_unknown_for_server(struct mx_mysql *mysql, char *hostname, char *server_id);
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j);
 int mxq_load_job_assigned_to_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, char *hostname, char *server_id);
-int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id);
+int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id, char *host_id);
 
 #endif

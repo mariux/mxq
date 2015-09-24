@@ -1,7 +1,11 @@
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "mx_util.h"
 
@@ -44,6 +48,7 @@ static void test_mx_strtoul(void)
     assert(mx_strtoul("-1", &l) == -ERANGE);
     assert(mx_strtoul(" -1", &l) == -ERANGE);
 
+    assert(mx_strtoul("123 123", &l) == -EINVAL);
     assert(mx_strtoul("123s", &l) == -EINVAL);
     assert(mx_strtoul("0888", &l) == -EINVAL);
     assert(mx_strtoul("1.2", &l)  == -EINVAL);
@@ -271,6 +276,87 @@ static void test_mx_strtobytes(void)
     assert(mx_strtobytes("test", &l) == -EINVAL);
 }
 
+static void test_mx_read_first_line_from_file(void)
+{
+    char *str;
+    long long int l;
+
+    assert(mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str) == 36);
+    assert(str);
+    mx_free_null(str);
+
+    assert(mx_read_first_line_from_file("/proc/sys/kernel/random/uuid", &str) == 36);
+    assert(str);
+    mx_free_null(str);
+
+    assert(mx_read_first_line_from_file("/proc/no_such_file", &str) == -ENOENT);
+    assert(str == NULL);
+
+    assert(mx_read_first_line_from_file("/proc/self/stat", &str) > 0);
+    assert(str);
+    mx_strtoll(str, &l);
+    mx_free_null(str);
+}
+
+static void test_mx_strscan(void)
+{
+    _mx_cleanup_free_ char *s = NULL;
+    char *str;
+    unsigned long long int ull;
+    long long int ll;
+    _mx_cleanup_free_ char *line = NULL;
+    struct proc_pid_stat pps = {0};
+    struct proc_pid_stat pps2 = {0};
+
+    assert(s = strdup("123 456 -789 246 abc"));
+    str = s;
+
+    assert(mx_strscan_ull(&str, &ull) == 0);
+    assert(ull == 123);
+
+    assert(mx_strscan_ull(&str, &ull) == 0);
+    assert(ull == 456);
+
+    assert(mx_strscan_ull(&str, &ull) == -ERANGE);
+    assert(mx_streq(str, "-789 246 abc"));
+
+    assert(mx_strscan_ll(&str, &ll) == 0);
+    assert(ll == -789);
+    assert(mx_streq(str, "246 abc"));
+
+    assert(mx_strscan_ll(&str, &ll) == 0);
+    assert(ll == 246);
+    assert(mx_streq(str, "abc"));
+
+    assert(mx_strscan_ull(&str, &ull) == -EINVAL);
+    assert(mx_streq(str, "abc"));
+    assert(mx_streq(s, "123 456 -789 246 abc"));
+    mx_free_null(s);
+
+    assert(s = strdup("123"));
+    str = s;
+    assert(mx_strscan_ull(&str, &ull) == 0);
+    assert(ull == 123);
+    assert(mx_streq(str, ""));
+    assert(mx_streq(s, "123"));
+
+    assert(mx_read_first_line_from_file("/proc/self/stat", &line) > 0);
+    assert(mx_strscan_proc_pid_stat(line, &pps) == 0);
+    assert(pps.pid == getpid());
+    assert(pps.ppid == getppid());
+    assert(pps.state == 'R');
+    assert(mx_streq(pps.comm, program_invocation_short_name) || mx_streq(pps.comm, "memcheck-amd64-"));
+    mx_proc_pid_stat_free(&pps);
+
+    assert(mx_proc_pid_stat(&pps2, getpid()) == 0);
+    assert(pps2.pid == getpid());
+    assert(pps2.ppid == getppid());
+    assert(pps2.state == 'R');
+    assert(mx_streq(pps2.comm, program_invocation_short_name) || mx_streq(pps2.comm, "memcheck-amd64-"));
+    mx_proc_pid_stat_free(&pps2);
+}
+
+
 int main(int argc, char *argv[])
 {
     test_mx_strskipwhitespaces();
@@ -284,5 +370,7 @@ int main(int argc, char *argv[])
     test_mx_strtoseconds();
     test_mx_strtominutes();
     test_mx_strtobytes();
+    test_mx_read_first_line_from_file();
+    test_mx_strscan();
     return 0;
 }

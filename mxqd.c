@@ -203,11 +203,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_initial_tmpdir;
     char arg_daemonize = 0;
     char arg_nolog = 0;
+    char *str_bootid;
     int opt;
     unsigned long threads_total = 1;
     unsigned long memory_total = 2048;
     unsigned long memory_max   = 0;
     int i;
+    struct proc_pid_stat pps = {0};
 
     struct mx_getopt_ctl optctl;
     struct mx_option opts[] = {
@@ -409,6 +411,20 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
     }
 
+    res = mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str_bootid);
+    assert(res == 36);
+    assert(str_bootid);
+
+    server->boot_id = str_bootid;
+
+    res = mx_proc_pid_stat(&pps, getpid());
+    assert(res == 0);
+
+    server->starttime = pps.starttime;
+    mx_proc_pid_stat_free(&pps);
+
+    mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
+
     server->slots = threads_total;;
     server->memory_total = memory_total;
     server->memory_max_per_slot = memory_max;
@@ -469,7 +485,7 @@ void group_init(struct mxq_group_list *group)
     jobs_max /= g->job_threads;
 
     /* limit maximum number of jobs on user/group request */
-    if (jobs_max > g->job_max_per_node)
+    if (g->job_max_per_node && jobs_max > g->job_max_per_node)
         jobs_max = g->job_max_per_node;
 
     slots_max = jobs_max * slots_per_job;
@@ -807,7 +823,9 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     mx_setenvf_forever("MXQ_SLOTS",   "%lu",    group->slots_per_job);
     mx_setenvf_forever("MXQ_MEMORY",  "%lu",    g->job_memory);
     mx_setenvf_forever("MXQ_TIME",    "%d",     g->job_time);
-    mx_setenvf_forever("MXQ_HOSTID",  "%s::%s", s->hostname, s->server_id);
+    mx_setenv_forever("MXQ_HOSTID",   s->host_id);
+    mx_setenv_forever("MXQ_HOSTNAME", s->hostname);
+    mx_setenv_forever("MXQ_SERVERID", s->server_id);
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {
@@ -1001,7 +1019,7 @@ unsigned long start_job(struct mxq_group_list *group)
 
     server = group->user->server;
 
-    res = mxq_load_job_from_group_for_server(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id);
+    res = mxq_load_job_from_group_for_server(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id, server->host_id);
 
     if (!res) {
         return 0;
@@ -1349,6 +1367,8 @@ void server_close(struct mxq_server *server)
         unlink(server->pidfilename);
 
     mx_funlock(server->flock);
+
+    mx_free_null(server->boot_id);
 }
 
 int killall(struct mxq_server *server, int sig, unsigned int pgrp)
@@ -1691,6 +1711,7 @@ int main(int argc, char *argv[])
     mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
     mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
+    mx_log_info("  host_id=%s", server.host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
                   server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);
 
