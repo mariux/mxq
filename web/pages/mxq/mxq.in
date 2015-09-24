@@ -355,7 +355,7 @@ host_slots       : $o{host_slots}
 
 date_submit      : $o{date_submit}
 date_start       : $o{date_start}
-date_end         : $o{date_start}
+date_end         : $o{date_end}
 
 job_id_new       : $o{job_id_new}
 job_id_old       : $o{job_id_old}
