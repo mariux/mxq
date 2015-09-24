@@ -395,19 +395,21 @@ int mxq_set_job_status_loaded_on_server(struct mx_mysql *mysql, struct mxq_job *
     char *query =
             "UPDATE mxq_job SET"
             " job_status = " status_str(MXQ_JOB_STATUS_LOADED)
+            ", host_id = ?"
             " WHERE job_id = ?"
             " AND job_status = " status_str(MXQ_JOB_STATUS_ASSIGNED)
             " AND host_hostname = ?"
             " AND server_id = ?"
             " AND host_pid = 0";
 
-    res = mx_mysql_bind_init_param(&param, 3);
+    res = mx_mysql_bind_init_param(&param, 4);
     assert(res == 0);
 
     res = 0;
-    res += mx_mysql_bind_var(&param, 0, uint64, &(job->job_id));
-    res += mx_mysql_bind_var(&param, 1, string, &(job->host_hostname));
-    res += mx_mysql_bind_var(&param, 2, string, &(job->server_id));
+    res += mx_mysql_bind_var(&param, 0, string, &(job->host_id));
+    res += mx_mysql_bind_var(&param, 1, uint64, &(job->job_id));
+    res += mx_mysql_bind_var(&param, 2, string, &(job->host_hostname));
+    res += mx_mysql_bind_var(&param, 3, string, &(job->server_id));
     assert(res == 0);
 
     res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
@@ -666,7 +668,7 @@ int mxq_load_job_assigned_to_server(struct mx_mysql *mysql, struct mxq_job **mxq
     return res;
 }
 
-int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id)
+int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id, char *host_id)
 {
     int res;
     struct mxq_job *jobs   = NULL;
@@ -677,6 +679,8 @@ int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *m
     assert(*hostname);
     assert(server_id);
     assert(*server_id);
+    assert(host_id);
+    assert(*host_id);
 
     do {
         res = mxq_load_job_assigned_to_server(mysql, &jobs, hostname, server_id);
@@ -700,6 +704,9 @@ int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *m
             return 0;
         }
     } while (1);
+
+    mx_free_null(mxqjob->host_id);
+    mxqjob->host_id = mx_strdup_forever(host_id);
 
     res = mxq_set_job_status_loaded_on_server(mysql, mxqjob);
     if (res < 0) {

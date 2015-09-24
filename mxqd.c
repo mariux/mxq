@@ -1019,7 +1019,7 @@ unsigned long start_job(struct mxq_group_list *group)
 
     server = group->user->server;
 
-    res = mxq_load_job_from_group_for_server(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id);
+    res = mxq_load_job_from_group_for_server(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id, server->host_id);
 
     if (!res) {
         return 0;
