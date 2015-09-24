@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    host_submit    VARCHAR(64)     NOT NULL DEFAULT "localhost",
 
    server_id      VARCHAR(1023)   NOT NULL DEFAULT "",
+   host_id        VARCHAR(1023)   NOT NULL DEFAULT "",
 
    host_hostname  VARCHAR(64)     NOT NULL DEFAULT "",
    host_pid       INT4 UNSIGNED   NOT NULL DEFAULT 0,
