@@ -10,7 +10,6 @@ struct mxq_group {
    uint64_t  group_id;
 
    char *    group_name;
-   unsigned long  _group_name_length;
 
    uint8_t   group_status;
    uint64_t  group_flags;
@@ -18,14 +17,11 @@ struct mxq_group {
 
    uint32_t  user_uid;
    char *    user_name;
-   unsigned long  _user_name_length;
 
    uint32_t  user_gid;
    char *    user_group;
-   unsigned long  _user_group_length;
 
    char *    job_command;
-   unsigned long  _job_command_length;
 
    uint16_t  job_threads;
    uint64_t  job_memory;

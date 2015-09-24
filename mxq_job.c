@@ -156,16 +156,9 @@ char *mxq_job_status_to_name(uint64_t status)
 void mxq_job_free_content(struct mxq_job *j)
 {
         mx_free_null(j->job_workdir);
-        j->_job_workdir_length = 0;
-
         mx_free_null(j->job_argv_str);
-        j->_job_argv_str_length = 0;
-
         mx_free_null(j->job_stdout);
-        j->_job_stdout_length = 0;
-
         mx_free_null(j->job_stderr);
-        j->_job_stderr_length = 0;
 
         if (j->tmp_stderr == j->tmp_stdout) {
             j->tmp_stdout = NULL;
@@ -173,18 +166,10 @@ void mxq_job_free_content(struct mxq_job *j)
             mx_free_null(j->tmp_stdout);
         }
         mx_free_null(j->tmp_stderr);
-
         mx_free_null(j->host_submit);
-        j->_host_submit_length = 0;
-
         mx_free_null(j->host_id);
-
         mx_free_null(j->server_id);
-        j->_server_id_length = 0;
-
         mx_free_null(j->host_hostname);
-        j->_host_hostname_length = 0;
-
         mx_free_null(j->job_argv);
         j->job_argv = NULL;
 }

@@ -19,18 +19,14 @@ struct mxq_job {
     struct mxq_group * group_ptr;
 
     char *     job_workdir;
-    unsigned long _job_workdir_length;
 
     uint16_t   job_argc;
 
     char **    job_argv;
     char *     job_argv_str;
-    unsigned long _job_argv_str_length;
 
     char *     job_stdout;
-    unsigned long _job_stdout_length;
     char *     job_stderr;
-    unsigned long _job_stderr_length;
 
     char *     tmp_stdout;
     char *     tmp_stderr;
@@ -38,14 +34,11 @@ struct mxq_job {
     uint32_t   job_umask;
 
     char *     host_submit;
-    unsigned long _host_submit_length;
 
     char *     host_id;
     char *     server_id;
-    unsigned long _server_id_length;
 
     char *     host_hostname;
-    unsigned long _host_hostname_length;
 
     uint32_t   host_pid;
     uint32_t   host_slots;
