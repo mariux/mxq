@@ -112,7 +112,7 @@ int setup_cronolog(char *cronolog, char *link, char *format)
     pid = fork();
     if (pid < 0) {
         mx_log_err("cronolog fork failed: %m");
-        return 1;
+        return 0;
     } else if(pid == 0) {
         res = dup2(pipe_fd[0], STDIN_FILENO);
         if (res == -1) {
