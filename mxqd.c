@@ -348,11 +348,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         exit(EX_USAGE);
     }
 
-    if (getuid()) {
-        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
-        exit(EX_USAGE);
-    }
-
     memset(server, 0, sizeof(*server));
 
     res = mx_mysql_initialize(&(server->mysql));
@@ -409,6 +404,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             mx_log_err("MAIN: cronolog setup failed. exiting.");
             exit(EX_IOERR);
         }
+    }
+
+    if (getuid()) {
+        mx_log_notice("Running mxqd as non-root user.");
     }
 
     res = mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str_bootid);
