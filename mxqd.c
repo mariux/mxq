@@ -404,6 +404,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     setup_stdin("/dev/null");
 
     if (!arg_nolog) {
+        if (access("/var/log",R_OK|W_OK|X_OK)) {
+            mx_log_err("MAIN: cant write to /var/log: %m");
+            exit(EX_IOERR);
+        }
         res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
         if (!res) {
             mx_log_err("MAIN: cronolog setup failed. exiting.");
