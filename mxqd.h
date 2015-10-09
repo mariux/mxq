@@ -75,14 +75,11 @@ struct mxq_server {
     char *host_id;
     char *hostname;
     char *server_id;
-    char *lockfilename;
     char *pidfilename;
     struct mx_flock *flock;
 
     char *initial_path;
     char *initial_tmpdir;
-
-    int is_running;
 };
 
 
