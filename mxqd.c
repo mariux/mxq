@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <sched.h>
 
 #include <sysexits.h>
 
@@ -61,7 +62,7 @@ static void print_usage(void)
     "  %s [options]\n"
     "\n"
     "options:\n"
-    "  -j, --slots     <slots>           default: 1\n"
+    "  -j, --slots     <slots>           default: depends on number of cores\n"
     "  -m, --memory    <memory>          default: 2G\n"
     "  -x, --max-memory-per-slot <mem>   default: <memory>/<slots>\n"
     "\n"
@@ -190,6 +191,45 @@ int write_pid_to_file(char *fname)
     return 0;
 }
 
+static int cpuset_init(struct mxq_server *server)
+{
+    int res;
+    int available_cnt;
+    int cpu;
+    int slots;
+
+    slots=server->slots;
+
+    res=sched_getaffinity(0,sizeof(server->cpu_set_available),&server->cpu_set_available);
+    if (res<0) {
+        mx_log_err("sched_getaffinity: (%m)");
+        return(-errno);
+    }
+    available_cnt=CPU_COUNT(&server->cpu_set_available);
+    if (slots) {
+        if (slots>available_cnt) {
+            mx_log_err("%d slots requested, but only %d cores available",slots,available_cnt);
+            return(-(errno=EINVAL));
+        }
+    } else {
+        if (available_cnt>=16) {
+            slots=available_cnt-2;
+        } else if (available_cnt>=4) {
+            slots=available_cnt-1;
+        } else {
+            slots=available_cnt;
+        }
+    }
+
+    for (cpu=0;cpu<CPU_SETSIZE && available_cnt>slots;cpu++) {
+        if (CPU_ISSET(cpu,&server->cpu_set_available)) {
+            CPU_CLR(cpu,&server->cpu_set_available);
+            available_cnt--;
+        }
+    }
+    server->slots=slots;
+    return(0);
+}
 
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
@@ -205,7 +245,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char arg_nolog = 0;
     char *str_bootid;
     int opt;
-    unsigned long threads_total = 1;
+    unsigned long threads_total = 0;
     unsigned long memory_total = 2048;
     unsigned long memory_max   = 0;
     int i;
@@ -288,8 +328,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                     mx_log_err("Invalid argument supplied for option --slots '%s': %m", optctl.optarg);
                     exit(1);
                 }
-                if (!threads_total)
-                    threads_total = 1;
                 break;
 
             case 'm':
@@ -428,7 +466,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
 
-    server->slots = threads_total;;
+    server->slots = threads_total;
+    res = cpuset_init(server);
+    if (res < 0) {
+        mx_log_err("MAIN: cpuset_init() failed. exiting.");
+        exit(1);
+    }
     server->memory_total = memory_total;
     server->memory_max_per_slot = memory_max;
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
@@ -1673,6 +1716,18 @@ int recover_from_previous_crash(struct mxq_server *server)
     return res1+res2;
 }
 
+static void log_server_cpusets(struct mxq_server *server)
+{
+    char *available;
+    char *running;
+
+    available=mx_cpuset_to_str(&server->cpu_set_available);
+    running=mx_cpuset_to_str(&server->cpu_set_running);
+    mx_log_info(" server cpuset available: [%s] running: [%s]",available,running);
+    free (available);
+    free (running);
+}
+
 /**********************************************************************/
 static void no_handler(int sig) {}
 
@@ -1718,7 +1773,8 @@ int main(int argc, char *argv[])
     mx_log_info("  host_id=%s", server.host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
                   server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);
-
+    log_server_cpusets(&server);
+    
     /*** database connect ***/
 
     mx_mysql_connect_forever(&(server.mysql));
