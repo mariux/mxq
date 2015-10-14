@@ -1372,6 +1372,7 @@ void server_close(struct mxq_server *server)
     mx_funlock(server->flock);
 
     mx_free_null(server->boot_id);
+    mx_free_null(server->host_id);
 }
 
 int killall(struct mxq_server *server, int sig, unsigned int pgrp)
