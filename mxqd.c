@@ -985,6 +985,9 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     umask(j->job_umask);
 
+    res=sched_setaffinity(0,sizeof(j->host_cpu_set),&j->host_cpu_set);
+    if (res<0) mx_log_warning("sched_setaffinity: $m");
+
     return 1;
 }
 
