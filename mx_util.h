@@ -146,6 +146,7 @@ int mx_strtoi16(char *str, int16_t *to);
 int mx_strtoi32(char *str, int32_t *to);
 int mx_strtoi64(char *str, int64_t *to);
 
+void *mx_malloc_forever(size_t size);
 char *mx_strdup_forever(char *str);
 int mx_vasprintf_forever(char **strp, const char *fmt, va_list ap);
 int mx_asprintf_forever(char **strp, const char *fmt, ...)  __attribute__ ((format(printf, 2, 3)));
