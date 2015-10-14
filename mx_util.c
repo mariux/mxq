@@ -1126,7 +1126,7 @@ void mx_strvec_free(char **strvec)
         return;
 
     for (sv = strvec; *sv; sv++) {
-        free(sv);
+        free(*sv);
     }
     free(strvec);
 }
