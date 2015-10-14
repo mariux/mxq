@@ -97,6 +97,14 @@ static void print_usage(void)
     );
 }
 
+static void cpuset_log(char *prefix,cpu_set_t *cpuset)
+{
+    char *str;
+    str=mx_cpuset_to_str(cpuset);
+    mx_log_info("%s: [%s]",prefix,str);
+    free(str);
+}
+
 /**********************************************************************/
 int setup_cronolog(char *cronolog, char *link, char *format)
 {
@@ -1716,18 +1724,6 @@ int recover_from_previous_crash(struct mxq_server *server)
     return res1+res2;
 }
 
-static void log_server_cpusets(struct mxq_server *server)
-{
-    char *available;
-    char *running;
-
-    available=mx_cpuset_to_str(&server->cpu_set_available);
-    running=mx_cpuset_to_str(&server->cpu_set_running);
-    mx_log_info(" server cpuset available: [%s] running: [%s]",available,running);
-    free (available);
-    free (running);
-}
-
 /**********************************************************************/
 static void no_handler(int sig) {}
 
@@ -1773,8 +1769,8 @@ int main(int argc, char *argv[])
     mx_log_info("  host_id=%s", server.host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
                   server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);
-    log_server_cpusets(&server);
-    
+    cpuset_log("cpu set available",&server.cpu_set_available);
+
     /*** database connect ***/
 
     mx_mysql_connect_forever(&(server.mysql));
