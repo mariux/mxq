@@ -7,6 +7,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include <sched.h>
+
 #include "mxq_group.h"
 
 struct mxq_job {
@@ -42,6 +44,7 @@ struct mxq_job {
 
     uint32_t   host_pid;
     uint32_t   host_slots;
+    cpu_set_t   host_cpu_set;
 
     int64_t    date_submit;
     int64_t    date_start;
