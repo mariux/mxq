@@ -105,6 +105,28 @@ static void cpuset_log(char *prefix,cpu_set_t *cpuset)
     free(str);
 }
 
+static void cpuset_init_job(cpu_set_t *job_cpu_set,cpu_set_t *available,cpu_set_t *running,int slots)
+{
+    int cpu;
+    CPU_ZERO(job_cpu_set);
+    for (cpu=CPU_SETSIZE-1;slots&&cpu>=0;cpu--) {
+        if (CPU_ISSET(cpu,available) && !CPU_ISSET(cpu,running)) {
+            CPU_SET(cpu,job_cpu_set);
+            CPU_SET(cpu,running);
+            slots--;
+        }
+    }
+ }
+
+static void cpuset_clear_running(cpu_set_t *running,cpu_set_t *job) {
+    int cpu;
+    for (cpu=0;cpu<CPU_SETSIZE;cpu++) {
+        if (CPU_ISSET(cpu,job)) {
+            CPU_CLR(cpu,running);
+        }
+    }
+}
+
 /**********************************************************************/
 int setup_cronolog(char *cronolog, char *link, char *format)
 {
@@ -1081,6 +1103,9 @@ unsigned long start_job(struct mxq_group_list *group)
     mx_log_info("   job=%s(%d):%lu:%lu :: new job loaded.",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
+    cpuset_init_job(&mxqjob.host_cpu_set,&server->cpu_set_available,&server->cpu_set_running,group->slots_per_job);
+    cpuset_log(" job assgined cpus: ",&mxqjob.host_cpu_set);
+
     mx_mysql_disconnect(server->mysql);
 
     pid = fork();
@@ -1393,6 +1418,7 @@ void server_dump(struct mxq_server *server)
 
     mx_log_info("memory_used=%lu memory_total=%lu", server->memory_used, server->memory_total);
     mx_log_info("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu", server->slots_running, server->slots, server->threads_running, server->jobs_running);
+    cpuset_log("cpu set running",&server->cpu_set_running);
     mx_log_info("====================== SERVER DUMP END ======================");
 }
 
@@ -1662,6 +1688,7 @@ int catchall(struct mxq_server *server) {
         }
 
         cnt += job->group->slots_per_job;
+        cpuset_clear_running(&server->cpu_set_running,&j->host_cpu_set);
         mxq_job_free_content(j);
         free(job);
     }
