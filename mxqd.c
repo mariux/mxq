@@ -875,27 +875,30 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
                             g->user_name, g->user_uid, g->group_id, j->job_id);
     }
 
-    res = initgroups(passwd->pw_name, g->user_gid);
-    if (res == -1) {
-        mx_log_err("job=%s(%d):%lu:%lu initgroups() failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id);
-        return 0;
-    }
+    if(getuid()==0) {
 
-    res = setregid(g->user_gid, g->user_gid);
-    if (res == -1) {
-        mx_log_err("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id,
-            g->user_gid, g->user_gid);
-        return 0;
-    }
+        res = initgroups(passwd->pw_name, g->user_gid);
+        if (res == -1) {
+            mx_log_err("job=%s(%d):%lu:%lu initgroups() failed: %m",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
 
-    res = setreuid(g->user_uid, g->user_uid);
-    if (res == -1) {
-        mx_log_err("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id,
-            g->user_uid, g->user_uid);
-        return 0;
+        res = setregid(g->user_gid, g->user_gid);
+        if (res == -1) {
+            mx_log_err("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m",
+                g->user_name, g->user_uid, g->group_id, j->job_id,
+                g->user_gid, g->user_gid);
+            return 0;
+        }
+
+        res = setreuid(g->user_uid, g->user_uid);
+        if (res == -1) {
+            mx_log_err("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m",
+                g->user_name, g->user_uid, g->group_id, j->job_id,
+                g->user_uid, g->user_uid);
+            return 0;
+        }
     }
 
     res = chdir(j->job_workdir);
