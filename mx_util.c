@@ -1250,29 +1250,28 @@ char *mx_strvec_join(char *sep,char **strvec)
     char *p;
     int i;
 
+    assert(sep);
+    assert(strvec);
+
     for (i=0;(in=strvec[i]);i++) {
         elements++;
-        len+=strlen(in);
+        len += strlen(in);
     }
-    if (elements==0) return mx_strdup_forever("");
-    len+=strlen(sep)*(elements-1);
-    out=mx_malloc_forever(len+1);
-    p=out;
+
+    if (elements == 0)
+        return mx_strdup_forever("");
+
+    len += strlen(sep)*(elements-1);
+    out  = mx_malloc_forever(len+1);
+    p    = out;
 
     for (i=0;i<elements-1;i++) {
-        in=strvec[i];
-        while (*in)
-            *p++ = *in++;
-	in=sep;
-        while (*in)
-            *p++ = *in++;
+        p = stpcpy(p, strvec[i]);
+        p = stpcpy(p, sep);
     }
-    in=strvec[i];
-    while (*in)
-        *p++ = *in++;
-    in=sep;
-    *p='\0';
-    return(out);
+    p = stpcpy(p, strvec[i]);
+
+    return out;
 }
 
 char *mx_cpuset_to_str(cpu_set_t* cpuset_ptr)
