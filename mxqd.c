@@ -112,7 +112,7 @@ int setup_cronolog(char *cronolog, char *link, char *format)
     pid = fork();
     if (pid < 0) {
         mx_log_err("cronolog fork failed: %m");
-        return 1;
+        return 0;
     } else if(pid == 0) {
         res = dup2(pipe_fd[0], STDIN_FILENO);
         if (res == -1) {
@@ -247,8 +247,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
 
-    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
-//    optctl.flags = MX_FLAG_STOPONUNKNOWN;
+//    optctl.flags = MX_FLAG_STOPONUNKNOWN|MX_FLAG_STOPONNOOPT;
 
     while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
         if (opt == MX_GETOPT_ERROR) {
@@ -404,6 +403,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     setup_stdin("/dev/null");
 
     if (!arg_nolog) {
+        if (access("/var/log",R_OK|W_OK|X_OK)) {
+            mx_log_err("MAIN: cant write to /var/log: %m");
+            exit(EX_IOERR);
+        }
         res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
         if (!res) {
             mx_log_err("MAIN: cronolog setup failed. exiting.");
@@ -1369,6 +1372,7 @@ void server_close(struct mxq_server *server)
     mx_funlock(server->flock);
 
     mx_free_null(server->boot_id);
+    mx_free_null(server->host_id);
 }
 
 int killall(struct mxq_server *server, int sig, unsigned int pgrp)

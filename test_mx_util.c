@@ -356,6 +356,15 @@ static void test_mx_strscan(void)
     mx_proc_pid_stat_free(&pps2);
 }
 
+static void test_mx_strvec() {
+    char **strvec;
+
+    strvec=mx_strvec_new();
+    mx_strvec_push_str(&strvec,strdup("Hallo"));
+    mx_strvec_push_str(&strvec,strdup("Bla"));
+    mx_strvec_push_str(&strvec,strdup("lall"));
+    mx_strvec_free(strvec);
+}
 
 int main(int argc, char *argv[])
 {
@@ -372,5 +381,6 @@ int main(int argc, char *argv[])
     test_mx_strtobytes();
     test_mx_read_first_line_from_file();
     test_mx_strscan();
+    test_mx_strvec();
     return 0;
 }

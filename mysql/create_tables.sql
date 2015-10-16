@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS mxq_server (
    host_mtime       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
    server_start     TIMESTAMP DEFAULT 0,
-   server_stop      TIMESTAMP DEFAULT 0,
+   server_stop      TIMESTAMP DEFAULT 0
 );
 
 

@@ -30,7 +30,7 @@ static inline int _flock_open(struct mx_flock *lock, mode_t mode)
 
     fd = open(lock->fname, O_RDONLY|O_CREAT|O_NOCTTY|O_CLOEXEC, mode);
     if (fd < 0) {
-        mx_log_debug("open(): %m");
+        mx_log_err("%s: %m",lock->fname);
         return -1;
     }
 
@@ -80,7 +80,7 @@ struct mx_flock *mx_flock(int operation, char *fmt, ...)
 
     lock = malloc(sizeof(*lock));
     if (!lock) {
-        mx_log_debug("malloc(): %m");
+        mx_log_err("malloc(): %m");
         return NULL;
     }
 
@@ -93,7 +93,7 @@ struct mx_flock *mx_flock(int operation, char *fmt, ...)
     va_end(ap);
 
     if (res == -1) {
-       mx_log_debug("vasprintf(): %m");
+       mx_log_err("vasprintf(): %m");
        _flock_free(lock);
        return NULL;
     }
@@ -111,7 +111,7 @@ struct mx_flock *mx_flock(int operation, char *fmt, ...)
         if (res < 0) {
             if (errno == EWOULDBLOCK)
                 return lock;
-            mx_log_debug("flock(): %m");
+            mx_log_err("flock(): %m");
             _flock_free(lock);
             return NULL;
         }
@@ -144,11 +144,11 @@ int mx_funlock(struct mx_flock *lock)
 
     res = unlink(lock->fname);
     if (res < 0)
-        mx_log_debug("unlink(): %m");
+        mx_log_warning("unlink(): %m");
 
     res = flock(lock->fd, LOCK_UN);
     if (res < 0)
-        mx_log_debug("flock(): %m");
+        mx_log_warning("flock(): %m");
 
     _flock_close(lock);
     _flock_free(lock);

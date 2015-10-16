@@ -349,7 +349,7 @@ static int _mx_getopt_long(struct mx_getopt_ctl *optctl, int *optindex)
 
     *optindex = -1;
 
-    /* not an option: pop arguement */
+    /* not an option: pop argument */
 
     if(!maybe_option) {
         mx_getopt_pop_current_argument(optctl);
