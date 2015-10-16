@@ -1170,3 +1170,37 @@ char **mx_strvec_from_str(char *str)
 
     return strvec;
 }
+
+char *mx_strvec_join(char *sep,char **strvec)
+{
+    int elements=0;
+    int len=0;
+    char *out;
+    char *in;
+    char *p;
+    int i;
+
+    for (i=0;(in=strvec[i]);i++) {
+        elements++;
+        len+=strlen(in);
+    }
+    if (elements==0) return mx_strdup_forever("");
+    len+=strlen(sep)*(elements-1);
+    out=mx_malloc_forever(len+1);
+    p=out;
+
+    for (i=0;i<elements-1;i++) {
+        in=strvec[i];
+        while (*in)
+            *p++ = *in++;
+	in=sep;
+        while (*in)
+            *p++ = *in++;
+    }
+    in=strvec[i];
+    while (*in)
+        *p++ = *in++;
+    in=sep;
+    *p='\0';
+    return(out);
+}

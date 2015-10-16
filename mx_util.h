@@ -190,5 +190,6 @@ int    mx_strvec_push_strvec(char*** strvecp, char **strvec);
 char*  mx_strvec_to_str(char **strvec);
 char** mx_strvec_from_str(char *str);
 void   mx_strvec_free(char **strvec);
+char*  mx_strvec_join(char *sep,char **strvec);
 
 #endif
