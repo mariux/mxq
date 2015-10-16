@@ -347,11 +347,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         exit(EX_USAGE);
     }
 
-    if (getuid()) {
-        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
-        exit(EX_USAGE);
-    }
-
     memset(server, 0, sizeof(*server));
 
     res = mx_mysql_initialize(&(server->mysql));
@@ -412,6 +407,15 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             mx_log_err("MAIN: cronolog setup failed. exiting.");
             exit(EX_IOERR);
         }
+    }
+
+    if (getuid()) {
+#ifdef RUNASNORMALUSER
+        mx_log_notice("Running mxqd as non-root user.");
+#else
+        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
+        exit(EX_USAGE);
+#endif
     }
 
     res = mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str_bootid);
@@ -879,27 +883,30 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
                             g->user_name, g->user_uid, g->group_id, j->job_id);
     }
 
-    res = initgroups(passwd->pw_name, g->user_gid);
-    if (res == -1) {
-        mx_log_err("job=%s(%d):%lu:%lu initgroups() failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id);
-        return 0;
-    }
+    if(getuid()==0) {
 
-    res = setregid(g->user_gid, g->user_gid);
-    if (res == -1) {
-        mx_log_err("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id,
-            g->user_gid, g->user_gid);
-        return 0;
-    }
+        res = initgroups(passwd->pw_name, g->user_gid);
+        if (res == -1) {
+            mx_log_err("job=%s(%d):%lu:%lu initgroups() failed: %m",
+                g->user_name, g->user_uid, g->group_id, j->job_id);
+            return 0;
+        }
 
-    res = setreuid(g->user_uid, g->user_uid);
-    if (res == -1) {
-        mx_log_err("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id,
-            g->user_uid, g->user_uid);
-        return 0;
+        res = setregid(g->user_gid, g->user_gid);
+        if (res == -1) {
+            mx_log_err("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m",
+                g->user_name, g->user_uid, g->group_id, j->job_id,
+                g->user_gid, g->user_gid);
+            return 0;
+        }
+
+        res = setreuid(g->user_uid, g->user_uid);
+        if (res == -1) {
+            mx_log_err("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m",
+                g->user_name, g->user_uid, g->group_id, j->job_id,
+                g->user_uid, g->user_uid);
+            return 0;
+        }
     }
 
     res = chdir(j->job_workdir);
