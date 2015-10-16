@@ -9,6 +9,8 @@
 #include <libgen.h>
 #include <unistd.h>
 
+#include <ctype.h>
+
 //#include <sys/types.h>
 //#include <sys/stat.h>
 #include <fcntl.h>
@@ -1173,7 +1175,7 @@ char **mx_strvec_from_str(char *str)
     return strvec;
 }
 
-int mx_str_to_cpuset(cpu_set_t* cpuset_ptr,char *str)
+int mx_str_to_cpuset(cpu_set_t* cpuset_ptr, char *str)
 {
     char c;
     int cpu_low;
@@ -1184,51 +1186,57 @@ int mx_str_to_cpuset(cpu_set_t* cpuset_ptr,char *str)
     CPU_ZERO(cpuset_ptr);
 
     while (1) {
-        c=*str;
-        if (c=='\0') {
-            break;
-        } else if (c>='0' && c<='9') {
-            cpu_low=strtol(str,&next,10);
-            str=next;
-        } else {
-            return -(errno=EINVAL);
-        }
+        c = *str;
 
-        if (cpu_low<0 || cpu_low>=CPU_SETSIZE) {
-            return -(errno=EINVAL);
-        }
-
-        c=*str;
-        if (c=='\0') {
-            CPU_SET(cpu_low,cpuset_ptr);
+        if (c == '\0')
             break;
-        } else if (c==',') {
-            CPU_SET(cpu_low,cpuset_ptr);
+
+        if (!isdigit(c))
+            return -(errno=EINVAL);
+
+        cpu_low = strtol(str, &next, 10);
+        str = next;
+
+        if (cpu_low < 0 || cpu_low >= CPU_SETSIZE)
+            return -(errno=ERANGE);
+
+        c = *str;
+
+        CPU_SET(cpu_low, cpuset_ptr);
+
+        if (c == '\0') {
+            break;
+        } else if (c == ',') {
             str++;
-        } else if (c=='-') {
-            c=*++str;
-            if (c>='0' && c<='9') {
-                cpu_high=strtol(str,&next,10);
-                str=next;
-                if (cpu_high<0 || cpu_high>=CPU_SETSIZE || cpu_high<cpu_low) {
-                    return -(errno=EINVAL);
-                }
-                for (i=cpu_low;i<=cpu_high;i++) {
-                    CPU_SET(i,cpuset_ptr);
-                }                c=*str++;
-                if (c=='\0') {
-                    break;
-                } else if (c==',') {
-                    /* noop */
-                } else {
-                    return -(errno=EINVAL);
-                }
-            } else {
-                return -(errno=EINVAL);
-            }
-        } else {
+            continue;
+        } else if (c != '-') {
             return -(errno=EINVAL);
         }
+
+        str++;
+        c = *str;
+
+        if (!isdigit(c))
+            return -(errno=EINVAL);
+
+        cpu_high = strtol(str, &next, 10);
+        str = next;
+
+        if (cpu_high < 0 || cpu_high >= CPU_SETSIZE || cpu_high < cpu_low)
+            return -(errno=ERANGE);
+
+        for (i = cpu_low+1; i <= cpu_high; i++)
+            CPU_SET(i, cpuset_ptr);
+
+        c = *str;
+
+        if (c == '\0') {
+            break;
+        } else if (c != ',') {
+            return -(errno=EINVAL);
+        }
+
+        str++;
     }
     return 0;
 }
@@ -1278,16 +1286,20 @@ char *mx_cpuset_to_str(cpu_set_t* cpuset_ptr)
     char *out;
 
     strvec=mx_strvec_new();
-    if (!strvec) return NULL;
+    if (!strvec)
+        return NULL;
 
     cpu=0;
     while(1) {
-        if (cpu>=CPU_SETSIZE) break;
+        if (cpu>=CPU_SETSIZE)
+            break;
+
         if (CPU_ISSET(cpu,cpuset_ptr)) {
-            cpu_low=cpu++;
+            cpu_low=cpu;
             while (1) {
-                if (cpu>=CPU_SETSIZE || !CPU_ISSET(cpu,cpuset_ptr)) break;
                 cpu++;
+                if (cpu>=CPU_SETSIZE || !CPU_ISSET(cpu,cpuset_ptr))
+                    break;
             }
             cpu_high=cpu-1;
             if (cpu_low==cpu_high) {
