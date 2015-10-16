@@ -73,6 +73,7 @@ static void print_usage(void)
     "      --daemonize                   default: run in foreground\n"
     "      --no-log                      default: write a logfile\n"
     "      --debug                       default: info log level\n"
+    "      --recover-only  (recover from crash and exit)\n"
     "\n"
     "      --initial-path <path>         default: %s\n"
     "      --initial-tmpdir <directory>  default: %s\n"
@@ -273,6 +274,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_initial_tmpdir;
     char arg_daemonize = 0;
     char arg_nolog = 0;
+    char arg_recoveronly = 0;
     char *str_bootid;
     int opt;
     unsigned long threads_total = 0;
@@ -288,6 +290,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
                 MX_OPTION_NO_ARG("debug",                5),
+                MX_OPTION_NO_ARG("recover-only",         9),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
                 MX_OPTION_REQUIRED_ARG("initial-path",   7),
                 MX_OPTION_REQUIRED_ARG("initial-tmpdir", 8),
@@ -343,6 +346,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 6:
                 arg_hostname = optctl.optarg;
+                break;
+
+            case 9:
+                arg_recoveronly = 1;
                 break;
 
             case 'V':
@@ -428,6 +435,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     server->server_id = arg_server_id;
     server->initial_path = arg_initial_path;
     server->initial_tmpdir = arg_initial_tmpdir;
+    server->recoveronly = arg_recoveronly;
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
     if (!server->flock) {
@@ -1830,6 +1838,9 @@ int main(int argc, char *argv[])
     }
     if (res > 0)
         mx_log_warning("total %d jobs recovered from previous crash.", res);
+
+    if (server.recoveronly)
+        fail = 1;
 
     while (!global_sigint_cnt && !global_sigterm_cnt && !fail) {
         slots_returned = catchall(&server);

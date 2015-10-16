@@ -83,6 +83,7 @@ struct mxq_server {
 
     char *initial_path;
     char *initial_tmpdir;
+    char recoveronly;
 };
 
 
