@@ -392,6 +392,27 @@ static void test_mx_strvec() {
     mx_strvec_free(strvec);
 }
 
+static void test_mx_cpuset(void)
+{
+    cpu_set_t cpuset;
+    char *str;
+
+    assert(mx_str_to_cpuset(&cpuset,"1,2,3,10,11,12,100-102")==0);
+    assert((str=mx_cpuset_to_str(&cpuset)));
+    assert(strcmp(str,"1-3,10-12,100-102")==0);
+    free(str);
+
+    assert(mx_str_to_cpuset(&cpuset,"")==0);
+    assert((str=mx_cpuset_to_str(&cpuset)));
+    assert(strcmp(str,"")==0);
+    free(str);
+
+    assert(mx_str_to_cpuset(&cpuset,"bla")<0);
+    assert(mx_str_to_cpuset(&cpuset,"5-4")<0);
+    assert(mx_str_to_cpuset(&cpuset,"-4")<0);
+    assert(mx_str_to_cpuset(&cpuset,"4-")<0);
+}
+
 int main(int argc, char *argv[])
 {
     test_mx_strskipwhitespaces();
@@ -408,5 +429,6 @@ int main(int argc, char *argv[])
     test_mx_read_first_line_from_file();
     test_mx_strscan();
     test_mx_strvec();
+    test_mx_cpuset();
     return 0;
 }

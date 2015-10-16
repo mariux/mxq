@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <sched.h>
 
 #include "mx_log.h"
 
@@ -191,5 +192,8 @@ char*  mx_strvec_to_str(char **strvec);
 char** mx_strvec_from_str(char *str);
 void   mx_strvec_free(char **strvec);
 char*  mx_strvec_join(char *sep,char **strvec);
+
+char* mx_cpuset_to_str(cpu_set_t* cpuset_ptr);
+int   mx_str_to_cpuset(cpu_set_t* cpuset_ptr,char *str);
 
 #endif

@@ -1171,6 +1171,66 @@ char **mx_strvec_from_str(char *str)
     return strvec;
 }
 
+int mx_str_to_cpuset(cpu_set_t* cpuset_ptr,char *str)
+{
+    char c;
+    int cpu_low;
+    int cpu_high;
+    char *next;
+    int i;
+
+    CPU_ZERO(cpuset_ptr);
+
+    while (1) {
+        c=*str;
+        if (c=='\0') {
+            break;
+        } else if (c>='0' && c<='9') {
+            cpu_low=strtol(str,&next,10);
+            str=next;
+        } else {
+            return -(errno=EINVAL);
+        }
+
+        if (cpu_low<0 || cpu_low>=CPU_SETSIZE) {
+            return -(errno=EINVAL);
+        }
+
+        c=*str;
+        if (c=='\0') {
+            CPU_SET(cpu_low,cpuset_ptr);
+            break;
+        } else if (c==',') {
+            CPU_SET(cpu_low,cpuset_ptr);
+            str++;
+        } else if (c=='-') {
+            c=*++str;
+            if (c>='0' && c<='9') {
+                cpu_high=strtol(str,&next,10);
+                str=next;
+                if (cpu_high<0 || cpu_high>=CPU_SETSIZE || cpu_high<cpu_low) {
+                    return -(errno=EINVAL);
+                }
+                for (i=cpu_low;i<=cpu_high;i++) {
+                    CPU_SET(i,cpuset_ptr);
+                }                c=*str++;
+                if (c=='\0') {
+                    break;
+                } else if (c==',') {
+                    /* noop */
+                } else {
+                    return -(errno=EINVAL);
+                }
+            } else {
+                return -(errno=EINVAL);
+            }
+        } else {
+            return -(errno=EINVAL);
+        }
+    }
+    return 0;
+}
+
 char *mx_strvec_join(char *sep,char **strvec)
 {
     int elements=0;
@@ -1203,4 +1263,47 @@ char *mx_strvec_join(char *sep,char **strvec)
     in=sep;
     *p='\0';
     return(out);
+}
+
+char *mx_cpuset_to_str(cpu_set_t* cpuset_ptr)
+{
+    char **strvec;
+    int cpu;
+    int cpu_low;
+    int cpu_high;
+    char *str;
+    int res;
+    char *out;
+
+    strvec=mx_strvec_new();
+    if (!strvec) return NULL;
+
+    cpu=0;
+    while(1) {
+        if (cpu>=CPU_SETSIZE) break;
+        if (CPU_ISSET(cpu,cpuset_ptr)) {
+            cpu_low=cpu++;
+            while (1) {
+                if (cpu>=CPU_SETSIZE || !CPU_ISSET(cpu,cpuset_ptr)) break;
+                cpu++;
+            }
+            cpu_high=cpu-1;
+            if (cpu_low==cpu_high) {
+                mx_asprintf_forever(&str,"%d",cpu_low);
+            } else {
+                mx_asprintf_forever(&str,"%d-%d",cpu_low,cpu_high);
+            }
+            res=mx_strvec_push_str(&strvec,str);
+            if (!res) {
+                mx_strvec_free(strvec);
+                return NULL;
+            }
+        } else {
+            cpu++;
+        }
+    }
+
+    out=mx_strvec_join(",",strvec);
+    mx_strvec_free(strvec);
+    return out;
 }
