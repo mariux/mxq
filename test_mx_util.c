@@ -358,12 +358,59 @@ static void test_mx_strscan(void)
 
 static void test_mx_strvec() {
     char **strvec;
+    char *str;
 
     strvec=mx_strvec_new();
     mx_strvec_push_str(&strvec,strdup("Hallo"));
     mx_strvec_push_str(&strvec,strdup("Bla"));
     mx_strvec_push_str(&strvec,strdup("lall"));
+
+    assert(str=mx_strvec_join("XXX",strvec));
+    assert(strcmp(str,"HalloXXXBlaXXXlall")==0);
+    free(str);
+    assert(str=mx_strvec_join("",strvec));
+    assert(strcmp(str,"HalloBlalall")==0);
+    free(str);
     mx_strvec_free(strvec);
+
+    strvec=mx_strvec_new();
+    assert(str=mx_strvec_join("XXX",strvec));
+    assert(strcmp(str,"")==0);
+    free(str);
+    mx_strvec_push_str(&strvec,strdup("A"));
+    assert(str=mx_strvec_join("x",strvec));
+    assert(strcmp(str,"A")==0);
+    free(str);
+    mx_strvec_push_str(&strvec,strdup(""));
+    assert(str=mx_strvec_join("x",strvec));
+    assert(strcmp(str,"Ax")==0);
+    free(str);
+    mx_strvec_push_str(&strvec,strdup("B"));
+    assert(str=mx_strvec_join("x",strvec));
+    assert(strcmp(str,"AxxB")==0);
+    free(str);
+    mx_strvec_free(strvec);
+}
+
+static void test_mx_cpuset(void)
+{
+    cpu_set_t cpuset;
+    char *str;
+
+    assert(mx_str_to_cpuset(&cpuset,"1,2,3,10,11,12,100-102")==0);
+    assert((str=mx_cpuset_to_str(&cpuset)));
+    assert(strcmp(str,"1-3,10-12,100-102")==0);
+    free(str);
+
+    assert(mx_str_to_cpuset(&cpuset,"")==0);
+    assert((str=mx_cpuset_to_str(&cpuset)));
+    assert(strcmp(str,"")==0);
+    free(str);
+
+    assert(mx_str_to_cpuset(&cpuset,"bla")<0);
+    assert(mx_str_to_cpuset(&cpuset,"5-4")<0);
+    assert(mx_str_to_cpuset(&cpuset,"-4")<0);
+    assert(mx_str_to_cpuset(&cpuset,"4-")<0);
 }
 
 int main(int argc, char *argv[])
@@ -382,5 +429,6 @@ int main(int argc, char *argv[])
     test_mx_read_first_line_from_file();
     test_mx_strscan();
     test_mx_strvec();
+    test_mx_cpuset();
     return 0;
 }
