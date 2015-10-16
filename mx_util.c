@@ -556,11 +556,13 @@ int mx_strtoi64(char *str, int64_t *to)
 void *mx_malloc_forever(size_t size)
 {
     void *ret;
+
     do {
-        ret=malloc(size);
+        ret = malloc(size);
         assert(ret || (!ret && errno == ENOMEM));
-   } while (!ret);
-   return ret ;
+    } while (!ret);
+
+    return ret ;
 }
 
 char *mx_strdup_forever(char *str)
