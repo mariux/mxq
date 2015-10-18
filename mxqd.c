@@ -1142,6 +1142,47 @@ int mxq_redirect_input(char *stdin_fname)
     return 1;
 }
 
+int user_process(struct mxq_group_list *group,struct mxq_job *mxqjob)
+{
+    int res;
+    char **argv;
+
+    res = init_child_process(group, mxqjob);
+    if (!res)
+        return(-1);
+
+    mxq_job_set_tmpfilenames(&group->group, mxqjob);
+
+    res = mxq_redirect_input("/dev/null");
+    if (res < 0) {
+        mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_input() failed (%d): %m",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
+            res);
+        return(res);
+    }
+
+    res = mxq_redirect_output(mxqjob->tmp_stdout, mxqjob->tmp_stderr);
+    if (res < 0) {
+        mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_output() failed (%d): %m",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
+            res);
+        return(res);
+    }
+
+    argv = mx_strvec_from_str(mxqjob->job_argv_str);
+    if (!argv) {
+        mx_log_err("job=%s(%d):%lu:%lu Can't recaculate commandline. str_to_strvev(%s) failed: %m",
+            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
+            mxqjob->job_argv_str);
+        return(-errno);
+    }
+
+    res=execvp(argv[0], argv);
+    mx_log_err("job=%s(%d):%lu:%lu execvp(\"%s\", ...): %m",
+        group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
+        argv[0]);
+    return(res);
+}
 
 unsigned long start_job(struct mxq_group_list *group)
 {
@@ -1150,7 +1191,6 @@ unsigned long start_job(struct mxq_group_list *group)
     struct mxq_job_list *job;
     pid_t pid;
     int res;
-    char **argv;
 
     assert(group);
     assert(group->user);
@@ -1182,43 +1222,8 @@ unsigned long start_job(struct mxq_group_list *group)
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
             mxqjob.host_pid, getpgrp());
 
-        res = init_child_process(group, &mxqjob);
-        if (!res)
-            _exit(EX__MAX + 1);
-
-        mxq_job_set_tmpfilenames(&group->group, &mxqjob);
-
-
-        res = mxq_redirect_input("/dev/null");
-        if (res < 0) {
-            mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_input() failed (%d): %m",
-                group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-                res);
-            _exit(EX__MAX + 1);
-        }
-
-        res = mxq_redirect_output(mxqjob.tmp_stdout, mxqjob.tmp_stderr);
-        if (res < 0) {
-            mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_output() failed (%d): %m",
-                group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-                res);
-            _exit(EX__MAX + 1);
-        }
-
-
-        argv = mx_strvec_from_str(mxqjob.job_argv_str);
-        if (!argv) {
-            mx_log_err("job=%s(%d):%lu:%lu Can't recaculate commandline. str_to_strvev(%s) failed: %m",
-                group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-                mxqjob.job_argv_str);
-            _exit(EX__MAX + 1);
-        }
-
-        execvp(argv[0], argv);
-        mx_log_err("job=%s(%d):%lu:%lu execvp(\"%s\", ...): %m",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-            argv[0]);
-        _exit(EX__MAX + 1);
+        res=user_process(group,&mxqjob);
+        exit(res<0 ? 1 : 0);
     }
 
     gettimeofday(&mxqjob.stats_starttime, NULL);
