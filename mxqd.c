@@ -507,6 +507,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     mx_proc_pid_stat_free(&pps);
 
     mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
+    mx_setenv_forever("MXQ_HOSTID", server->host_id);
 
     server->slots = threads_total;
     res = cpuset_init(server);
