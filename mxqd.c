@@ -1509,6 +1509,11 @@ int killall_over_time(struct mxq_server *server)
 
     assert(server);
 
+    /* limit killing to every >= 5 minutes */
+    mx_within_rate_limit_or_return(5*60, 1);
+
+    mx_log_info("killall_over_time: Sending signals to all jobs running longer than requested.");
+
     gettimeofday(&now, NULL);
 
     for (user=server->users; user; user=user->next) {
@@ -1905,7 +1910,6 @@ int main(int argc, char *argv[])
 
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
-        killall_over_time(&server);
         killall_over_time(&server);
 
         mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
