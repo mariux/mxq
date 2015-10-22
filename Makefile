@@ -495,6 +495,21 @@ clean: CLEAN += mxqkill
 install:: mxqkill
 	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqkill,${DESTDIR}${BINDIR}/mxqkill)
 
+### mxqps -------------------------------------------------------------
+
+mxqps.o: $(mx_proc.h)
+mxqps.o: $(mx_util.h)
+
+clean: CLEAN += mxqps.o
+
+mxqps: mx_log.o
+mxqps: mx_util.o
+mxqps: mx_proc.o
+
+build: mxqps
+
+clean: CLEAN += mxqps
+
 ########################################################################
 
 fix: FIX += mxqdctl-hostconfig.sh
