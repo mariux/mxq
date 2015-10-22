@@ -3,6 +3,29 @@
 
 #include <sys/types.h>
 
+struct mx_proc_info {
+    struct mx_proc_pid_stat *pstat;
+
+    unsigned long long int sum_rss;
+
+    char **environment;
+};
+
+struct mx_proc_tree {
+    struct mx_proc_tree_node *root;
+    int nentries;
+};
+
+struct mx_proc_tree_node {
+    struct mx_proc_tree_node *parent;
+    struct mx_proc_tree_node *next;
+
+    struct mx_proc_info pinfo;
+
+    unsigned long long int nchilds;
+    struct mx_proc_tree_node *childs;
+};
+
 struct mx_proc_pid_stat {
     long long int pid;     /* 1 */
     char *comm;            /* 2 (comm) */
@@ -51,8 +74,16 @@ struct mx_proc_pid_stat {
 };
 
 int mx_proc_pid_stat_read(struct mx_proc_pid_stat *pps, char *fmt, ...);
+
 int mx_proc_pid_stat(struct mx_proc_pid_stat **pps, pid_t pid);
+int mx_proc_pid_task_tid_stat(struct mx_proc_pid_stat **pps, pid_t pid, pid_t tid);
 
 void mx_proc_pid_stat_free_content(struct mx_proc_pid_stat *pps);
+
+int mx_proc_tree(struct mx_proc_tree **newtree);
+
+int mx_proc_tree_free(struct mx_proc_tree **tree);
+
+struct mx_proc_info *mx_proc_tree_proc_info(struct mx_proc_tree *tree, pid_t pid);
 
 #endif
