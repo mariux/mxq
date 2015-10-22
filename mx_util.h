@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <sched.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 #include "mx_log.h"
 
@@ -117,6 +119,18 @@ static inline void __mx_fclose(FILE **ptr) {
 
 #undef mx_streq_nocase
 #define mx_streq_nocase(a, b) (strcasecmp((a), (b)) == 0)
+
+#define mx_within_rate_limit_or_return(sec, ret) \
+  do {\
+    static struct timeval _sleep = {0};\
+    struct timeval _now;\
+    struct timeval _delta;\
+    gettimeofday(&_now, NULL);\
+    timersub(&_now, &_sleep, &_delta);\
+    if (_delta.tv_sec < (sec))\
+        return (ret);\
+    _sleep = _now;\
+  } while(0)
 
 int mx_strbeginswith(char *str, const char *start, char **endptr);
 int mx_stribeginswith(char *str, const char *start, char **endptr);
