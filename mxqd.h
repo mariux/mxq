@@ -81,6 +81,7 @@ struct mxq_server {
     char *hostname;
     char *server_id;
     char *pidfilename;
+    char *finished_jobsdir;
     struct mx_flock *flock;
 
     char *initial_path;

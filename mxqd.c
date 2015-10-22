@@ -479,6 +479,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         exit(2);
     }
 
+    mx_asprintf_forever(&server->finished_jobsdir,"%s/%s",MXQ_FINISHED_JOBSDIR,server->server_id);
+    res=mx_mkdir_p(server->finished_jobsdir,0700);
+    if (res<0) {
+        mx_log_err("MAIN: mkdir %s failed: %m. Exiting.",MXQ_FINISHED_JOBSDIR);
+        exit(EX_IOERR);
+    }
+
     if (arg_daemonize) {
         res = daemon(0, 1);
         if (res == -1) {
@@ -1518,6 +1525,7 @@ void server_close(struct mxq_server *server)
 
     mx_free_null(server->boot_id);
     mx_free_null(server->host_id);
+    mx_free_null(server->finished_jobsdir);
 }
 
 int killall(struct mxq_server *server, int sig, unsigned int pgrp)
