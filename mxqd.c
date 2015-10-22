@@ -34,6 +34,7 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mx_mysql.h"
+#include "mx_proc.h"
 #include "mxqd.h"
 #include "mxq.h"
 
@@ -281,7 +282,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     unsigned long memory_total = 2048;
     unsigned long memory_max   = 0;
     int i;
-    struct proc_pid_stat pps = {0};
+
+    _mx_cleanup_free_ struct mx_proc_pid_stat *pps = NULL;
 
     struct mx_getopt_ctl optctl;
     struct mx_option opts[] = {
@@ -503,8 +505,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     res = mx_proc_pid_stat(&pps, getpid());
     assert(res == 0);
 
-    server->starttime = pps.starttime;
-    mx_proc_pid_stat_free(&pps);
+    server->starttime = pps->starttime;
+    mx_proc_pid_stat_free_content(pps);
 
     mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
     mx_setenv_forever("MXQ_HOSTID", server->host_id);
