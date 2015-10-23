@@ -10,8 +10,9 @@
 #include <math.h>
 #include <unistd.h>
 #include <errno.h>
-
+#include <dirent.h>
 #include <sched.h>
+#include <ctype.h>
 
 #include <sysexits.h>
 
@@ -1767,6 +1768,139 @@ static int job_has_finished (struct mxq_server *server,struct mxq_group *g,struc
         mxq_job_free_content(j);
         free(job);
         return cnt;
+}
+
+static char *fspool_get_filename (struct mxq_server *server,long unsigned int job_id)
+{
+    char *fspool_filename;
+    mx_asprintf_forever(&fspool_filename,"%s/%lu.stat",server->finished_jobsdir,job_id);
+    return fspool_filename;
+}
+
+void fspool_unlink(struct mxq_server *server,int job_id) {
+    char *fspool_filename=fspool_get_filename(server,job_id);
+    unlink(fspool_filename);
+    free(fspool_filename);
+}
+
+static int fspool_process_file(struct mxq_server *server,char *filename,int job_id) {
+    FILE *in;
+    int res;
+
+    pid_t pid;
+    int   status;
+    struct rusage rusage;
+    struct timeval realtime;
+
+    struct mxq_job_list *job;
+    struct mxq_job *j;
+    struct mxq_group *g;
+
+    in=fopen(filename,"r");
+    if (!in) {
+        return -errno;
+    }
+    res=fscanf(in,"1 %d %d %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld",
+        &pid,
+        &status,
+        &realtime.tv_sec,&realtime.tv_usec,
+        &rusage.ru_utime.tv_sec,&rusage.ru_utime.tv_usec,
+        &rusage.ru_stime.tv_sec,&rusage.ru_stime.tv_usec,
+        &rusage.ru_maxrss,
+        &rusage.ru_ixrss,
+        &rusage.ru_idrss,
+        &rusage.ru_isrss,
+        &rusage.ru_minflt,
+        &rusage.ru_majflt,
+        &rusage.ru_nswap,
+        &rusage.ru_inblock,
+        &rusage.ru_oublock,
+        &rusage.ru_msgsnd,
+        &rusage.ru_msgrcv,
+        &rusage.ru_nsignals,
+        &rusage.ru_nvcsw,
+        &rusage.ru_nivcsw);
+    fclose(in);
+    if (res!=22) {
+        mx_log_err("%s : parse error (res=%d)",filename,res);
+        if (!errno)
+            errno=EINVAL;
+        return -errno;
+    }
+
+    mx_log_info("job finished (via fspool) : job %d pid %d status %d",job_id,pid,status);
+
+    job = server_remove_job_by_pid(server, pid);
+    if (!job) {
+        mx_log_warning("fspool_process_file: %s : job unknown on server",filename);
+        return(-1);
+    }
+    j = &job->job;
+    assert(job->group);
+    assert(j->job_id=job_id);
+    g = &job->group->group;
+
+    j->stats_realtime=realtime;
+    j->stats_status=status;
+    j->stats_rusage=rusage;
+
+    job_has_finished(server,g,job);
+    fspool_unlink(server,job_id);
+    return(0);
+}
+
+static int fspool_is_valid_name_parse(const char *name,int *job_id) {
+    const char *c=name;
+    if (!*c)
+        return 0;
+    if (!isdigit(*c++))
+        return 0;
+    while(isdigit(*c)) {
+        c++;
+    }
+    if (strcmp(c,".stat")) {
+        return 0;
+    }
+    if (job_id) {
+        *job_id=atol(name);
+    }
+    return 1;
+}
+
+static int fspool_is_valid_name(const struct dirent *d)
+{
+    return fspool_is_valid_name_parse(d->d_name,NULL);
+}
+
+static int fspool_scan(struct mxq_server *server) {
+    int cnt=0;
+    int entries;
+    struct dirent **namelist;
+    int i;
+    int res;
+
+
+    entries=scandir(server->finished_jobsdir,&namelist,&fspool_is_valid_name,&alphasort);
+    if (entries<0) {
+        mx_log_err("scandir %s: %m",server->finished_jobsdir);
+        return cnt;
+    }
+
+    for (i=0;i<entries;i++) {
+        char *filename;
+        int job_id;
+        mx_asprintf_forever(&filename,"%s/%s",server->finished_jobsdir,namelist[i]->d_name);
+        fspool_is_valid_name_parse(namelist[i]->d_name,&job_id);
+        res=fspool_process_file(server,filename,job_id);
+        if (res==0) {
+            cnt++;
+        }
+        free(namelist[i]);
+        free(filename);
+    }
+
+    free(namelist);
+    return cnt;
 }
 
 int catchall(struct mxq_server *server) {
