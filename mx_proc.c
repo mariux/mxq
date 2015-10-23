@@ -269,11 +269,11 @@ static struct mx_proc_tree_node *mx_proc_tree_add(struct mx_proc_tree *pt, struc
     /* new is second to last roots parent? -> collect */
     current = pt->root;
     while (current->next) {
-        if (current->next->pinfo.pstat->ppid != new->pinfo.pstat->pid) {
+        if (ppid_or_pgrp(current->next->pinfo.pstat) != new->pinfo.pstat->pid) {
             current = current->next;
             continue;
         }
-        assert(current->next->pinfo.pstat->ppid == new->pinfo.pstat->pid);
+        assert(ppid_or_pgrp(current->next->pinfo.pstat) == new->pinfo.pstat->pid);
 
         /* disconnect next */
         next          = current->next;
@@ -286,7 +286,7 @@ static struct mx_proc_tree_node *mx_proc_tree_add(struct mx_proc_tree *pt, struc
     }
 
     /* new is first roots parent? -> new is new root */
-    if (pt->root->pinfo.pstat->ppid == new->pinfo.pstat->pid) {
+    if (ppid_or_pgrp(pt->root->pinfo.pstat)== new->pinfo.pstat->pid) {
         assert(!new->next);
 
         current = pt->root;
@@ -303,8 +303,7 @@ static struct mx_proc_tree_node *mx_proc_tree_add(struct mx_proc_tree *pt, struc
         }
     }
 
-
-    parent = mx_proc_tree_find_by_pid(pt->root, new->pinfo.pstat->ppid);
+    parent = mx_proc_tree_find_by_pid(pt->root, ppid_or_pgrp(new->pinfo.pstat));
     if (parent) {
         new->parent = parent;
         mx_proc_tree_add_to_list_sorted(&parent->childs, new);
