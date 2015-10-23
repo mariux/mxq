@@ -184,6 +184,10 @@ manpages/%: manpages/%.xml
 
 all: build
 
+.PHONY: nonroot
+nonroot: CFLAGS += -DRUNASNORMALUSER
+nonroot: all
+
 ########################################################################
 
 .PHONY: test
