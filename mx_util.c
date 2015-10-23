@@ -9,6 +9,8 @@
 #include <libgen.h>
 #include <unistd.h>
 
+#include <ctype.h>
+
 //#include <sys/types.h>
 //#include <sys/stat.h>
 #include <fcntl.h>
@@ -551,6 +553,18 @@ int mx_strtoi64(char *str, int64_t *to)
     *to = (int64_t)ll;
 
     return 0;
+}
+
+void *mx_malloc_forever(size_t size)
+{
+    void *ret;
+
+    do {
+        ret = malloc(size);
+        assert(ret || (!ret && errno == ENOMEM));
+    } while (!ret);
+
+    return ret ;
 }
 
 char *mx_strdup_forever(char *str)
@@ -1159,4 +1173,150 @@ char **mx_strvec_from_str(char *str)
     }
 
     return strvec;
+}
+
+int mx_str_to_cpuset(cpu_set_t* cpuset_ptr, char *str)
+{
+    char c;
+    int cpu_low;
+    int cpu_high;
+    char *next;
+    int i;
+
+    CPU_ZERO(cpuset_ptr);
+
+    while (1) {
+        c = *str;
+
+        if (c == '\0')
+            break;
+
+        if (!isdigit(c))
+            return -(errno=EINVAL);
+
+        cpu_low = strtol(str, &next, 10);
+        str = next;
+
+        if (cpu_low < 0 || cpu_low >= CPU_SETSIZE)
+            return -(errno=ERANGE);
+
+        c = *str;
+
+        CPU_SET(cpu_low, cpuset_ptr);
+
+        if (c == '\0') {
+            break;
+        } else if (c == ',') {
+            str++;
+            continue;
+        } else if (c != '-') {
+            return -(errno=EINVAL);
+        }
+
+        str++;
+        c = *str;
+
+        if (!isdigit(c))
+            return -(errno=EINVAL);
+
+        cpu_high = strtol(str, &next, 10);
+        str = next;
+
+        if (cpu_high < 0 || cpu_high >= CPU_SETSIZE || cpu_high < cpu_low)
+            return -(errno=ERANGE);
+
+        for (i = cpu_low+1; i <= cpu_high; i++)
+            CPU_SET(i, cpuset_ptr);
+
+        c = *str;
+
+        if (c == '\0') {
+            break;
+        } else if (c != ',') {
+            return -(errno=EINVAL);
+        }
+
+        str++;
+    }
+    return 0;
+}
+
+char *mx_strvec_join(char *sep,char **strvec)
+{
+    int elements=0;
+    int len=0;
+    char *out;
+    char *in;
+    char *p;
+    int i;
+
+    assert(sep);
+    assert(strvec);
+
+    for (i=0;(in=strvec[i]);i++) {
+        elements++;
+        len += strlen(in);
+    }
+
+    if (elements == 0)
+        return mx_strdup_forever("");
+
+    len += strlen(sep)*(elements-1);
+    out  = mx_malloc_forever(len+1);
+    p    = out;
+
+    for (i=0;i<elements-1;i++) {
+        p = stpcpy(p, strvec[i]);
+        p = stpcpy(p, sep);
+    }
+    p = stpcpy(p, strvec[i]);
+
+    return out;
+}
+
+char *mx_cpuset_to_str(cpu_set_t* cpuset_ptr)
+{
+    char **strvec;
+    int cpu;
+    int cpu_low;
+    int cpu_high;
+    char *str;
+    int res;
+    char *out;
+
+    strvec=mx_strvec_new();
+    if (!strvec)
+        return NULL;
+
+    cpu=0;
+    while(1) {
+        if (cpu>=CPU_SETSIZE)
+            break;
+
+        if (CPU_ISSET(cpu,cpuset_ptr)) {
+            cpu_low=cpu;
+            while (1) {
+                cpu++;
+                if (cpu>=CPU_SETSIZE || !CPU_ISSET(cpu,cpuset_ptr))
+                    break;
+            }
+            cpu_high=cpu-1;
+            if (cpu_low==cpu_high) {
+                mx_asprintf_forever(&str,"%d",cpu_low);
+            } else {
+                mx_asprintf_forever(&str,"%d-%d",cpu_low,cpu_high);
+            }
+            res=mx_strvec_push_str(&strvec,str);
+            if (!res) {
+                mx_strvec_free(strvec);
+                return NULL;
+            }
+        } else {
+            cpu++;
+        }
+    }
+
+    out=mx_strvec_join(",",strvec);
+    mx_strvec_free(strvec);
+    return out;
 }

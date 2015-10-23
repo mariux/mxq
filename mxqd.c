@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <sched.h>
 
 #include <sysexits.h>
 
@@ -61,7 +62,7 @@ static void print_usage(void)
     "  %s [options]\n"
     "\n"
     "options:\n"
-    "  -j, --slots     <slots>           default: 1\n"
+    "  -j, --slots     <slots>           default: depends on number of cores\n"
     "  -m, --memory    <memory>          default: 2G\n"
     "  -x, --max-memory-per-slot <mem>   default: <memory>/<slots>\n"
     "\n"
@@ -72,6 +73,7 @@ static void print_usage(void)
     "      --daemonize                   default: run in foreground\n"
     "      --no-log                      default: write a logfile\n"
     "      --debug                       default: info log level\n"
+    "      --recover-only  (recover from crash and exit)\n"
     "\n"
     "      --initial-path <path>         default: %s\n"
     "      --initial-tmpdir <directory>  default: %s\n"
@@ -94,6 +96,36 @@ static void print_usage(void)
     MXQ_MYSQL_DEFAULT_FILE_STR,
     MXQ_MYSQL_DEFAULT_GROUP_STR
     );
+}
+
+static void cpuset_log(char *prefix,cpu_set_t *cpuset)
+{
+    char *str;
+    str=mx_cpuset_to_str(cpuset);
+    mx_log_info("%s: [%s]",prefix,str);
+    free(str);
+}
+
+static void cpuset_init_job(cpu_set_t *job_cpu_set,cpu_set_t *available,cpu_set_t *running,int slots)
+{
+    int cpu;
+    CPU_ZERO(job_cpu_set);
+    for (cpu=CPU_SETSIZE-1;slots&&cpu>=0;cpu--) {
+        if (CPU_ISSET(cpu,available) && !CPU_ISSET(cpu,running)) {
+            CPU_SET(cpu,job_cpu_set);
+            CPU_SET(cpu,running);
+            slots--;
+        }
+    }
+ }
+
+static void cpuset_clear_running(cpu_set_t *running,cpu_set_t *job) {
+    int cpu;
+    for (cpu=0;cpu<CPU_SETSIZE;cpu++) {
+        if (CPU_ISSET(cpu,job)) {
+            CPU_CLR(cpu,running);
+        }
+    }
 }
 
 /**********************************************************************/
@@ -190,6 +222,45 @@ int write_pid_to_file(char *fname)
     return 0;
 }
 
+static int cpuset_init(struct mxq_server *server)
+{
+    int res;
+    int available_cnt;
+    int cpu;
+    int slots;
+
+    slots=server->slots;
+
+    res=sched_getaffinity(0,sizeof(server->cpu_set_available),&server->cpu_set_available);
+    if (res<0) {
+        mx_log_err("sched_getaffinity: (%m)");
+        return(-errno);
+    }
+    available_cnt=CPU_COUNT(&server->cpu_set_available);
+    if (slots) {
+        if (slots>available_cnt) {
+            mx_log_err("%d slots requested, but only %d cores available",slots,available_cnt);
+            return(-(errno=EINVAL));
+        }
+    } else {
+        if (available_cnt>=16) {
+            slots=available_cnt-2;
+        } else if (available_cnt>=4) {
+            slots=available_cnt-1;
+        } else {
+            slots=available_cnt;
+        }
+    }
+
+    for (cpu=0;cpu<CPU_SETSIZE && available_cnt>slots;cpu++) {
+        if (CPU_ISSET(cpu,&server->cpu_set_available)) {
+            CPU_CLR(cpu,&server->cpu_set_available);
+            available_cnt--;
+        }
+    }
+    server->slots=slots;
+    return(0);
+}
 
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
@@ -203,9 +274,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_initial_tmpdir;
     char arg_daemonize = 0;
     char arg_nolog = 0;
+    char arg_recoveronly = 0;
     char *str_bootid;
     int opt;
-    unsigned long threads_total = 1;
+    unsigned long threads_total = 0;
     unsigned long memory_total = 2048;
     unsigned long memory_max   = 0;
     int i;
@@ -218,6 +290,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
                 MX_OPTION_NO_ARG("debug",                5),
+                MX_OPTION_NO_ARG("recover-only",         9),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
                 MX_OPTION_REQUIRED_ARG("initial-path",   7),
                 MX_OPTION_REQUIRED_ARG("initial-tmpdir", 8),
@@ -275,6 +348,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 arg_hostname = optctl.optarg;
                 break;
 
+            case 9:
+                arg_recoveronly = 1;
+                break;
+
             case 'V':
                 mxq_print_generic_version();
                 exit(EX_USAGE);
@@ -288,8 +365,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                     mx_log_err("Invalid argument supplied for option --slots '%s': %m", optctl.optarg);
                     exit(1);
                 }
-                if (!threads_total)
-                    threads_total = 1;
                 break;
 
             case 'm':
@@ -360,6 +435,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     server->server_id = arg_server_id;
     server->initial_path = arg_initial_path;
     server->initial_tmpdir = arg_initial_tmpdir;
+    server->recoveronly = arg_recoveronly;
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
     if (!server->flock) {
@@ -432,7 +508,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
 
-    server->slots = threads_total;;
+    server->slots = threads_total;
+    res = cpuset_init(server);
+    if (res < 0) {
+        mx_log_err("MAIN: cpuset_init() failed. exiting.");
+        exit(1);
+    }
     server->memory_total = memory_total;
     server->memory_max_per_slot = memory_max;
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
@@ -919,6 +1000,9 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 
     umask(j->job_umask);
 
+    res=sched_setaffinity(0,sizeof(j->host_cpu_set),&j->host_cpu_set);
+    if (res<0) mx_log_warning("sched_setaffinity: $m");
+
     return 1;
 }
 
@@ -1036,6 +1120,9 @@ unsigned long start_job(struct mxq_group_list *group)
     }
     mx_log_info("   job=%s(%d):%lu:%lu :: new job loaded.",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+
+    cpuset_init_job(&mxqjob.host_cpu_set,&server->cpu_set_available,&server->cpu_set_running,group->slots_per_job);
+    cpuset_log(" job assgined cpus: ",&mxqjob.host_cpu_set);
 
     mx_mysql_disconnect(server->mysql);
 
@@ -1349,6 +1436,7 @@ void server_dump(struct mxq_server *server)
 
     mx_log_info("memory_used=%lu memory_total=%lu", server->memory_used, server->memory_total);
     mx_log_info("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu", server->slots_running, server->slots, server->threads_running, server->jobs_running);
+    cpuset_log("cpu set running",&server->cpu_set_running);
     mx_log_info("====================== SERVER DUMP END ======================");
 }
 
@@ -1420,6 +1508,11 @@ int killall_over_time(struct mxq_server *server)
     pid_t pid;
 
     assert(server);
+
+    /* limit killing to every >= 5 minutes */
+    mx_within_rate_limit_or_return(5*60, 1);
+
+    mx_log_info("killall_over_time: Sending signals to all jobs running longer than requested.");
 
     gettimeofday(&now, NULL);
 
@@ -1618,6 +1711,7 @@ int catchall(struct mxq_server *server) {
         }
 
         cnt += job->group->slots_per_job;
+        cpuset_clear_running(&server->cpu_set_running,&j->host_cpu_set);
         mxq_job_free_content(j);
         free(job);
     }
@@ -1728,6 +1822,7 @@ int main(int argc, char *argv[])
     mx_log_info("  host_id=%s", server.host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
                   server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);
+    cpuset_log("cpu set available",&server.cpu_set_available);
 
     /*** database connect ***/
 
@@ -1751,6 +1846,9 @@ int main(int argc, char *argv[])
     }
     if (res > 0)
         mx_log_warning("total %d jobs recovered from previous crash.", res);
+
+    if (server.recoveronly)
+        fail = 1;
 
     while (!global_sigint_cnt && !global_sigterm_cnt && !fail) {
         slots_returned = catchall(&server);
@@ -1815,7 +1913,6 @@ int main(int argc, char *argv[])
 
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
-        killall_over_time(&server);
         killall_over_time(&server);
 
         mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",

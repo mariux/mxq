@@ -2,6 +2,7 @@
 #define __MXQ_SERVER_H__ 1
 
 #include "mx_mysql.h"
+#include <sched.h>
 
 struct mxq_job_list {
     struct mxq_group_list *group;
@@ -62,11 +63,13 @@ struct mxq_server {
     unsigned long threads_running;
     unsigned long slots_running;
     unsigned long memory_used;
+    cpu_set_t      cpu_set_running;
 
     unsigned long slots;
     unsigned long memory_total;
     long double   memory_avg_per_slot;
     unsigned long memory_max_per_slot;
+    cpu_set_t      cpu_set_available;
 
     struct mx_mysql *mysql;
 
@@ -80,6 +83,7 @@ struct mxq_server {
 
     char *initial_path;
     char *initial_tmpdir;
+    char recoveronly;
 };
 
 

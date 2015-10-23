@@ -6,6 +6,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <sched.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 #include "mx_log.h"
 
@@ -117,6 +120,18 @@ static inline void __mx_fclose(FILE **ptr) {
 #undef mx_streq_nocase
 #define mx_streq_nocase(a, b) (strcasecmp((a), (b)) == 0)
 
+#define mx_within_rate_limit_or_return(sec, ret) \
+  do {\
+    static struct timeval _sleep = {0};\
+    struct timeval _now;\
+    struct timeval _delta;\
+    gettimeofday(&_now, NULL);\
+    timersub(&_now, &_sleep, &_delta);\
+    if (_delta.tv_sec < (sec))\
+        return (ret);\
+    _sleep = _now;\
+  } while(0)
+
 int mx_strbeginswith(char *str, const char *start, char **endptr);
 int mx_stribeginswith(char *str, const char *start, char **endptr);
 int mx_strbeginswithany(char *str, char **starts, char **endptr);
@@ -146,6 +161,7 @@ int mx_strtoi16(char *str, int16_t *to);
 int mx_strtoi32(char *str, int32_t *to);
 int mx_strtoi64(char *str, int64_t *to);
 
+void *mx_malloc_forever(size_t size);
 char *mx_strdup_forever(char *str);
 int mx_vasprintf_forever(char **strp, const char *fmt, va_list ap);
 int mx_asprintf_forever(char **strp, const char *fmt, ...)  __attribute__ ((format(printf, 2, 3)));
@@ -189,5 +205,9 @@ int    mx_strvec_push_strvec(char*** strvecp, char **strvec);
 char*  mx_strvec_to_str(char **strvec);
 char** mx_strvec_from_str(char *str);
 void   mx_strvec_free(char **strvec);
+char*  mx_strvec_join(char *sep,char **strvec);
+
+char* mx_cpuset_to_str(cpu_set_t* cpuset_ptr);
+int   mx_str_to_cpuset(cpu_set_t* cpuset_ptr,char *str);
 
 #endif
