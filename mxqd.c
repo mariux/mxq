@@ -277,9 +277,9 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char arg_recoveronly = 0;
     char *str_bootid;
     int opt;
-    unsigned long threads_total = 0;
-    unsigned long memory_total = 2048;
-    unsigned long memory_max   = 0;
+    unsigned long arg_threads_total = 0;
+    unsigned long arg_memory_total = 2048;
+    unsigned long arg_memory_max   = 0;
     int i;
     struct proc_pid_stat pps = {0};
 
@@ -361,35 +361,35 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 exit(EX_USAGE);
 
             case 'j':
-                if (mx_strtoul(optctl.optarg, &threads_total) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_threads_total) < 0) {
                     mx_log_err("Invalid argument supplied for option --slots '%s': %m", optctl.optarg);
                     exit(1);
                 }
                 break;
 
             case 'm':
-                if (mx_strtoul(optctl.optarg, &memory_total) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_memory_total) < 0) {
                     unsigned long long int bytes;
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
                         mx_log_err("Invalid argument supplied for option --memory '%s': %m", optctl.optarg);
                         exit(1);
                     }
-                    memory_total = bytes/1024/1024;
+                    arg_memory_total = bytes/1024/1024;
                 }
-                if (!memory_total)
-                    memory_total = 2048;
+                if (!arg_memory_total)
+                    arg_memory_total = 2048;
                 break;
 
             case 'x':
-                if (mx_strtoul(optctl.optarg, &memory_max) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_memory_max) < 0) {
                     unsigned long long int bytes;
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
                         mx_log_err("Invalid argument supplied for option --max-memory-per-slot '%s': %m", optctl.optarg);
                         exit(1);
                     }
-                    memory_max = bytes/1024/1024;
+                    arg_memory_max = bytes/1024/1024;
                 }
                 break;
 
@@ -508,14 +508,19 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
 
-    server->slots = threads_total;
+    server->slots = arg_threads_total;
     res = cpuset_init(server);
     if (res < 0) {
         mx_log_err("MAIN: cpuset_init() failed. exiting.");
         exit(1);
     }
-    server->memory_total = memory_total;
-    server->memory_max_per_slot = memory_max;
+    server->memory_total = arg_memory_total;
+    server->memory_max_per_slot = arg_memory_max;
+
+    /* if run as non-root use full memory by default for every job */
+    if (!arg_memory_max && getuid() != 0)
+        server->memory_max_per_slot = arg_memory_total;
+
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
 
     if (server->memory_max_per_slot < server->memory_avg_per_slot)
@@ -523,7 +528,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     if (server->memory_max_per_slot > server->memory_total)
         server->memory_max_per_slot = server->memory_total;
-
 
     return 1;
 }
@@ -1720,13 +1724,16 @@ int catchall(struct mxq_server *server) {
 }
 
 int load_groups(struct mxq_server *server) {
-    struct mxq_group *mxqgroups;
+    struct mxq_group *mxqgroups = NULL;
     struct mxq_group_list *group;
     int group_cnt;
     int total;
     int i;
 
-    group_cnt = mxq_load_active_groups(server->mysql, &mxqgroups);
+    if (getuid() == 0)
+        group_cnt = mxq_load_running_groups(server->mysql, &mxqgroups);
+    else
+        group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
 
     for (i=0, total=0; i<group_cnt; i++) {
         group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
