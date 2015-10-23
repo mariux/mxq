@@ -516,6 +516,11 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
     server->memory_total = arg_memory_total;
     server->memory_max_per_slot = arg_memory_max;
+
+    /* if run as non-root use full memory by default for every job */
+    if (!arg_memory_max && getuid() != 0)
+        server->memory_max_per_slot = arg_memory_total;
+
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
 
     if (server->memory_max_per_slot < server->memory_avg_per_slot)
