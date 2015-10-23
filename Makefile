@@ -112,6 +112,15 @@ CFLAGS += -DMXQ_VERSION=\"${MXQ_VERSION}\"
 CFLAGS += -DMXQ_VERSIONFULL=\"${MXQ_VERSIONFULL}\"
 CFLAGS += -DMXQ_VERSIONDATE=\"${MXQ_VERSIONDATE}\"
 CFLAGS += -DMXQ_VERSIONEXTRA=\"${MXQ_VERSIONEXTRA}\"
+CFLAGS += -DPREFIX=\"${PREFIX}\"
+CFLAGS += -DEPREFIX=\"${EPREFIX}\"
+CFLAGS += -DSBINDIR=\"${SBINDIR}\"
+CFLAGS += -DBINDIR=\"${BINDIR}\"
+CFLAGS += -DLIBDIR=\"${LIBDIR}\"
+CFLAGS += -DLIBEXECDIR=\"${LIBEXECDIR}\"
+CFLAGS += -DDATADIR=\"${DATADIR}\"
+CFLAGS += -DMANDIR=\"${MANDIR}\"
+CFLAGS += -DSYSCONFDIR=\"${SYSCONFDIR}\"
 CFLAGS += $(EXTRA_CFLAGS)
 
 ########################################################################
@@ -174,6 +183,10 @@ manpages/%: manpages/%.xml
 .PHONY: build
 
 all: build
+
+.PHONY: nonroot
+nonroot: CFLAGS += -DRUNASNORMALUSER
+nonroot: all
 
 ########################################################################
 
