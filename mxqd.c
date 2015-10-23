@@ -1626,13 +1626,16 @@ int catchall(struct mxq_server *server) {
 }
 
 int load_groups(struct mxq_server *server) {
-    struct mxq_group *mxqgroups;
+    struct mxq_group *mxqgroups = NULL;
     struct mxq_group_list *group;
     int group_cnt;
     int total;
     int i;
 
-    group_cnt = mxq_load_active_groups(server->mysql, &mxqgroups);
+    if (getuid() == 0)
+        group_cnt = mxq_load_running_groups(server->mysql, &mxqgroups);
+    else
+        group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
 
     for (i=0, total=0; i<group_cnt; i++) {
         group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
