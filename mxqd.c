@@ -1192,6 +1192,98 @@ int user_process(struct mxq_group_list *group,struct mxq_job *mxqjob)
     return(res);
 }
 
+int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struct mxq_job *job) {
+    pid_t pid;
+    struct rusage rusage;
+    int status;
+    pid_t  waited_pid;
+    int    waited_status;
+    struct timeval now;
+    struct timeval realtime;
+    _mx_cleanup_free_ char *finished_job_filename=NULL;
+    _mx_cleanup_free_ char *finished_job_tmpfilename=NULL;
+    FILE *out;
+    int res;
+
+    res=prctl(PR_SET_CHILD_SUBREAPER, 1);
+    if (res<0) {
+        mx_log_err("set subreaper: %m");
+        return res;
+    }
+
+    pid = fork();
+    if (pid < 0) {
+        mx_log_err("fork: %m");
+        return(pid);
+    } else if (pid == 0) {
+        res=user_process(group,job);
+        _exit(EX__MAX+1);
+    }
+    gettimeofday(&job->stats_starttime, NULL);
+
+    while (1) {
+        waited_pid=wait(&waited_status);
+        if (waited_pid<0) {
+            if (errno==ECHILD) {
+                break;
+            } else {
+                mx_log_warning("reaper: wait: %m");
+                sleep(1);
+            }
+        }
+        if (waited_pid==pid) {
+            status=waited_status;
+        }
+    }
+    gettimeofday(&now, NULL);
+    timersub(&now, &job->stats_starttime, &realtime);
+    res=getrusage(RUSAGE_CHILDREN,&rusage);
+    if (res<0) {
+        mx_log_err("reaper: getrusage: %m");
+        return(res);
+    }
+
+    mx_asprintf_forever(&finished_job_filename,"%s/%lu.stat",server->finished_jobsdir,job->job_id);
+    mx_asprintf_forever(&finished_job_tmpfilename,"%s.tmp",finished_job_filename);
+
+    out=fopen(finished_job_tmpfilename,"w");
+    if (!out) {
+        mx_log_fatal("%s: %m",finished_job_tmpfilename);
+        return (-errno);
+    }
+
+    fprintf(out,"1 %d %d %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld\n",
+        getpid(),
+        status,
+        realtime.tv_sec,realtime.tv_usec,
+        rusage.ru_utime.tv_sec,rusage.ru_utime.tv_usec,
+        rusage.ru_stime.tv_sec,rusage.ru_stime.tv_usec,
+        rusage.ru_maxrss,
+        rusage.ru_ixrss,
+        rusage.ru_idrss,
+        rusage.ru_isrss,
+        rusage.ru_minflt,
+        rusage.ru_majflt,
+        rusage.ru_nswap,
+        rusage.ru_inblock,
+        rusage.ru_oublock,
+        rusage.ru_msgsnd,
+        rusage.ru_msgrcv,
+        rusage.ru_nsignals,
+        rusage.ru_nvcsw,
+        rusage.ru_nivcsw
+    );
+    fflush(out);
+    fsync(fileno(out));
+    fclose(out);
+    res=rename(finished_job_tmpfilename,finished_job_filename);
+    if (res<0)  {
+        mx_log_fatal("rename %s: %m",finished_job_tmpfilename);
+        return(res);
+    }
+    return(0);
+}
+
 unsigned long start_job(struct mxq_group_list *group)
 {
     struct mxq_server *server;
@@ -1230,8 +1322,8 @@ unsigned long start_job(struct mxq_group_list *group)
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
             mxqjob.host_pid, getpgrp());
 
-        res=user_process(group,&mxqjob);
-        exit(res<0 ? 1 : 0);
+        res=reaper_process(server,group,&mxqjob);
+        _exit(res<0 ? EX__MAX+1 : 0);
     }
 
     gettimeofday(&mxqjob.stats_starttime, NULL);
@@ -1981,6 +2073,7 @@ int catchall(struct mxq_server *server) {
         mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.",
                 g->user_name, g->user_uid, g->group_id, j->job_id, pid, status);
 
+        fspool_unlink(server,j->job_id);
 
         cnt+=job_has_finished(server,g,job);
 
@@ -2126,6 +2219,8 @@ int main(int argc, char *argv[])
 
     while (!global_sigint_cnt && !global_sigterm_cnt && !fail) {
         slots_returned = catchall(&server);
+        slots_returned += fspool_scan(&server);
+
         if (slots_returned)
             mx_log_info("slots_returned=%lu :: Main Loop freed %lu slots.", slots_returned, slots_returned);
 
@@ -2178,6 +2273,8 @@ int main(int argc, char *argv[])
 
     while (server.jobs_running) {
         slots_returned = catchall(&server);
+        slots_returned += fspool_scan(&server);
+
         if (slots_returned) {
            mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
                    server.jobs_running, slots_returned, global_sigint_cnt, global_sigterm_cnt);
