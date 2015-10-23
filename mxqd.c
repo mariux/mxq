@@ -1574,6 +1574,69 @@ int killall_over_time(struct mxq_server *server)
     return 0;
 }
 
+int killall_over_memory(struct mxq_server *server)
+{
+    struct mxq_user_list  *user;
+    struct mxq_group_list *group;
+    struct mxq_job_list   *job;
+    struct mx_proc_tree   *pt = NULL;
+    struct mx_proc_info   *pinfo;
+    long pagesize;
+    pid_t pid;
+    unsigned long long int memory;
+    int res;
+
+    assert(server);
+
+    if (!server->jobs_running)
+        return 0;
+
+    /* limit killing to every >= 10 seconds */
+    mx_within_rate_limit_or_return(10, 0);
+
+    pagesize = sysconf(_SC_PAGESIZE);
+    if (!pagesize) {
+        mx_log_warning("killall_over_memory(): Can't get _SC_PAGESIZE. Assuming 4096.");
+        pagesize = 4096;
+    }
+
+    res = mx_proc_tree(&pt);
+    if (res < 0) {
+        mx_log_err("killall_over_memory(): Reading process tree failed: %m");
+        return res;
+    }
+
+    for (user=server->users; user; user=user->next) {
+        for (group=user->groups; group; group=group->next) {
+            for (job=group->jobs; job; job=job->next) {
+                pid = job->job.host_pid;
+
+                pinfo = mx_proc_tree_proc_info(pt, pid);
+                if (!pinfo) {
+                    mx_log_warning("killall_over_memory(): Can't find process with pid %llu in process tree", pid);
+                    continue;
+                }
+
+                memory = pinfo->sum_rss * pagesize / 1024 / 1024;
+
+                if (job->max_sum_rss < memory)
+                    job->max_sum_rss = memory;
+
+                if (memory <= group->group.job_memory)
+                    continue;
+
+                mx_log_info("killall_over_memory(): used(%llu) > requested(%llu): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
+                    memory, group->group.job_memory,
+                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+
+                kill(-pid, SIGKILL);
+            }
+        }
+    }
+    mx_proc_tree_free(&pt);
+    return 0;
+}
+
 int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
 {
     struct mxq_user_list  *user;
@@ -1867,6 +1930,7 @@ int main(int argc, char *argv[])
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
         killall_over_time(&server);
+        killall_over_memory(&server);
 
         if (!server.group_cnt) {
             assert(!server.jobs_running);
@@ -1914,6 +1978,7 @@ int main(int argc, char *argv[])
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
         killall_over_time(&server);
+        killall_over_memory(&server);
 
         mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
               server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
