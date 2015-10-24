@@ -2,6 +2,8 @@ mx_getopt.o
 mx_flock.o
 mx_log.o
 mx_util.o
+mx_proc.o
+mxqps.o
 mxq_group.o
 mxqadmin.o
 mxqdump.o
@@ -21,6 +23,7 @@ mxqadmin
 mxqdump
 mxqkill
 mxqd
+mxqps
 test_mx_util
 test_mx_log
 test_mx_mysql

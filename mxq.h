@@ -17,7 +17,7 @@
 #endif
 
 #ifndef MXQ_VERSIONDATE
-#   define MXQ_VERSIONDATE "2015"
+#   define MXQ_VERSIONDATE "today"
 #endif
 
 #ifndef MXQ_MYSQL_DEFAULT_FILE
@@ -53,7 +53,8 @@ static void mxq_print_generic_version(void)
 #ifdef MXQ_DEVELOPMENT
     "DEVELOPMENT VERSION: Do not use in production environments.\n"
 #endif
-    "  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE "\n"
+    "  by Marius Tolzmann <marius.tolzmann@molgen.mpg.de> 2013-" MXQ_VERSIONDATE "\n"
+    "     and Donald Buczek <buczek@molgen.mpg.de> 2015-" MXQ_VERSIONDATE "\n"
     "  Max Planck Institute for Molecular Genetics - Berlin Dahlem\n",
         program_invocation_short_name
     );
