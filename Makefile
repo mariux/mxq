@@ -259,6 +259,10 @@ mx_log.h += mx_log.h
 
 mx_util.h += mx_util.h
 
+### mx_proc.h ----------------------------------------------------------
+
+mx_proc.h += mx_proc.h
+
 ### mx_flock.h ---------------------------------------------------------
 
 mx_flock.h += mx_flock.h
@@ -308,6 +312,12 @@ clean: CLEAN += mx_log.o
 mx_util.o: $(mx_log.h)
 
 clean: CLEAN += mx_util.o
+
+### mx_proc ------------------------------------------------------------
+
+mx_proc.o: $(mx_proc.h)
+
+clean: CLEAN += mx_proc.o
 
 ### mx_flock.o ---------------------------------------------------------
 
@@ -390,6 +400,7 @@ clean: CLEAN += mxq_job.o
 mxqd.o: $(mx_getopt.h)
 mxqd.o: $(mx_flock.h)
 mxqd.o: $(mx_util.h)
+mxqd.o: $(mx_proc.h)
 mxqd.o: $(mx_log.h)
 mxqd.o: $(mxqd.h)
 mxqd.o: $(mxq_group.h)
@@ -422,6 +433,7 @@ clean: CLEAN += mxqsub.o
 
 mxqd: mx_flock.o
 mxqd: mx_util.o
+mxqd: mx_proc.o
 mxqd: mx_log.o
 mxqd: mxq_log.o
 mxqd: mx_getopt.o
@@ -500,6 +512,21 @@ clean: CLEAN += mxqkill
 install:: mxqkill
 	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqkill,${DESTDIR}${BINDIR}/mxqkill)
 
+### mxqps -------------------------------------------------------------
+
+mxqps.o: $(mx_proc.h)
+mxqps.o: $(mx_util.h)
+
+clean: CLEAN += mxqps.o
+
+mxqps: mx_log.o
+mxqps: mx_util.o
+mxqps: mx_proc.o
+
+build: mxqps
+
+clean: CLEAN += mxqps
+
 ########################################################################
 
 fix: FIX += mxqdctl-hostconfig.sh
@@ -539,6 +566,7 @@ test_mx_util.o: $(mx_util.h)
 clean: CLEAN += test_mx_util.o
 
 test_mx_util: mx_util.o
+test_mx_util: mx_proc.o
 test_mx_util: mx_log.o
 clean: CLEAN += test_mx_util
 
