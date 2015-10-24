@@ -313,6 +313,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
 
+#ifdef MXQ_DEVELOPMENT
+    arg_nolog = 1;
+#endif
+
     arg_initial_path = MXQ_INITIAL_PATH;
     arg_initial_tmpdir = MXQ_INITIAL_TMPDIR;
 
@@ -1523,8 +1527,11 @@ int killall_over_time(struct mxq_server *server)
 
     assert(server);
 
-    /* limit killing to every >= 5 minutes */
-    mx_within_rate_limit_or_return(5*60, 1);
+    if (!server->jobs_running)
+        return 0;
+
+    /* limit killing to every >= 60 seconds */
+    mx_within_rate_limit_or_return(60, 1);
 
     mx_log_info("killall_over_time: Sending signals to all jobs running longer than requested.");
 
@@ -1834,7 +1841,7 @@ int main(int argc, char *argv[])
     mx_log_info("     and Donald Buczek <buczek@molgen.mpg.de> 2015-" MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
 #ifdef MXQ_DEVELOPMENT
-    mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.\n");
+    mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.");
 #endif
     mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
     mx_log_info("  host_id=%s", server.host_id);
