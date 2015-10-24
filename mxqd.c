@@ -1830,7 +1830,8 @@ int main(int argc, char *argv[])
     }
 
     mx_log_info("mxqd - " MXQ_VERSIONFULL);
-    mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
+    mx_log_info("  by Marius Tolzmann <marius.tolzmann@molgen.mpg.de> 2013-" MXQ_VERSIONDATE);
+    mx_log_info("     and Donald Buczek <buczek@molgen.mpg.de> 2015-" MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
 #ifdef MXQ_DEVELOPMENT
     mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.\n");
