@@ -32,12 +32,17 @@ bee update mxq
 ```
 
 ## Initial setup
-Definitions of the tables and triggers for the MySQL database can be found in
+Definitions of the tables for the MySQL database can be found in
 [mysql/create_tables.sql](https://github.molgen.mpg.de/mariux64/mxq/blob/master/mysql/create_tables.sql)
+and
+[mysql/create_trigger.sql](https://github.molgen.mpg.de/mariux64/mxq/blob/master/mysql/create_trigger.sql)
 Be sure to create those once and check the same 
 [directory for alter_tables*.sql`](https://github.molgen.mpg.de/mariux64/mxq/blob/master/mysql/)
 files when upgrading. 
-
+```
+mysql [options] [database] <mysql/create_tables.sql
+mysql [options] [database] <mysql/create_trigger.sql
+```
 
 ## Development builds
 The `devel` target in the Makefile will enable all devolopment features
