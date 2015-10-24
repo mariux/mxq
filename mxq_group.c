@@ -292,39 +292,6 @@ int mxq_load_active_groups_for_user(struct mx_mysql *mysql, struct mxq_group **m
     return res;
 }
 
-int mxq_load_active_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups)
-{
-    int res;
-    struct mxq_group *groups = NULL;
-    struct mxq_group g = {0};
-    struct mx_mysql_bind result = {0};
-
-    assert(mysql);
-    assert(mxq_groups);
-
-    *mxq_groups = NULL;
-
-    char *query =
-            "SELECT"
-                GROUP_FIELDS
-            " FROM mxq_group"
-            " WHERE (group_jobs_inq > 0 OR group_jobs_running > 0)"
-            " ORDER BY user_name, group_mtime"
-            " LIMIT 1000";
-
-    res = bind_result_group_fields(&result, &g);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement_retry_on_fail(mysql, query, NULL, &result, &g, (void **)&groups, sizeof(*groups));
-    if (res < 0) {
-        mx_log_err("mx_mysql_do_statement_retry_on_fail(): %m");
-        return res;
-    }
-
-    *mxq_groups = groups;
-    return res;
-}
-
 int mxq_load_running_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups)
 {
     int res;
