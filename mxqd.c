@@ -47,6 +47,8 @@
 #  define MXQ_INITIAL_TMPDIR    "/tmp"
 #endif
 
+#define RUNNING_AS_ROOT (getuid() == 0)
+
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
 
@@ -493,7 +495,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
     }
 
-    if (getuid()) {
+    if (!RUNNING_AS_ROOT) {
 #if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
         mx_log_notice("Running mxqd as non-root user.");
 #else
@@ -526,7 +528,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     server->memory_max_per_slot = arg_memory_max;
 
     /* if run as non-root use full memory by default for every job */
-    if (!arg_memory_max && getuid() != 0)
+    if (!arg_memory_max && !RUNNING_AS_ROOT)
         server->memory_max_per_slot = arg_memory_total;
 
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
@@ -976,7 +978,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
                             g->user_name, g->user_uid, g->group_id, j->job_id);
     }
 
-    if(getuid()==0) {
+    if(RUNNING_AS_ROOT) {
 
         res = initgroups(passwd->pw_name, g->user_gid);
         if (res == -1) {
@@ -1738,7 +1740,7 @@ int load_groups(struct mxq_server *server) {
     int total;
     int i;
 
-    if (getuid() == 0)
+    if (RUNNING_AS_ROOT)
         group_cnt = mxq_load_running_groups(server->mysql, &mxqgroups);
     else
         group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
