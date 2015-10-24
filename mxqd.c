@@ -313,6 +313,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
 
+#ifdef MXQ_DEVELOPMENT
+    arg_nolog = 1;
+#endif
+
     arg_initial_path = MXQ_INITIAL_PATH;
     arg_initial_tmpdir = MXQ_INITIAL_TMPDIR;
 
@@ -1833,7 +1837,7 @@ int main(int argc, char *argv[])
     mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
 #ifdef MXQ_DEVELOPMENT
-    mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.\n");
+    mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.");
 #endif
     mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
     mx_log_info("  host_id=%s", server.host_id);
