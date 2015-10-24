@@ -1,6 +1,8 @@
 
 #define _GNU_SOURCE
 
+#define MXQ_TYPE_SERVER
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -38,9 +40,6 @@
 #include "mxqd.h"
 #include "mxq.h"
 
-#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
-#define MYSQL_DEFAULT_GROUP    "mxqd"
-
 #ifndef MXQ_INITIAL_PATH
 #  define MXQ_INITIAL_PATH      "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 #endif
@@ -48,6 +47,8 @@
 #ifndef MXQ_INITIAL_TMPDIR
 #  define MXQ_INITIAL_TMPDIR    "/tmp"
 #endif
+
+#define RUNNING_AS_ROOT (getuid() == 0)
 
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
@@ -72,7 +73,11 @@ static void print_usage(void)
     "\n"
     "      --pid-file <pidfile>          default: create no pid file\n"
     "      --daemonize                   default: run in foreground\n"
+#ifdef MXQ_DEVELOPMENT
+    "      --log        default (in development): write no logfile\n"
+#else
     "      --no-log                      default: write a logfile\n"
+#endif
     "      --debug                       default: info log level\n"
     "      --recover-only  (recover from crash and exit)\n"
     "\n"
@@ -278,9 +283,9 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char arg_recoveronly = 0;
     char *str_bootid;
     int opt;
-    unsigned long threads_total = 0;
-    unsigned long memory_total = 2048;
-    unsigned long memory_max   = 0;
+    unsigned long arg_threads_total = 0;
+    unsigned long arg_memory_total = 2048;
+    unsigned long arg_memory_max   = 0;
     int i;
 
     _mx_cleanup_free_ struct mx_proc_pid_stat *pps = NULL;
@@ -291,6 +296,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
+                MX_OPTION_NO_ARG("log",                  4),
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("recover-only",         9),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
@@ -309,16 +315,20 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
 
+#ifdef MXQ_DEVELOPMENT
+    arg_nolog = 1;
+#endif
+
     arg_initial_path = MXQ_INITIAL_PATH;
     arg_initial_tmpdir = MXQ_INITIAL_TMPDIR;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
+        arg_mysql_default_group = MXQ_MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
 
@@ -342,6 +352,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 arg_nolog = 1;
                 break;
 
+            case 4:
+                arg_nolog = 0;
+                break;
+
             case 5:
                 mx_log_level_set(MX_LOG_DEBUG);
                 break;
@@ -363,35 +377,35 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 exit(EX_USAGE);
 
             case 'j':
-                if (mx_strtoul(optctl.optarg, &threads_total) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_threads_total) < 0) {
                     mx_log_err("Invalid argument supplied for option --slots '%s': %m", optctl.optarg);
                     exit(1);
                 }
                 break;
 
             case 'm':
-                if (mx_strtoul(optctl.optarg, &memory_total) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_memory_total) < 0) {
                     unsigned long long int bytes;
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
                         mx_log_err("Invalid argument supplied for option --memory '%s': %m", optctl.optarg);
                         exit(1);
                     }
-                    memory_total = bytes/1024/1024;
+                    arg_memory_total = bytes/1024/1024;
                 }
-                if (!memory_total)
-                    memory_total = 2048;
+                if (!arg_memory_total)
+                    arg_memory_total = 2048;
                 break;
 
             case 'x':
-                if (mx_strtoul(optctl.optarg, &memory_max) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_memory_max) < 0) {
                     unsigned long long int bytes;
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
                         mx_log_err("Invalid argument supplied for option --max-memory-per-slot '%s': %m", optctl.optarg);
                         exit(1);
                     }
-                    memory_max = bytes/1024/1024;
+                    arg_memory_max = bytes/1024/1024;
                 }
                 break;
 
@@ -487,8 +501,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
     }
 
-    if (getuid()) {
-#ifdef RUNASNORMALUSER
+    if (!RUNNING_AS_ROOT) {
+#if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
         mx_log_notice("Running mxqd as non-root user.");
 #else
         mx_log_err("Running mxqd as non-root user is not supported at the moment.");
@@ -511,14 +525,19 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
     mx_setenv_forever("MXQ_HOSTID", server->host_id);
 
-    server->slots = threads_total;
+    server->slots = arg_threads_total;
     res = cpuset_init(server);
     if (res < 0) {
         mx_log_err("MAIN: cpuset_init() failed. exiting.");
         exit(1);
     }
-    server->memory_total = memory_total;
-    server->memory_max_per_slot = memory_max;
+    server->memory_total = arg_memory_total;
+    server->memory_max_per_slot = arg_memory_max;
+
+    /* if run as non-root use full memory by default for every job */
+    if (!arg_memory_max && !RUNNING_AS_ROOT)
+        server->memory_max_per_slot = arg_memory_total;
+
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
 
     if (server->memory_max_per_slot < server->memory_avg_per_slot)
@@ -526,7 +545,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     if (server->memory_max_per_slot > server->memory_total)
         server->memory_max_per_slot = server->memory_total;
-
 
     return 1;
 }
@@ -967,7 +985,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
                             g->user_name, g->user_uid, g->group_id, j->job_id);
     }
 
-    if(getuid()==0) {
+    if(RUNNING_AS_ROOT) {
 
         res = initgroups(passwd->pw_name, g->user_gid);
         if (res == -1) {
@@ -1512,8 +1530,11 @@ int killall_over_time(struct mxq_server *server)
 
     assert(server);
 
-    /* limit killing to every >= 5 minutes */
-    mx_within_rate_limit_or_return(5*60, 1);
+    if (!server->jobs_running)
+        return 0;
+
+    /* limit killing to every >= 60 seconds */
+    mx_within_rate_limit_or_return(60, 1);
 
     mx_log_info("killall_over_time: Sending signals to all jobs running longer than requested.");
 
@@ -1786,13 +1807,16 @@ int catchall(struct mxq_server *server) {
 }
 
 int load_groups(struct mxq_server *server) {
-    struct mxq_group *mxqgroups;
+    struct mxq_group *mxqgroups = NULL;
     struct mxq_group_list *group;
     int group_cnt;
     int total;
     int i;
 
-    group_cnt = mxq_load_active_groups(server->mysql, &mxqgroups);
+    if (RUNNING_AS_ROOT)
+        group_cnt = mxq_load_running_groups(server->mysql, &mxqgroups);
+    else
+        group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
 
     for (i=0, total=0; i<group_cnt; i++) {
         group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
@@ -1879,8 +1903,12 @@ int main(int argc, char *argv[])
     }
 
     mx_log_info("mxqd - " MXQ_VERSIONFULL);
-    mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
+    mx_log_info("  by Marius Tolzmann <marius.tolzmann@molgen.mpg.de> 2013-" MXQ_VERSIONDATE);
+    mx_log_info("     and Donald Buczek <buczek@molgen.mpg.de> 2015-" MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
+#ifdef MXQ_DEVELOPMENT
+    mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.");
+#endif
     mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
     mx_log_info("  host_id=%s", server.host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
