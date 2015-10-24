@@ -1,6 +1,8 @@
 
 #define _GNU_SOURCE
 
+#define MXQ_TYPE_SERVER
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -37,9 +39,6 @@
 #include "mxqd.h"
 #include "mxq.h"
 
-#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
-#define MYSQL_DEFAULT_GROUP    "mxqd"
-
 #ifndef MXQ_INITIAL_PATH
 #  define MXQ_INITIAL_PATH      "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 #endif
@@ -71,7 +70,11 @@ static void print_usage(void)
     "\n"
     "      --pid-file <pidfile>          default: create no pid file\n"
     "      --daemonize                   default: run in foreground\n"
+#ifdef MXQ_DEVELOPMENT
+    "      --log        default (in development): write no logfile\n"
+#else
     "      --no-log                      default: write a logfile\n"
+#endif
     "      --debug                       default: info log level\n"
     "      --recover-only  (recover from crash and exit)\n"
     "\n"
@@ -289,6 +292,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
+                MX_OPTION_NO_ARG("log",                  4),
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("recover-only",         9),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
@@ -312,11 +316,11 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
+        arg_mysql_default_group = MXQ_MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
 
@@ -338,6 +342,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 3:
                 arg_nolog = 1;
+                break;
+
+            case 4:
+                arg_nolog = 0;
                 break;
 
             case 5:
@@ -486,7 +494,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     if (getuid()) {
-#ifdef RUNASNORMALUSER
+#if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
         mx_log_notice("Running mxqd as non-root user.");
 #else
         mx_log_err("Running mxqd as non-root user is not supported at the moment.");
@@ -1815,6 +1823,9 @@ int main(int argc, char *argv[])
     mx_log_info("mxqd - " MXQ_VERSIONFULL);
     mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
+#ifdef MXQ_DEVELOPMENT
+    mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.\n");
+#endif
     mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
     mx_log_info("  host_id=%s", server.host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
