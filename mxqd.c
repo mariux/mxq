@@ -1527,8 +1527,11 @@ int killall_over_time(struct mxq_server *server)
 
     assert(server);
 
-    /* limit killing to every >= 5 minutes */
-    mx_within_rate_limit_or_return(5*60, 1);
+    if (!server->jobs_running)
+        return 0;
+
+    /* limit killing to every >= 60 seconds */
+    mx_within_rate_limit_or_return(60, 1);
 
     mx_log_info("killall_over_time: Sending signals to all jobs running longer than requested.");
 
