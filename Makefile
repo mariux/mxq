@@ -189,7 +189,6 @@ manpages/%: manpages/%.xml
 all: build
 
 .PHONY: devel
-devel: CFLAGS += -DRUNASNORMALUSER
 devel: CFLAGS += -DMXQ_DEVELOPMENT
 devel: all
 
