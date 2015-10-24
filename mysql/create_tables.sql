@@ -1,5 +1,5 @@
 
-DROP TABLE mxq_group;
+DROP TABLE IF EXISTS mxq_group;
 CREATE TABLE IF NOT EXISTS mxq_group (
    group_id       INT8 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
    group_name     VARCHAR(511)  NOT NULL DEFAULT 'default',
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    INDEX(group_name)
 );
 
-DROP TABLE mxq_job;
+DROP TABLE IF EXISTS mxq_job;
 CREATE TABLE IF NOT EXISTS mxq_job (
    job_id         INT8 UNSIGNED   NOT NULL PRIMARY KEY AUTO_INCREMENT,
    job_status     INT2 UNSIGNED   NOT NULL DEFAULT 0,
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    INDEX (server_id(767))
 );
 
-DROP TABLE mxq_server;
+DROP TABLE IF EXISTS mxq_server;
 CREATE TABLE IF NOT EXISTS mxq_server (
    host_id          INT4 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
    host_hostname    VARCHAR(511)  NOT NULL DEFAULT 'localhost',
@@ -143,11 +143,9 @@ CREATE TABLE IF NOT EXISTS mxq_server (
    server_stop      TIMESTAMP DEFAULT 0
 );
 
-
-
 LOCK TABLES mxq_job WRITE, mxq_group WRITE;
 DELIMITER |
-DROP TRIGGER mxq_add_group|
+DROP TRIGGER IF EXISTS mxq_add_group|
 CREATE TRIGGER mxq_add_group BEFORE INSERT ON mxq_group
     FOR EACH ROW BEGIN
         SET NEW.group_mtime = NOW();
@@ -159,7 +157,7 @@ CREATE TRIGGER mxq_add_group BEFORE INSERT ON mxq_group
         END IF;
     END;
 |
-DROP TRIGGER mxq_update_group|
+DROP TRIGGER IF EXISTS mxq_update_group|
 CREATE TRIGGER mxq_update_group BEFORE UPDATE ON mxq_group
     FOR EACH ROW BEGIN
         SET NEW.group_mtime = NOW();
@@ -180,7 +178,7 @@ CREATE TRIGGER mxq_update_group BEFORE UPDATE ON mxq_group
         END IF;
     END;
 |
-DROP TRIGGER mxq_add_job|
+DROP TRIGGER IF EXISTS mxq_add_job|
 CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
     FOR EACH ROW BEGIN
         UPDATE mxq_group SET
@@ -190,7 +188,7 @@ CREATE TRIGGER mxq_add_job AFTER INSERT ON mxq_job
         WHERE group_id=NEW.group_id;
     END;
 |
-DROP TRIGGER mxq_update_job|
+DROP TRIGGER IF EXISTS mxq_update_job|
 CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
     FOR EACH ROW BEGIN
         IF NEW.job_status != OLD.job_status THEN
