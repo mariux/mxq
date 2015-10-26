@@ -92,6 +92,9 @@ static void print_usage(void)
     "  -M, --mysql-default-file [mysql-file]    default: %s\n"
     "  -S, --mysql-default-group [mysql-group]  default: %s\n"
     "\n"
+    "Directories:\n"
+    "    LOGDIR      " MXQ_LOGDIR "\n"
+    "\n"
     "Environment:\n"
     "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
     "  MXQ_MYSQL_DEFAULT_GROUP  change default for [mysql-group]\n"
@@ -499,11 +502,11 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     setup_stdin("/dev/null");
 
     if (!arg_nolog) {
-        if (access("/var/log",R_OK|W_OK|X_OK)) {
-            mx_log_err("MAIN: cant write to /var/log: %m");
+        if (access(MXQ_LOGDIR, R_OK|W_OK|X_OK)) {
+            mx_log_err("MAIN: cant write to " MXQ_LOGDIR ": %m");
             exit(EX_IOERR);
         }
-        res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
+        res = setup_cronolog("/usr/sbin/cronolog", MXQ_LOGDIR "/mxqd_log", MXQ_LOGDIR "/%Y/mxqd_log-%Y-%m");
         if (!res) {
             mx_log_err("MAIN: cronolog setup failed. exiting.");
             exit(EX_IOERR);

@@ -46,6 +46,12 @@
 #endif
 #define MXQ_MYSQL_DEFAULT_GROUP_STR MXQ_MYSQL_DEFAULT_GROUP
 
+#if defined (LOCALSTATEDIR)
+#   define MXQ_LOGDIR LOCALSTATEDIR "/log"
+#else
+#   define MXQ_LOGDIR "/var/log"
+#endif
+
 static void mxq_print_generic_version(void)
 {
     printf(
