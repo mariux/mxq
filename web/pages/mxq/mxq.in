@@ -269,6 +269,7 @@ group_mtime           : $o{group_mtime}
 
 group_date_end        : $o{group_date_end}
 
+stats_max_sumrss                 : $o{stats_max_maxrss} kiB
 stats_max_maxrss                 : $o{stats_max_maxrss}
 stats_max_utime_sec              : $o{stats_max_utime_sec}
 stats_max_stime_sec              : $o{stats_max_stime_sec}
@@ -363,6 +364,8 @@ date_end         : $o{date_end}
 job_id_new       : $o{job_id_new}
 job_id_old       : $o{job_id_old}
 job_id_first     : $o{job_id_first}
+
+stats_max_sumrss : $o{stats_max_maxrss} kiB
 
 stats_status     : $o{stats_status}
 

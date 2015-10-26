@@ -64,6 +64,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    group_slots_running=group_slots_running-NEW.host_slots,
                    group_jobs_running=group_jobs_running-1,
                    group_jobs_failed=group_jobs_failed+1,
+                   stats_max_sumrss=GREATEST(stats_max_sumrss, NEW.stats_max_sumrss),
                    stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
                    stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
                    stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
@@ -99,6 +100,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                    group_slots_running=group_slots_running-NEW.host_slots,
                    group_jobs_running=group_jobs_running-1,
                    group_jobs_finished=group_jobs_finished+1,
+                   stats_max_sumrss=GREATEST(stats_max_sumrss, NEW.stats_max_sumrss),
                    stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
                    stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
                    stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
@@ -113,6 +115,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 WHERE group_id=NEW.group_id;
             ELSEIF NEW.job_status NOT IN (399, 755, 989, 990) THEN
                 UPDATE mxq_group SET
+                   stats_max_sumrss=GREATEST(stats_max_sumrss, NEW.stats_max_sumrss),
                    stats_max_maxrss=GREATEST(stats_max_maxrss, NEW.stats_maxrss),
                    stats_max_utime_sec=GREATEST(stats_max_utime_sec, NEW.stats_utime_sec),
                    stats_max_stime_sec=GREATEST(stats_max_stime_sec, NEW.stats_stime_sec),
