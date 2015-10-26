@@ -186,7 +186,7 @@ manpages/%: manpages/%.xml
 .PHONY: all
 .PHONY: build
 
-all: build
+all: build test
 
 .PHONY: devel
 devel: CFLAGS += -DMXQ_DEVELOPMENT

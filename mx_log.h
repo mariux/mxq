@@ -22,6 +22,7 @@
 #define MX_LOG_DEBUG   MX_LOG_SYSLOG_TO_MXLOG(LOG_DEBUG)   /* debug-level messages */
 
 #define mx_log(level, fmt, ...)  mx_log_do((level), __FILE__, __LINE__, __func__, (fmt), ##__VA_ARGS__)
+#define mx_logva(level, fmt, ap) mx_logva_do((level), __FILE__, __LINE__, __func__, (fmt), (ap))
 
 #define mx_log_fatal(fmt, ...)   mx_log(MX_LOG_EMERG,   (fmt), ##__VA_ARGS__)
 #define mx_log_emerg(fmt, ...)   mx_log(MX_LOG_EMERG,   (fmt), ##__VA_ARGS__)
@@ -32,6 +33,16 @@
 #define mx_log_notice(fmt, ...)  mx_log(MX_LOG_NOTICE,  (fmt), ##__VA_ARGS__)
 #define mx_log_info(fmt, ...)    mx_log(MX_LOG_INFO,    (fmt), ##__VA_ARGS__)
 #define mx_log_debug(fmt, ...)   mx_log(MX_LOG_DEBUG,   (fmt), ##__VA_ARGS__)
+
+#define mx_logva_fatal(fmt, ap)   mx_log(MX_LOG_EMERG,   (fmt), (ap))
+#define mx_logva_emerg(fmt, ap)   mx_log(MX_LOG_EMERG,   (fmt), (ap))
+#define mx_logva_alert(fmt, ap)   mx_log(MX_LOG_ALERT,   (fmt), (ap))
+#define mx_logva_crit(fmt, ap)    mx_log(MX_LOG_CRIT,    (fmt), (ap))
+#define mx_logva_err(fmt, ap)     mx_log(MX_LOG_ERR,     (fmt), (ap))
+#define mx_logva_warning(fmt, ap) mx_log(MX_LOG_WARNING, (fmt), (ap))
+#define mx_logva_notice(fmt, ap)  mx_log(MX_LOG_NOTICE,  (fmt), (ap))
+#define mx_logva_info(fmt, ap)    mx_log(MX_LOG_INFO,    (fmt), (ap))
+#define mx_logva_debug(fmt, ap)   mx_log(MX_LOG_DEBUG,   (fmt), (ap))
 
 int mx_log_log(int level, int loglevel, char *file, unsigned long line, const char *func, const char *msg) __attribute__ ((weak));
 int mx_log_print(char *msg, size_t len) __attribute__ ((weak));
