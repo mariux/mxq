@@ -25,6 +25,7 @@ LIBEXECDIR = ${EPREFIX}/libexec
 DATADIR    = ${PREFIX}/share
 MANDIR     = ${DATADIR}/man
 SYSCONFDIR = ${PREFIX}/etc
+LOCALSTATEDIR = ${PREFIX}/var
 
 DESTDIR=
 
@@ -41,6 +42,11 @@ HTTP_GROUP = nogroup
 ### set sysconfdir /etc if prefix /usr || /usr/local
 ifneq (, $(filter /usr /usr/local, ${PREFIX}))
     SYSCONFDIR = /etc
+endif
+
+### set localstatedir /var if prefix /usr || /usr/local
+ifneq (, $(filter /usr /usr/local, ${PREFIX}))
+    LOCALSTATEDIR = /var
 endif
 
 ########################################################################
@@ -125,6 +131,7 @@ CFLAGS += -DLIBEXECDIR=\"${LIBEXECDIR}\"
 CFLAGS += -DDATADIR=\"${DATADIR}\"
 CFLAGS += -DMANDIR=\"${MANDIR}\"
 CFLAGS += -DSYSCONFDIR=\"${SYSCONFDIR}\"
+CFLAGS += -DLOCALSTATEDIR=\"${LOCALSTATEDIR}\"
 CFLAGS += $(EXTRA_CFLAGS)
 
 ########################################################################
