@@ -670,6 +670,7 @@ int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *m
         }
         if(res == 1) {
             memcpy(mxqjob, &jobs[0], sizeof(*mxqjob));
+            free(jobs);
             break;
         }
 
