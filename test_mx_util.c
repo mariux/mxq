@@ -345,7 +345,7 @@ static void test_mx_strscan(void)
     assert(pps->ppid == getppid());
     assert(pps->state == 'R');
     assert(mx_streq(pps->comm, program_invocation_short_name) || mx_streq(pps->comm, "memcheck-amd64-"));
-    mx_proc_pid_stat_free(pps);
+    mx_proc_pid_stat_free_content(pps);
 }
 
 static void test_mx_strvec() {
