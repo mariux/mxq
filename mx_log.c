@@ -137,12 +137,11 @@ static int log_log(int level, int loglevel, char *file, unsigned long line, cons
     return mx_log_printf("%s%s", prefix, msg);
 }
 
-int mx_log_do(int level, char *file, unsigned long line, const char *func, const char *fmt, ...)
+int mx_logva_do(int level, char *file, unsigned long line, const char *func, const char *fmt, va_list ap)
 {
     int loglevel;
     int len;
     char *msg = NULL;
-    va_list ap;
     int res;
     int preserved_errno = errno;
 
@@ -153,9 +152,7 @@ int mx_log_do(int level, char *file, unsigned long line, const char *func, const
         return 0;
     }
 
-    va_start(ap, fmt);
     len = vasprintf(&msg, fmt, ap);
-    va_end(ap);
 
     if (len == -1) {
         errno = preserved_errno;
@@ -170,6 +167,18 @@ int mx_log_do(int level, char *file, unsigned long line, const char *func, const
     mx_free_null(msg);
 
     errno = preserved_errno;
+    return res;
+}
+
+int mx_log_do(int level, char *file, unsigned long line, const char *func, const char *fmt, ...)
+{
+    va_list ap;
+    int res;
+
+    va_start(ap, fmt);
+    res = mx_logva_do(level, file, line, func, fmt, ap);
+    va_end(ap);
+
     return res;
 }
 
