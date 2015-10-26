@@ -14,11 +14,11 @@ https://github.com/mariux/mxq
 ## Installation
 ### Install using `GNU make`
 ```
-make
 make install
 ```
+
+or to specify a prefix:
 ```
-make PREFIX=...
 make PREFIX=... [DESTDIR=...] install
 ```
 ### Install using `bee`
@@ -26,6 +26,8 @@ make PREFIX=... [DESTDIR=...] install
 bee init $(bee download git://github.molgen.mpg.de/mariux64/mxq.git) --execute
 bee update mxq
 ```
+
+or to specify a prefix
 ```
 bee init $(bee download git://github.molgen.mpg.de/mariux64/mxq.git) --prefix=... --execute
 bee update mxq
