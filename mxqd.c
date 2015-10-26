@@ -1646,11 +1646,11 @@ int killall_over_memory(struct mxq_server *server)
                 if (memory/1024 <= group->group.job_memory)
                     continue;
 
-                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
                     memory/1024, group->group.job_memory,
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
 
-                kill(-pid, SIGKILL);
+                kill(pid, SIGTERM);
             }
         }
     }
