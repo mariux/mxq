@@ -433,6 +433,15 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     MX_GETOPT_FINISH(optctl, argc, argv);
 
+    if (!RUNNING_AS_ROOT) {
+#if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
+        mx_log_notice("Running mxqd as non-root user.");
+#else
+        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
+        exit(EX_USAGE);
+#endif
+    }
+
     if (arg_daemonize && arg_nolog) {
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
         exit(EX_USAGE);
@@ -499,15 +508,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             mx_log_err("MAIN: cronolog setup failed. exiting.");
             exit(EX_IOERR);
         }
-    }
-
-    if (!RUNNING_AS_ROOT) {
-#if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
-        mx_log_notice("Running mxqd as non-root user.");
-#else
-        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
-        exit(EX_USAGE);
-#endif
     }
 
     res = mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str_bootid);
