@@ -87,7 +87,7 @@ int mx_log_printf(const char *fmt, ...)
     res  = fflush(stderr);
     mx_free_null(msg);
 
-    if (len2 != len)
+    if (len2 != len+1)
         return -(errno=EIO);
 
     if (!res)
