@@ -109,7 +109,7 @@ static int log_log(int level, int loglevel, char *file, unsigned long line, cons
             prefix = "EMERGENCY: ";
             break;
         case MX_LOG_ALERT:
-            prefix = "AKERT: ";
+            prefix = "ALERT: ";
             break;
         case MX_LOG_CRIT:
             prefix = "CRITCAL ERROR: ";
