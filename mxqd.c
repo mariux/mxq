@@ -1143,7 +1143,7 @@ unsigned long start_job(struct mxq_group_list *group)
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
     cpuset_init_job(&mxqjob.host_cpu_set,&server->cpu_set_available,&server->cpu_set_running,group->slots_per_job);
-    cpuset_log(" job assgined cpus: ",&mxqjob.host_cpu_set);
+    cpuset_log(" job assigned cpus: ",&mxqjob.host_cpu_set);
 
     mx_mysql_disconnect(server->mysql);
 
