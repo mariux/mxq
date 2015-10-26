@@ -2112,7 +2112,6 @@ int load_groups(struct mxq_server *server) {
 int recover_from_previous_crash(struct mxq_server *server)
 {
     int res1;
-    int res2;
 
     assert(server);
     assert(server->mysql);
@@ -2128,16 +2127,7 @@ int recover_from_previous_crash(struct mxq_server *server)
         mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: unassigned %d jobs.",
             server->hostname, server->server_id, res1);
 
-    res2 = mxq_set_job_status_unknown_for_server(server->mysql, server->hostname, server->server_id);
-    if (res2 < 0) {
-        mx_log_info("mxq_unassign_jobs_of_server() failed: %m");
-        return res2;
-    }
-    if (res2 > 0)
-        mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: set job_status='unknown' for %d jobs.",
-            server->hostname, server->server_id, res2);
-
-    return res1+res2;
+    return res1;
 }
 
 /**********************************************************************/
