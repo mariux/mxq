@@ -16,7 +16,7 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 
-#define JOB_FIELDS_CNT 35
+#define JOB_FIELDS_CNT 36
 #define JOB_FIELDS \
                 " job_id, " \
                 " job_status, " \
@@ -38,6 +38,7 @@
                 " UNIX_TIMESTAMP(date_submit) as date_submit, " \
                 " UNIX_TIMESTAMP(date_start) as date_start, " \
                 " UNIX_TIMESTAMP(date_end) as date_end, " \
+                " stats_max_sumrss, " \
                 " stats_status, " \
                 " stats_utime_sec, " \
                 " stats_utime_usec, " \
@@ -82,6 +83,7 @@ static int bind_result_job_fields(struct mx_mysql_bind *result, struct mxq_job *
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_submit));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_start));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_end));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(j->stats_max_sumrss));
     res += mx_mysql_bind_var(result, idx++,  int32, &(j->stats_status));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_sec));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->stats_rusage.ru_utime.tv_usec));
@@ -474,6 +476,7 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
             "UPDATE mxq_job SET"
             " job_status = ?,"
             " date_end = NULL,"
+            " stats_max_sumrss = ?, "
             " stats_status = ?, "
             " stats_utime_sec = ?, "
             " stats_utime_usec = ?, "
@@ -495,12 +498,13 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
             " AND server_id = ?"
             " AND host_pid = ?";
 
-    res = mx_mysql_bind_init_param(&param, 20);
+    res = mx_mysql_bind_init_param(&param, 21);
     assert(res == 0);
 
     idx = 0;
     res = 0;
     res += mx_mysql_bind_var(&param, idx++, uint16, &(newstatus));
+    res += mx_mysql_bind_var(&param, idx++, uint64, &(job->stats_max_sumrss));
     res += mx_mysql_bind_var(&param, idx++,  int32, &(job->stats_status));
     res += mx_mysql_bind_var(&param, idx++,  int64, &(job->stats_rusage.ru_utime.tv_sec));
     res += mx_mysql_bind_var(&param, idx++,  int64, &(job->stats_rusage.ru_utime.tv_usec));

@@ -52,6 +52,8 @@ struct mxq_job {
 
     struct timeval stats_starttime;
 
+    uint64_t   stats_max_sumrss;
+
     int32_t        stats_status;
     struct timeval stats_realtime;
     struct rusage  stats_rusage;

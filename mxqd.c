@@ -1638,16 +1638,16 @@ int killall_over_memory(struct mxq_server *server)
                     continue;
                 }
 
-                memory = pinfo->sum_rss * pagesize / 1024 / 1024;
+                memory = pinfo->sum_rss * pagesize / 1024;
 
                 if (job->max_sum_rss < memory)
                     job->max_sum_rss = memory;
 
-                if (memory <= group->group.job_memory)
+                if (memory/1024 <= group->group.job_memory)
                     continue;
 
-                mx_log_info("killall_over_memory(): used(%llu) > requested(%llu): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
-                    memory, group->group.job_memory,
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
+                    memory/1024, group->group.job_memory,
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
 
                 kill(-pid, SIGKILL);
@@ -1762,7 +1762,7 @@ int catchall(struct mxq_server *server) {
         g = &job->group->group;
 
         timersub(&now, &j->stats_starttime, &j->stats_realtime);
-
+        j->stats_max_sumrss = job->max_sum_rss;
         j->stats_status = status;
         j->stats_rusage = rusage;
 

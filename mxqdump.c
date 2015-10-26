@@ -128,6 +128,7 @@ static int print_group(struct mxq_group *g)
         " max_utime=%lu"
         " max_real=%lu"
         " max_memory=%lukiB"
+        " max_rss=%lukiB"
         " wait_sec=%lu"
         " run_sec=%lu"
         " idle_sec=%lu"
@@ -150,10 +151,11 @@ static int print_group(struct mxq_group *g)
         g->job_threads,
         g->job_memory*1024,
         g->job_time*60,
-        (100UL*(uint64_t)g->stats_max_maxrss/1024UL/g->job_memory),
+        (100UL*(uint64_t)g->stats_max_sumrss/1024UL/g->job_memory),
         (100UL*(uint64_t)g->stats_max_real.tv_sec/60UL/g->job_time),
         g->stats_max_utime.tv_sec,
         g->stats_max_real.tv_sec,
+        g->stats_max_sumrss,
         g->stats_max_maxrss,
         g->stats_wait_sec,
         g->stats_run_sec,
@@ -219,6 +221,7 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         " runtime_requested=%us"
         " time_load=%lu%%"
         " memory_requested=%lukiB"
+        " max_memory=%lukiB"
         " max_rss=%lukiB"
         " memory_load=%lu%%"
         " threads=%d"
@@ -244,8 +247,9 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         g->job_time*60,
         (100UL*(run_sec)/60UL/g->job_time),
         g->job_memory*1024,
+        j->stats_max_sumrss,
         j->stats_rusage.ru_maxrss,
-        (100UL*j->stats_rusage.ru_maxrss/1024UL/g->job_memory),
+        (100UL*j->stats_max_sumrss/1024UL/g->job_memory),
         g->job_threads,
         j->host_slots,
         mxq_job_status_to_name(j->job_status),

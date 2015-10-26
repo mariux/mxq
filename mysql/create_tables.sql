@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS mxq_group (
 
    group_date_end    TIMESTAMP NOT NULL DEFAULT 0,
 
+   stats_max_sumrss  INT8 UNSIGNED NOT NULL DEFAULT 0,
+
    stats_max_maxrss     INT8 UNSIGNED NOT NULL DEFAULT 0,
    stats_max_utime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
    stats_max_stime_sec  INT8 UNSIGNED NOT NULL DEFAULT 0,
@@ -93,6 +95,8 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    job_id_new     INT8 UNSIGNED   NULL DEFAULT NULL,
    job_id_old     INT8 UNSIGNED   NULL DEFAULT NULL,
    job_id_first   INT8 UNSIGNED   NULL DEFAULT NULL,
+
+   stats_max_sumrss  INT8 UNSIGNED NOT NULL DEFAULT 0,
 
    stats_status   INT4 UNSIGNED NOT NULL DEFAULT 0,
 
