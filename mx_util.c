@@ -856,6 +856,47 @@ int mx_strscan_ll(char **str, long long int *to)
     return res;
 }
 
+char *_mx_strconcat_do(char *first, ...)
+{
+    va_list ap;
+    char *join = NULL;
+    char *str;
+    char *ptr;
+    size_t len;
+
+    if (!first) {
+        join = strdup("");
+        return join;
+    }
+
+    len = strlen(first);
+
+    va_start(ap, first);
+        do {
+            str = va_arg(ap, char *);
+            if (!str)
+                break;
+            len += strlen(str);
+        } while(1);
+    va_end(ap);
+
+    join = malloc(len+1);
+    if (!join)
+        return NULL;
+
+    ptr = stpcpy(join, first);
+    va_start(ap, first);
+        do {
+            str = va_arg(ap, char *);
+            if (!str)
+                break;
+            ptr = stpcpy(ptr, str);
+        } while(1);
+    va_end(ap);
+
+    return join;
+}
+
 int mx_sleep(unsigned int seconds)
 {
     if (seconds)

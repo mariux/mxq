@@ -384,6 +384,27 @@ static void test_mx_strvec() {
     mx_strvec_free(strvec);
 }
 
+static void test_mx_strcat() {
+    char *str;
+    char *str2;
+
+    assert(str = mx_strconcat(NULL));
+    assert(mx_streq(str, ""));
+    mx_free_null(str);
+
+    assert(str = mx_strconcat("abc", "123"));
+    assert(mx_streq(str, "abc123"));
+
+    assert(str2 = mx_strconcat(str, "def", str, "456"));
+    assert(mx_streq(str2, "abc123defabc123456"));
+    mx_free_null(str2);
+
+    assert(str2 = mx_strconcat(str));
+    assert(mx_streq(str, str2));
+    mx_free_null(str);
+    mx_free_null(str2);
+}
+
 static void test_mx_cpuset(void)
 {
     cpu_set_t cpuset;
@@ -421,6 +442,7 @@ int main(int argc, char *argv[])
     test_mx_read_first_line_from_file();
     test_mx_strscan();
     test_mx_strvec();
+    test_mx_strcat();
     test_mx_cpuset();
     return 0;
 }
