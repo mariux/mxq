@@ -601,7 +601,7 @@ int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
     return 1;
 }
 
-int mxq_load_job_assigned_to_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, char *hostname, char *server_id)
+int mxq_load_job_from_group_assigned_to_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t group_id, char *hostname, char *server_id)
 {
     int res;
     struct mxq_job *jobs = NULL;
@@ -624,14 +624,16 @@ int mxq_load_job_assigned_to_server(struct mx_mysql *mysql, struct mxq_job **mxq
             " WHERE job_status = " status_str(MXQ_JOB_STATUS_ASSIGNED)
             " AND host_hostname = ?"
             " AND server_id  = ?"
+            " AND group_id = ?"
             " LIMIT 1";
 
-    res = mx_mysql_bind_init_param(&param, 2);
+    res = mx_mysql_bind_init_param(&param, 3);
     assert(res == 0);
 
     res = 0;
     res += mx_mysql_bind_var(&param, 0, string, &hostname);
     res += mx_mysql_bind_var(&param, 1, string, &server_id);
+    res += mx_mysql_bind_var(&param, 2, uint64, &group_id);
     assert(res == 0);
 
     res = bind_result_job_fields(&result, &j);
@@ -662,10 +664,10 @@ int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *m
     assert(*host_id);
 
     do {
-        res = mxq_load_job_assigned_to_server(mysql, &jobs, hostname, server_id);
+        res = mxq_load_job_from_group_assigned_to_server(mysql, &jobs, group_id, hostname, server_id);
 
         if(res < 0) {
-            mx_log_err("  group_id=%lu :: mxq_load_job_assigned_to_server: %m", group_id);
+            mx_log_err("  group_id=%lu :: mxq_load_job_from_group_assigned_to_server: %m", group_id);
             return 0;
         }
         if(res == 1) {
