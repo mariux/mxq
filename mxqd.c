@@ -78,7 +78,9 @@ static void print_usage(void)
 #else
     "      --no-log                      default: write a logfile\n"
 #endif
+    "      --log-directory <logdir>      default: " MXQ_LOGDIR "\n"
     "      --debug                       default: info log level\n"
+    "\n"
     "      --recover-only  (recover from crash and exit)\n"
     "\n"
     "      --initial-path <path>         default: %s\n"
@@ -91,6 +93,9 @@ static void print_usage(void)
     "\n"
     "  -M, --mysql-default-file [mysql-file]    default: %s\n"
     "  -S, --mysql-default-group [mysql-group]  default: %s\n"
+    "\n"
+    "Directories:\n"
+    "    LOGDIR      " MXQ_LOGDIR "\n"
     "\n"
     "Environment:\n"
     "  MXQ_MYSQL_DEFAULT_FILE   change default for [mysql-file]\n"
@@ -135,11 +140,26 @@ static void cpuset_clear_running(cpu_set_t *running,cpu_set_t *job) {
 }
 
 /**********************************************************************/
-int setup_cronolog(char *cronolog, char *link, char *format)
+int setup_cronolog(char *cronolog, char *logdir, char *rellink, char *relformat)
 {
     int res;
     int pipe_fd[2];
     int pid;
+    _mx_cleanup_free_ char *link = NULL;
+    _mx_cleanup_free_ char *format = NULL;
+
+    if (logdir) {
+        link   = mx_strconcat(logdir, "/", rellink);
+        format = mx_strconcat(logdir, "/", relformat);
+    } else {
+        link   = strdup(rellink);
+        format = strdup(relformat);
+    }
+
+    if (!link || !format) {
+        mx_log_err("can't allocate filenames: (%m)");
+        return 0;
+    }
 
     res = pipe(pipe_fd);
     if (res == -1) {
@@ -276,6 +296,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
     char *arg_pidfile = NULL;
+    char *arg_logdir = NULL;
     char *arg_initial_path;
     char *arg_initial_tmpdir;
     char arg_daemonize = 0;
@@ -296,7 +317,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
-                MX_OPTION_NO_ARG("log",                  4),
+                MX_OPTION_OPTIONAL_ARG("log",            4),
+                MX_OPTION_REQUIRED_ARG("log-directory",  4),
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("recover-only",         9),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
@@ -354,6 +376,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 4:
                 arg_nolog = 0;
+                arg_logdir = optctl.optarg;
                 break;
 
             case 5:
@@ -440,13 +463,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     memset(server, 0, sizeof(*server));
 
-    res = mx_mysql_initialize(&(server->mysql));
-    assert(res == 0);
-
-    mx_mysql_option_set_default_file(server->mysql,  arg_mysql_default_file);
-    mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
-    mx_mysql_option_set_reconnect(server->mysql, 1);
-
     server->hostname = arg_hostname;
     server->server_id = arg_server_id;
     server->initial_path = arg_initial_path;
@@ -490,25 +506,33 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     setup_stdin("/dev/null");
 
     if (!arg_nolog) {
-        if (access("/var/log",R_OK|W_OK|X_OK)) {
-            mx_log_err("MAIN: cant write to /var/log: %m");
+        if (!arg_logdir)
+            arg_logdir = MXQ_LOGDIR;
+
+        if (access(arg_logdir, R_OK|W_OK|X_OK)) {
+            if (!RUNNING_AS_ROOT)
+                mx_log_warning("Running mxqd as non-root user.");
+            mx_log_err("MAIN: can't write to '%s': %m", arg_logdir);
             exit(EX_IOERR);
         }
-        res = setup_cronolog("/usr/sbin/cronolog", "/var/log/mxqd_log", "/var/log/%Y/mxqd_log-%Y-%m");
+        res = setup_cronolog("/usr/sbin/cronolog", arg_logdir, "mxqd_log", "%Y/mxqd_log-%Y-%m");
         if (!res) {
+            if (!RUNNING_AS_ROOT)
+                mx_log_warning("Running mxqd as non-root user.");
             mx_log_err("MAIN: cronolog setup failed. exiting.");
             exit(EX_IOERR);
         }
     }
 
-    if (!RUNNING_AS_ROOT) {
-#if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
-        mx_log_notice("Running mxqd as non-root user.");
-#else
-        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
-        exit(EX_USAGE);
-#endif
-    }
+    if (!RUNNING_AS_ROOT)
+        mx_log_warning("Running mxqd as non-root user.");
+
+    res = mx_mysql_initialize(&(server->mysql));
+    assert(res == 0);
+
+    mx_mysql_option_set_default_file(server->mysql,  arg_mysql_default_file);
+    mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
+    mx_mysql_option_set_reconnect(server->mysql, 1);
 
     res = mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str_bootid);
     assert(res == 36);
@@ -1143,7 +1167,7 @@ unsigned long start_job(struct mxq_group_list *group)
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
     cpuset_init_job(&mxqjob.host_cpu_set,&server->cpu_set_available,&server->cpu_set_running,group->slots_per_job);
-    cpuset_log(" job assgined cpus: ",&mxqjob.host_cpu_set);
+    cpuset_log(" job assigned cpus: ",&mxqjob.host_cpu_set);
 
     mx_mysql_disconnect(server->mysql);
 
@@ -1638,19 +1662,19 @@ int killall_over_memory(struct mxq_server *server)
                     continue;
                 }
 
-                memory = pinfo->sum_rss * pagesize / 1024 / 1024;
+                memory = pinfo->sum_rss * pagesize / 1024;
 
                 if (job->max_sum_rss < memory)
                     job->max_sum_rss = memory;
 
-                if (memory <= group->group.job_memory)
+                if (memory/1024 <= group->group.job_memory)
                     continue;
 
-                mx_log_info("killall_over_memory(): used(%llu) > requested(%llu): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
-                    memory, group->group.job_memory,
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
+                    memory/1024, group->group.job_memory,
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
 
-                kill(-pid, SIGKILL);
+                kill(pid, SIGTERM);
             }
         }
     }
@@ -1762,7 +1786,7 @@ int catchall(struct mxq_server *server) {
         g = &job->group->group;
 
         timersub(&now, &j->stats_starttime, &j->stats_realtime);
-
+        j->stats_max_sumrss = job->max_sum_rss;
         j->stats_status = status;
         j->stats_rusage = rusage;
 

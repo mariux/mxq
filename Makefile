@@ -1,6 +1,6 @@
 MXQ_VERSION_MAJOR = 0
-MXQ_VERSION_MINOR = 17
-MXQ_VERSION_PATCH = 0
+MXQ_VERSION_MINOR = 18
+MXQ_VERSION_PATCH = 2
 MXQ_VERSION_EXTRA = "beta"
 MXQ_VERSIONDATE = 2015
 
@@ -25,6 +25,7 @@ LIBEXECDIR = ${EPREFIX}/libexec
 DATADIR    = ${PREFIX}/share
 MANDIR     = ${DATADIR}/man
 SYSCONFDIR = ${PREFIX}/etc
+LOCALSTATEDIR = ${PREFIX}/var
 
 DESTDIR=
 
@@ -41,6 +42,11 @@ HTTP_GROUP = nogroup
 ### set sysconfdir /etc if prefix /usr || /usr/local
 ifneq (, $(filter /usr /usr/local, ${PREFIX}))
     SYSCONFDIR = /etc
+endif
+
+### set localstatedir /var if prefix /usr || /usr/local
+ifneq (, $(filter /usr /usr/local, ${PREFIX}))
+    LOCALSTATEDIR = /var
 endif
 
 ########################################################################
@@ -125,6 +131,7 @@ CFLAGS += -DLIBEXECDIR=\"${LIBEXECDIR}\"
 CFLAGS += -DDATADIR=\"${DATADIR}\"
 CFLAGS += -DMANDIR=\"${MANDIR}\"
 CFLAGS += -DSYSCONFDIR=\"${SYSCONFDIR}\"
+CFLAGS += -DLOCALSTATEDIR=\"${LOCALSTATEDIR}\"
 CFLAGS += $(EXTRA_CFLAGS)
 
 ########################################################################
@@ -248,6 +255,7 @@ install::
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
 	$(call quiet-installdir,0755,${DESTDIR}${MAN1DIR})
 	$(call quiet-installdir,0755,${DESTDIR}${CGIDIR})
+	$(call quiet-installdir,0755,${DESTDIR}${LOCALSTATEDIR}/log)
 
 ########################################################################
 
