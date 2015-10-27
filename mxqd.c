@@ -436,23 +436,12 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     MX_GETOPT_FINISH(optctl, argc, argv);
 
-    if (!RUNNING_AS_ROOT) {
-        mx_log_warning("Running mxqd as non-root user.");
-    }
-
     if (arg_daemonize && arg_nolog) {
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
         exit(EX_USAGE);
     }
 
     memset(server, 0, sizeof(*server));
-
-    res = mx_mysql_initialize(&(server->mysql));
-    assert(res == 0);
-
-    mx_mysql_option_set_default_file(server->mysql,  arg_mysql_default_file);
-    mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
-    mx_mysql_option_set_reconnect(server->mysql, 1);
 
     server->hostname = arg_hostname;
     server->server_id = arg_server_id;
@@ -498,15 +487,29 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     if (!arg_nolog) {
         if (access(MXQ_LOGDIR, R_OK|W_OK|X_OK)) {
-            mx_log_err("MAIN: cant write to " MXQ_LOGDIR ": %m");
+            if (!RUNNING_AS_ROOT)
+                mx_log_warning("Running mxqd as non-root user.");
+            mx_log_err("MAIN: can't write to " MXQ_LOGDIR ": %m");
             exit(EX_IOERR);
         }
         res = setup_cronolog("/usr/sbin/cronolog", MXQ_LOGDIR "/mxqd_log", MXQ_LOGDIR "/%Y/mxqd_log-%Y-%m");
         if (!res) {
+            if (!RUNNING_AS_ROOT)
+                mx_log_warning("Running mxqd as non-root user.");
             mx_log_err("MAIN: cronolog setup failed. exiting.");
             exit(EX_IOERR);
         }
     }
+
+    if (!RUNNING_AS_ROOT)
+        mx_log_warning("Running mxqd as non-root user.");
+
+    res = mx_mysql_initialize(&(server->mysql));
+    assert(res == 0);
+
+    mx_mysql_option_set_default_file(server->mysql,  arg_mysql_default_file);
+    mx_mysql_option_set_default_group(server->mysql, arg_mysql_default_group);
+    mx_mysql_option_set_reconnect(server->mysql, 1);
 
     res = mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str_bootid);
     assert(res == 36);
