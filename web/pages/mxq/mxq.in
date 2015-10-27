@@ -269,6 +269,7 @@ group_mtime           : $o{group_mtime}
 
 group_date_end        : $o{group_date_end}
 
+stats_max_sumrss                 : $o{stats_max_maxrss} kiB
 stats_max_maxrss                 : $o{stats_max_maxrss}
 stats_max_utime_sec              : $o{stats_max_utime_sec}
 stats_max_stime_sec              : $o{stats_max_stime_sec}
@@ -311,7 +312,7 @@ sub job {
 
 	$dbh or db_init();
 
-	my $sth=$dbh->prepare('SELECT *,timestampdiff(MINUTE,date_start,now()) as t FROM mxq_job WHERE job_id=? LIMIT 1',undef);
+	my $sth=$dbh->prepare('SELECT *,timestampdiff(MINUTE,date_start,now()) as t,timestampdiff(MINUTE,date_start,date_end) as t2 FROM mxq_job WHERE job_id=? LIMIT 1',undef);
 	$sth->execute($job_id);
 	my %o=%{$sth->fetchrow_hashref('NAME_lc')};
 
@@ -325,8 +326,8 @@ sub job {
 	my $job_stdout=escapeHTML($o{job_stdout});
 	my $job_stderr=escapeHTML($o{job_stderr});
 
-
-	my $ago = defined $o{t} ? "($o{t} minutes ago)" : '';
+	my $ago = $job_status_text eq 'RUNNING' && defined $o{t} ? "($o{t} minutes ago)" : '';
+	my $rt = defined $o{t2} ? "($o{t2} minutes runtime)" : '';
 
 	defined $_ or $_='&lt;null&gt;' for values %o;
 
@@ -358,11 +359,13 @@ host_slots       : $o{host_slots}
 
 date_submit      : $o{date_submit}
 date_start       : $o{date_start} $ago
-date_end         : $o{date_end}
+date_end         : $o{date_end} $rt
 
 job_id_new       : $o{job_id_new}
 job_id_old       : $o{job_id_old}
 job_id_first     : $o{job_id_first}
+
+stats_max_sumrss : $o{stats_max_maxrss} kiB
 
 stats_status     : $o{stats_status}
 
@@ -394,17 +397,17 @@ sub group_table_rows {
 	$out.=$q->Tr($q->th($head));
 
 	while (my $row=$sth->fetchrow_arrayref()) {
-		my ($group_id,$group_name,$user_name,$group_mtime,$group_status,
+		my ($group_id,$group_name,$job_threads,$user_name,$group_mtime,$group_status,
 			$group_jobs,$group_jobs_inq,$group_jobs_running,$group_jobs_finished,$group_jobs_failed,$group_jobs_cancelled,$group_jobs_unknown
 		)=@$row;
 
 		$out.=$q->Tr(
 			$q->td({class=>'number'},$q->a({href=>selfurl("/group/$group_id")},$group_id)),
 			$q->td($group_name),
+			$q->td({class=>'number'},$job_threads),
 			$q->td($user_name),
 			$q->td($group_mtime),
 			$q->td(group_status($group_status)),
-
 			$q->td({class=>'number'},$group_jobs),
 			$q->td({class=>'number'},$group_jobs_inq),
 			$q->td({class=>'number'},$group_jobs_running),
@@ -426,11 +429,11 @@ sub group_table {
 	my $out;
 
 	my @cols=qw(
-		group_id group_name user_name group_mtime group_status
+		group_id group_name job_threads user_name group_mtime group_status
 		group_jobs group_jobs_inq group_jobs_running group_jobs_finished group_jobs_failed group_jobs_cancelled group_jobs_unknown
 	);
 	my @head=qw(
-		group_id group_name user_name group_mtime group_status
+		group_id group_name threads user_name group_mtime group_status
 		jobs inq running finished failed cancelled unknown
 	);
 
@@ -444,6 +447,7 @@ sub group_table {
 	@cols=qw(
         group_id
         group_name
+        job_threads
         user_name
         group_date_end
         group_status
@@ -457,6 +461,7 @@ sub group_table {
 	@head=qw(
         group_id
         group_name
+        threads
         user_name
         date_end
         group_status

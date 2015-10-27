@@ -1,6 +1,8 @@
 
 #define _GNU_SOURCE
 
+#define MXQ_TYPE_SERVER
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -34,11 +36,9 @@
 #include "mxq_group.h"
 #include "mxq_job.h"
 #include "mx_mysql.h"
+#include "mx_proc.h"
 #include "mxqd.h"
 #include "mxq.h"
-
-#define MYSQL_DEFAULT_FILE     MXQ_MYSQL_DEFAULT_FILE
-#define MYSQL_DEFAULT_GROUP    "mxqd"
 
 #ifndef MXQ_INITIAL_PATH
 #  define MXQ_INITIAL_PATH      "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
@@ -47,6 +47,8 @@
 #ifndef MXQ_INITIAL_TMPDIR
 #  define MXQ_INITIAL_TMPDIR    "/tmp"
 #endif
+
+#define RUNNING_AS_ROOT (getuid() == 0)
 
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
@@ -71,7 +73,11 @@ static void print_usage(void)
     "\n"
     "      --pid-file <pidfile>          default: create no pid file\n"
     "      --daemonize                   default: run in foreground\n"
+#ifdef MXQ_DEVELOPMENT
+    "      --log        default (in development): write no logfile\n"
+#else
     "      --no-log                      default: write a logfile\n"
+#endif
     "      --debug                       default: info log level\n"
     "      --recover-only  (recover from crash and exit)\n"
     "\n"
@@ -281,7 +287,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     unsigned long arg_memory_total = 2048;
     unsigned long arg_memory_max   = 0;
     int i;
-    struct proc_pid_stat pps = {0};
+
+    _mx_cleanup_free_ struct mx_proc_pid_stat *pps = NULL;
 
     struct mx_getopt_ctl optctl;
     struct mx_option opts[] = {
@@ -289,6 +296,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
+                MX_OPTION_NO_ARG("log",                  4),
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("recover-only",         9),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
@@ -307,16 +315,20 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
 
+#ifdef MXQ_DEVELOPMENT
+    arg_nolog = 1;
+#endif
+
     arg_initial_path = MXQ_INITIAL_PATH;
     arg_initial_tmpdir = MXQ_INITIAL_TMPDIR;
 
     arg_mysql_default_group = getenv("MXQ_MYSQL_DEFAULT_GROUP");
     if (!arg_mysql_default_group)
-        arg_mysql_default_group = MYSQL_DEFAULT_GROUP;
+        arg_mysql_default_group = MXQ_MYSQL_DEFAULT_GROUP;
 
     arg_mysql_default_file  = getenv("MXQ_MYSQL_DEFAULT_FILE");
     if (!arg_mysql_default_file)
-        arg_mysql_default_file = MYSQL_DEFAULT_FILE;
+        arg_mysql_default_file = MXQ_MYSQL_DEFAULT_FILE;
 
     mx_getopt_init(&optctl, argc-1, &argv[1], opts);
 
@@ -338,6 +350,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 3:
                 arg_nolog = 1;
+                break;
+
+            case 4:
+                arg_nolog = 0;
                 break;
 
             case 5:
@@ -417,6 +433,15 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     MX_GETOPT_FINISH(optctl, argc, argv);
 
+    if (!RUNNING_AS_ROOT) {
+#if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
+        mx_log_notice("Running mxqd as non-root user.");
+#else
+        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
+        exit(EX_USAGE);
+#endif
+    }
+
     if (arg_daemonize && arg_nolog) {
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
         exit(EX_USAGE);
@@ -485,15 +510,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         }
     }
 
-    if (getuid()) {
-#ifdef RUNASNORMALUSER
-        mx_log_notice("Running mxqd as non-root user.");
-#else
-        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
-        exit(EX_USAGE);
-#endif
-    }
-
     res = mx_read_first_line_from_file("/proc/sys/kernel/random/boot_id", &str_bootid);
     assert(res == 36);
     assert(str_bootid);
@@ -503,10 +519,11 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     res = mx_proc_pid_stat(&pps, getpid());
     assert(res == 0);
 
-    server->starttime = pps.starttime;
-    mx_proc_pid_stat_free(&pps);
+    server->starttime = pps->starttime;
+    mx_proc_pid_stat_free_content(pps);
 
     mx_asprintf_forever(&server->host_id, "%s-%llx-%x", server->boot_id, server->starttime, getpid());
+    mx_setenv_forever("MXQ_HOSTID", server->host_id);
 
     server->slots = arg_threads_total;
     res = cpuset_init(server);
@@ -518,7 +535,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     server->memory_max_per_slot = arg_memory_max;
 
     /* if run as non-root use full memory by default for every job */
-    if (!arg_memory_max && getuid() != 0)
+    if (!arg_memory_max && !RUNNING_AS_ROOT)
         server->memory_max_per_slot = arg_memory_total;
 
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
@@ -968,7 +985,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
                             g->user_name, g->user_uid, g->group_id, j->job_id);
     }
 
-    if(getuid()==0) {
+    if(RUNNING_AS_ROOT) {
 
         res = initgroups(passwd->pw_name, g->user_gid);
         if (res == -1) {
@@ -1126,7 +1143,7 @@ unsigned long start_job(struct mxq_group_list *group)
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
     cpuset_init_job(&mxqjob.host_cpu_set,&server->cpu_set_available,&server->cpu_set_running,group->slots_per_job);
-    cpuset_log(" job assgined cpus: ",&mxqjob.host_cpu_set);
+    cpuset_log(" job assigned cpus: ",&mxqjob.host_cpu_set);
 
     mx_mysql_disconnect(server->mysql);
 
@@ -1513,8 +1530,11 @@ int killall_over_time(struct mxq_server *server)
 
     assert(server);
 
-    /* limit killing to every >= 5 minutes */
-    mx_within_rate_limit_or_return(5*60, 1);
+    if (!server->jobs_running)
+        return 0;
+
+    /* limit killing to every >= 60 seconds */
+    mx_within_rate_limit_or_return(60, 1);
 
     mx_log_info("killall_over_time: Sending signals to all jobs running longer than requested.");
 
@@ -1572,6 +1592,69 @@ int killall_over_time(struct mxq_server *server)
             }
         }
     }
+    return 0;
+}
+
+int killall_over_memory(struct mxq_server *server)
+{
+    struct mxq_user_list  *user;
+    struct mxq_group_list *group;
+    struct mxq_job_list   *job;
+    struct mx_proc_tree   *pt = NULL;
+    struct mx_proc_info   *pinfo;
+    long pagesize;
+    pid_t pid;
+    unsigned long long int memory;
+    int res;
+
+    assert(server);
+
+    if (!server->jobs_running)
+        return 0;
+
+    /* limit killing to every >= 10 seconds */
+    mx_within_rate_limit_or_return(10, 0);
+
+    pagesize = sysconf(_SC_PAGESIZE);
+    if (!pagesize) {
+        mx_log_warning("killall_over_memory(): Can't get _SC_PAGESIZE. Assuming 4096.");
+        pagesize = 4096;
+    }
+
+    res = mx_proc_tree(&pt);
+    if (res < 0) {
+        mx_log_err("killall_over_memory(): Reading process tree failed: %m");
+        return res;
+    }
+
+    for (user=server->users; user; user=user->next) {
+        for (group=user->groups; group; group=group->next) {
+            for (job=group->jobs; job; job=job->next) {
+                pid = job->job.host_pid;
+
+                pinfo = mx_proc_tree_proc_info(pt, pid);
+                if (!pinfo) {
+                    mx_log_warning("killall_over_memory(): Can't find process with pid %llu in process tree", pid);
+                    continue;
+                }
+
+                memory = pinfo->sum_rss * pagesize / 1024;
+
+                if (job->max_sum_rss < memory)
+                    job->max_sum_rss = memory;
+
+                if (memory/1024 <= group->group.job_memory)
+                    continue;
+
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
+                    memory/1024, group->group.job_memory,
+                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+
+                kill(pid, SIGTERM);
+            }
+        }
+    }
+    mx_proc_tree_free(&pt);
     return 0;
 }
 
@@ -1679,7 +1762,7 @@ int catchall(struct mxq_server *server) {
         g = &job->group->group;
 
         timersub(&now, &j->stats_starttime, &j->stats_realtime);
-
+        j->stats_max_sumrss = job->max_sum_rss;
         j->stats_status = status;
         j->stats_rusage = rusage;
 
@@ -1730,7 +1813,7 @@ int load_groups(struct mxq_server *server) {
     int total;
     int i;
 
-    if (getuid() == 0)
+    if (RUNNING_AS_ROOT)
         group_cnt = mxq_load_running_groups(server->mysql, &mxqgroups);
     else
         group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
@@ -1820,8 +1903,12 @@ int main(int argc, char *argv[])
     }
 
     mx_log_info("mxqd - " MXQ_VERSIONFULL);
-    mx_log_info("  by Marius Tolzmann <tolzmann@molgen.mpg.de> " MXQ_VERSIONDATE);
+    mx_log_info("  by Marius Tolzmann <marius.tolzmann@molgen.mpg.de> 2013-" MXQ_VERSIONDATE);
+    mx_log_info("     and Donald Buczek <buczek@molgen.mpg.de> 2015-" MXQ_VERSIONDATE);
     mx_log_info("  Max Planck Institute for Molecular Genetics - Berlin Dahlem");
+#ifdef MXQ_DEVELOPMENT
+    mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.");
+#endif
     mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
     mx_log_info("  host_id=%s", server.host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
@@ -1871,6 +1958,7 @@ int main(int argc, char *argv[])
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
         killall_over_time(&server);
+        killall_over_memory(&server);
 
         if (!server.group_cnt) {
             assert(!server.jobs_running);
@@ -1918,6 +2006,7 @@ int main(int argc, char *argv[])
         killallcancelled(&server, SIGTERM, 0);
         killallcancelled(&server, SIGINT, 0);
         killall_over_time(&server);
+        killall_over_memory(&server);
 
         mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
               server.jobs_running, global_sigint_cnt, global_sigterm_cnt);

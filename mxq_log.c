@@ -8,6 +8,8 @@
 #include <unistd.h>
 
 #include "mx_log.h"
+#include "mx_util.h"
+
 #ifndef mx_free_null
 #include <stdlib.h>
 #define mx_free_null(a) do { free((a)); (a) = NULL; } while(0)
@@ -42,7 +44,6 @@ static int timetag(char *buf, size_t size)
 
 int mx_log_print(char *msg, size_t len)
 {
-    int res;
     char timebuf[1024];
 
     static char *lastmsg = NULL;
@@ -61,8 +62,7 @@ int mx_log_print(char *msg, size_t len)
         return -(errno=EINVAL);
 
     if (lastmsg && lastlen == len) {
-        res = strcmp(msg, lastmsg);
-        if (res == 0) {
+        if (mx_streq(msg, lastmsg)) {
             cnt++;
             mx_free_null(msg);
             return 2;

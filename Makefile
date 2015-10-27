@@ -1,8 +1,8 @@
 MXQ_VERSION_MAJOR = 0
-MXQ_VERSION_MINOR = 17
-MXQ_VERSION_PATCH = 0
+MXQ_VERSION_MINOR = 18
+MXQ_VERSION_PATCH = 2
 MXQ_VERSION_EXTRA = "beta"
-MXQ_VERSIONDATE = 2013-2015
+MXQ_VERSIONDATE = 2015
 
 MXQ_VERSION_GIT := $(shell git describe --long 2>/dev/null)
 
@@ -25,6 +25,7 @@ LIBEXECDIR = ${EPREFIX}/libexec
 DATADIR    = ${PREFIX}/share
 MANDIR     = ${DATADIR}/man
 SYSCONFDIR = ${PREFIX}/etc
+LOCALSTATEDIR = ${PREFIX}/var
 
 DESTDIR=
 
@@ -41,6 +42,11 @@ HTTP_GROUP = nogroup
 ### set sysconfdir /etc if prefix /usr || /usr/local
 ifneq (, $(filter /usr /usr/local, ${PREFIX}))
     SYSCONFDIR = /etc
+endif
+
+### set localstatedir /var if prefix /usr || /usr/local
+ifneq (, $(filter /usr /usr/local, ${PREFIX}))
+    LOCALSTATEDIR = /var
 endif
 
 ########################################################################
@@ -60,13 +66,17 @@ CGIDIR = ${LIBEXECDIR}/mxq/cgi
 ########################################################################
 
 MXQ_MYSQL_DEFAULT_FILE  = ${SYSCONFDIR}/mxq/mysql.cnf
-MXQ_MYSQL_DEFAULT_GROUP = mxqclient
+MXQ_MYSQL_DEFAULT_GROUP_CLIENT = mxqclient
+MXQ_MYSQL_DEFAULT_GROUP_SERVER = mxqd
+MXQ_MYSQL_DEFAULT_GROUP_DEVELOPMENT = mxqdevel
 
 MXQ_INITIAL_PATH   = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 MXQ_INITIAL_TMPDIR = /tmp
 
 CFLAGS_MXQ_MYSQL_DEFAULT_FILE  = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
-CFLAGS_MXQ_MYSQL_DEFAULT_GROUP = -DMXQ_MYSQL_DEFAULT_GROUP=\"$(MXQ_MYSQL_DEFAULT_GROUP)\"
+CFLAGS_MXQ_MYSQL_DEFAULT_GROUP = -DMXQ_MYSQL_DEFAULT_GROUP_CLIENT=\"$(MXQ_MYSQL_DEFAULT_GROUP_CLIENT)\"
+CFLAGS_MXQ_MYSQL_DEFAULT_GROUP += -DMXQ_MYSQL_DEFAULT_GROUP_SERVER=\"$(MXQ_MYSQL_DEFAULT_GROUP_SERVER)\"
+CFLAGS_MXQ_MYSQL_DEFAULT_GROUP += -DMXQ_MYSQL_DEFAULT_GROUP_DEVELOPMENT=\"$(MXQ_MYSQL_DEFAULT_GROUP_DEVELOPMENT)\"
 CFLAGS_MXQ_INITIAL_PATH        = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 CFLAGS_MXQ_INITIAL_TMPDIR      = -DMXQ_INITIAL_TMPDIR=\"$(MXQ_INITIAL_TMPDIR)\"
 
@@ -121,6 +131,7 @@ CFLAGS += -DLIBEXECDIR=\"${LIBEXECDIR}\"
 CFLAGS += -DDATADIR=\"${DATADIR}\"
 CFLAGS += -DMANDIR=\"${MANDIR}\"
 CFLAGS += -DSYSCONFDIR=\"${SYSCONFDIR}\"
+CFLAGS += -DLOCALSTATEDIR=\"${LOCALSTATEDIR}\"
 CFLAGS += $(EXTRA_CFLAGS)
 
 ########################################################################
@@ -182,11 +193,11 @@ manpages/%: manpages/%.xml
 .PHONY: all
 .PHONY: build
 
-all: build
+all: build test
 
-.PHONY: nonroot
-nonroot: CFLAGS += -DRUNASNORMALUSER
-nonroot: all
+.PHONY: devel
+devel: CFLAGS += -DMXQ_DEVELOPMENT
+devel: all
 
 ########################################################################
 
@@ -255,6 +266,10 @@ mx_log.h += mx_log.h
 
 mx_util.h += mx_util.h
 
+### mx_proc.h ----------------------------------------------------------
+
+mx_proc.h += mx_proc.h
+
 ### mx_flock.h ---------------------------------------------------------
 
 mx_flock.h += mx_flock.h
@@ -304,6 +319,12 @@ clean: CLEAN += mx_log.o
 mx_util.o: $(mx_log.h)
 
 clean: CLEAN += mx_util.o
+
+### mx_proc ------------------------------------------------------------
+
+mx_proc.o: $(mx_proc.h)
+
+clean: CLEAN += mx_proc.o
 
 ### mx_flock.o ---------------------------------------------------------
 
@@ -386,6 +407,7 @@ clean: CLEAN += mxq_job.o
 mxqd.o: $(mx_getopt.h)
 mxqd.o: $(mx_flock.h)
 mxqd.o: $(mx_util.h)
+mxqd.o: $(mx_proc.h)
 mxqd.o: $(mx_log.h)
 mxqd.o: $(mxqd.h)
 mxqd.o: $(mxq_group.h)
@@ -418,6 +440,7 @@ clean: CLEAN += mxqsub.o
 
 mxqd: mx_flock.o
 mxqd: mx_util.o
+mxqd: mx_proc.o
 mxqd: mx_log.o
 mxqd: mxq_log.o
 mxqd: mx_getopt.o
@@ -496,6 +519,21 @@ clean: CLEAN += mxqkill
 install:: mxqkill
 	$(call quiet-installforuser,$(SUID_MODE),$(UID_CLIENT),$(GID_CLIENT),mxqkill,${DESTDIR}${BINDIR}/mxqkill)
 
+### mxqps -------------------------------------------------------------
+
+mxqps.o: $(mx_proc.h)
+mxqps.o: $(mx_util.h)
+
+clean: CLEAN += mxqps.o
+
+mxqps: mx_log.o
+mxqps: mx_util.o
+mxqps: mx_proc.o
+
+build: mxqps
+
+clean: CLEAN += mxqps
+
 ########################################################################
 
 fix: FIX += mxqdctl-hostconfig.sh
@@ -535,6 +573,7 @@ test_mx_util.o: $(mx_util.h)
 clean: CLEAN += test_mx_util.o
 
 test_mx_util: mx_util.o
+test_mx_util: mx_proc.o
 test_mx_util: mx_log.o
 clean: CLEAN += test_mx_util
 
