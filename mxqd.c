@@ -78,7 +78,9 @@ static void print_usage(void)
 #else
     "      --no-log                      default: write a logfile\n"
 #endif
+    "      --log-directory <logdir>      default: " MXQ_LOGDIR "\n"
     "      --debug                       default: info log level\n"
+    "\n"
     "      --recover-only  (recover from crash and exit)\n"
     "\n"
     "      --initial-path <path>         default: %s\n"
@@ -138,11 +140,26 @@ static void cpuset_clear_running(cpu_set_t *running,cpu_set_t *job) {
 }
 
 /**********************************************************************/
-int setup_cronolog(char *cronolog, char *link, char *format)
+int setup_cronolog(char *cronolog, char *logdir, char *rellink, char *relformat)
 {
     int res;
     int pipe_fd[2];
     int pid;
+    _mx_cleanup_free_ char *link = NULL;
+    _mx_cleanup_free_ char *format = NULL;
+
+    if (logdir) {
+        link   = mx_strconcat(logdir, "/", rellink);
+        format = mx_strconcat(logdir, "/", relformat);
+    } else {
+        link   = strdup(rellink);
+        format = strdup(relformat);
+    }
+
+    if (!link || !format) {
+        mx_log_err("can't allocate filenames: (%m)");
+        return 0;
+    }
 
     res = pipe(pipe_fd);
     if (res == -1) {
@@ -279,6 +296,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
     char *arg_pidfile = NULL;
+    char *arg_logdir = NULL;
     char *arg_initial_path;
     char *arg_initial_tmpdir;
     char arg_daemonize = 0;
@@ -299,7 +317,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
                 MX_OPTION_NO_ARG("no-log",               3),
-                MX_OPTION_NO_ARG("log",                  4),
+                MX_OPTION_OPTIONAL_ARG("log",            4),
+                MX_OPTION_REQUIRED_ARG("log-directory",  4),
                 MX_OPTION_NO_ARG("debug",                5),
                 MX_OPTION_NO_ARG("recover-only",         9),
                 MX_OPTION_REQUIRED_ARG("pid-file",       2),
@@ -357,6 +376,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 4:
                 arg_nolog = 0;
+                arg_logdir = optctl.optarg;
                 break;
 
             case 5:
@@ -486,13 +506,16 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     setup_stdin("/dev/null");
 
     if (!arg_nolog) {
-        if (access(MXQ_LOGDIR, R_OK|W_OK|X_OK)) {
+        if (!arg_logdir)
+            arg_logdir = MXQ_LOGDIR;
+
+        if (access(arg_logdir, R_OK|W_OK|X_OK)) {
             if (!RUNNING_AS_ROOT)
                 mx_log_warning("Running mxqd as non-root user.");
-            mx_log_err("MAIN: can't write to " MXQ_LOGDIR ": %m");
+            mx_log_err("MAIN: can't write to '%s': %m", arg_logdir);
             exit(EX_IOERR);
         }
-        res = setup_cronolog("/usr/sbin/cronolog", MXQ_LOGDIR "/mxqd_log", MXQ_LOGDIR "/%Y/mxqd_log-%Y-%m");
+        res = setup_cronolog("/usr/sbin/cronolog", arg_logdir, "mxqd_log", "%Y/mxqd_log-%Y-%m");
         if (!res) {
             if (!RUNNING_AS_ROOT)
                 mx_log_warning("Running mxqd as non-root user.");
