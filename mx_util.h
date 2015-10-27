@@ -136,6 +136,9 @@ int mx_read_first_line_from_file(char *fname, char **line);
 int mx_strscan_ull(char **str, unsigned long long int *to);
 int mx_strscan_ll(char **str, long long int *to);
 
+char *_mx_strconcat_do(char *first, ...);
+#define mx_strconcat(s, ...) _mx_strconcat_do((s), ##__VA_ARGS__, NULL)
+
 int mx_sleep(unsigned int seconds);
 int mx_sleep_nofail(unsigned int seconds);
 

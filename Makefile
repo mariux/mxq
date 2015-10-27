@@ -255,6 +255,7 @@ install::
 	$(call quiet-installdir,0755,${DESTDIR}${SYSCONFDIR}/mxq)
 	$(call quiet-installdir,0755,${DESTDIR}${MAN1DIR})
 	$(call quiet-installdir,0755,${DESTDIR}${CGIDIR})
+	$(call quiet-installdir,0755,${DESTDIR}${LOCALSTATEDIR}/log)
 
 ########################################################################
 
