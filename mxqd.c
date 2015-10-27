@@ -437,12 +437,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     MX_GETOPT_FINISH(optctl, argc, argv);
 
     if (!RUNNING_AS_ROOT) {
-#if defined(MXQ_DEVELOPMENT) || defined(RUNASNORMALUSER)
-        mx_log_notice("Running mxqd as non-root user.");
-#else
-        mx_log_err("Running mxqd as non-root user is not supported at the moment.");
-        exit(EX_USAGE);
-#endif
+        mx_log_warning("Running mxqd as non-root user.");
     }
 
     if (arg_daemonize && arg_nolog) {
