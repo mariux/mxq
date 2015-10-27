@@ -411,3 +411,54 @@ struct mxq_group_list *server_update_group(struct mxq_server *server, struct mxq
 
     return _user_list_update_group(ulist, group);
 }
+
+
+void server_sort_users_by_running_global_slot_count(struct mxq_server *server)
+{
+    struct mxq_user_list *ulist;
+    struct mxq_user_list *unext;
+    struct mxq_user_list *uprev;
+    struct mxq_user_list *uroot;
+    struct mxq_user_list *current;
+
+    assert(server);
+
+    if (!server->user_cnt)
+        return;
+
+    for (ulist = server->users, uroot = NULL; ulist; ulist = unext) {
+        unext = ulist->next;
+
+        ulist->next = NULL;
+
+        if (!uroot) {
+            uroot = ulist;
+            continue;
+        }
+
+        for (current = uroot, uprev = NULL; (current || uprev); uprev = current, current = current->next) {
+            if (!current) {
+                uprev->next = ulist;
+                break;
+            }
+            if (ulist->global_slots_running > current->global_slots_running) {
+                continue;
+            }
+            if (ulist->global_slots_running == current->global_slots_running
+                && ulist->global_threads_running > current->global_threads_running) {
+                continue;
+            }
+
+            ulist->next = current;
+
+            if (!uprev) {
+                uroot = ulist;
+            } else {
+                uprev->next = ulist;
+            }
+            break;
+        }
+    }
+
+    server->users = uroot;
+}
