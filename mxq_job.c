@@ -573,6 +573,29 @@ int mxq_set_job_status_unknown_for_server(struct mx_mysql *mysql, char *hostname
     return res;
 }
 
+int mxq_set_job_status_unknown(struct mx_mysql *mysql, struct mxq_job *job)
+{
+    int res;
+    struct mx_mysql_bind param = {0};
+
+    char *query =
+            "UPDATE mxq_job SET"
+            " job_status = " status_str(MXQ_JOB_STATUS_UNKNOWN)
+            " WHERE job_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 1);
+    res += mx_mysql_bind_var(&param, 0, uint64, &job->job_id);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    return res;
+}
+
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
 {
     if (!mx_streq(j->job_stdout, "/dev/null")) {
