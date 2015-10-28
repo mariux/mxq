@@ -954,7 +954,6 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     struct mxq_group *g;
     struct mxq_server *s;
     struct passwd *passwd;
-    pid_t pid;
     int res;
     int fh;
     struct rlimit rlim;
@@ -968,13 +967,6 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     g = &group->group;
 
     reset_signals();
-
-    /** set sessionid and pgrp leader **/
-    pid = setsid();
-    if (pid == -1) {
-        mx_log_err("job=%s(%d):%lu:%lu setsid(): %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id);
-    }
 
     passwd = getpwuid(g->user_uid);
     if (!passwd) {
@@ -1257,6 +1249,11 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
     int res;
 
     reset_signals();
+
+    res = setsid();
+    if (res<0) {
+	mx_log_warning("reaper_process setsid: %m");
+    }
 
     res=prctl(PR_SET_CHILD_SUBREAPER, 1);
     if (res<0) {
