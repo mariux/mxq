@@ -887,6 +887,19 @@ static struct mxq_group_list *server_update_groupdata(struct mxq_server *server,
     return user_update_groupdata(user, group);
 }
 
+static void reset_signals()
+{
+    signal(SIGINT,  SIG_DFL);
+    signal(SIGTERM, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+    signal(SIGHUP,  SIG_DFL);
+    signal(SIGTSTP, SIG_DFL);
+    signal(SIGTTIN, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
+    signal(SIGCHLD, SIG_DFL);
+    signal(SIGPIPE, SIG_DFL);
+}
+
 static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
 {
     struct mxq_group *g;
@@ -905,18 +918,7 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     s = group->user->server;
     g = &group->group;
 
-    /** restore signal handler **/
-    signal(SIGINT,  SIG_DFL);
-    signal(SIGTERM, SIG_DFL);
-    signal(SIGQUIT, SIG_DFL);
-    signal(SIGHUP,  SIG_DFL);
-    signal(SIGTSTP, SIG_DFL);
-    signal(SIGTTIN, SIG_DFL);
-    signal(SIGTTOU, SIG_DFL);
-    signal(SIGCHLD, SIG_DFL);
-
-    /* reset SIGPIPE which seems to be ignored by mysqlclientlib (?) */
-    signal(SIGPIPE, SIG_DFL);
+    reset_signals();
 
     /** set sessionid and pgrp leader **/
     pid = setsid();
@@ -1204,6 +1206,8 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
     _mx_cleanup_free_ char *finished_job_tmpfilename=NULL;
     FILE *out;
     int res;
+
+    reset_signals();
 
     res=prctl(PR_SET_CHILD_SUBREAPER, 1);
     if (res<0) {
