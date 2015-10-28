@@ -2223,7 +2223,7 @@ int catchall(struct mxq_server *server) {
 
         assert(siginfo.si_pid > 1);
 
-        job = server_remove_job_by_pid(server, siginfo.si_pid);
+        job = server_find_job_by_pid(server,siginfo.si_pid);
         if (!job) {
             mx_log_warning("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d",
                 siginfo.si_pid, siginfo.si_uid, siginfo.si_code, siginfo.si_status,
@@ -2233,6 +2233,12 @@ int catchall(struct mxq_server *server) {
                 mx_log_err("FIX ME BUG!!! pid=%d errno=%d (%m)", pid, errno);
             continue;
         }
+        if (fspool_file_exists(server,job->job.job_id)) {
+            waitpid(siginfo.si_pid, &status, WNOHANG);
+            continue;
+        }
+        mx_log_err("reaper died. status=%d. Cleaning up job from catchall.",status);
+        server_remove_job(job);
 
         /* reap child and save new state */
         pid = wait4(siginfo.si_pid, &status, WNOHANG, &rusage);
