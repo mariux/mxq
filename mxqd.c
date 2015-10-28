@@ -1915,6 +1915,40 @@ static int job_has_finished (struct mxq_server *server,struct mxq_group *g,struc
         return cnt;
 }
 
+static int job_is_lost (struct mxq_server *server,struct mxq_group *g,struct mxq_job_list *job)
+{
+        int cnt=0;
+        int res;
+        struct mxq_job *j=&job->job;
+
+        mxq_set_job_status_unknown(server->mysql, j);
+        g->group_jobs_unknown++;
+
+        mxq_job_set_tmpfilenames(g, j);
+
+        if (!mx_streq(j->job_stdout, "/dev/null")) {
+            res = rename(j->tmp_stdout, j->job_stdout);
+            if (res == -1) {
+                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m",
+                        g->user_name, g->user_uid, g->group_id, j->job_id, j->host_pid);
+            }
+        }
+
+        if (!mx_streq(j->job_stderr, "/dev/null") && !mx_streq(j->job_stderr, j->job_stdout)) {
+            res = rename(j->tmp_stderr, j->job_stderr);
+            if (res == -1) {
+                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m",
+                        g->user_name, g->user_uid, g->group_id, j->job_id, j->host_pid);
+            }
+        }
+
+        cnt += job->group->slots_per_job;
+        cpuset_clear_running(&server->cpu_set_running,&j->host_cpu_set);
+        mxq_job_free_content(j);
+        free(job);
+        return cnt;
+}
+
 static char *fspool_get_filename (struct mxq_server *server,long unsigned int job_id)
 {
     char *fspool_filename;
@@ -2088,7 +2122,7 @@ static int lost_scan_one(struct mxq_server *server)
                             mx_log_warning("pid %u: process is gone. cancel job %d",job_list->job.host_pid,job_list->job.job_id);
                             server_remove_job_by_pid(server, job_list->job.host_pid);
                             job_list->job.job_status=MXQ_JOB_STATUS_UNKNOWN;
-                            job_has_finished(server,&group_list->group,job_list);
+                            job_is_lost(server,&group_list->group,job_list);
                             return 1;
                         }
                     } else {
