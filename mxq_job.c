@@ -704,3 +704,38 @@ int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *m
 
     return 1;
 }
+
+int mxq_load_jobs_running_on_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, char *hostname, char *server_id)
+{
+    int res;
+    *mxq_jobs=NULL;
+    struct mxq_job j = {0};
+
+    struct mx_mysql_bind param = {0};
+    struct mx_mysql_bind result = {0};
+
+    char *query =
+            "SELECT"
+                JOB_FIELDS
+            " FROM mxq_job"
+            "   WHERE job_status = " status_str(MXQ_JOB_STATUS_RUNNING)
+            "   AND host_hostname=?"
+            "   AND server_id=?";
+    res = mx_mysql_bind_init_param(&param, 2);
+    assert(res == 0);
+
+    res=0;
+    res += mx_mysql_bind_var(&param, 0, string, &hostname);
+    res += mx_mysql_bind_var(&param, 1, string, &server_id);
+    assert(res == 0);
+
+    res = bind_result_job_fields(&result, &j);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)mxq_jobs, sizeof(**mxq_jobs));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+    return res;
+}

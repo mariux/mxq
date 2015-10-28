@@ -107,5 +107,6 @@ int mxq_set_job_status_unknown_for_server(struct mx_mysql *mysql, char *hostname
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j);
 int mxq_load_job_from_group_assigned_to_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t group_id, char *hostname, char *server_id);
 int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, char *hostname, char *server_id, char *host_id);
+int mxq_load_jobs_running_on_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, char *hostname, char *server_id);
 
 #endif
