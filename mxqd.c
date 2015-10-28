@@ -1716,7 +1716,7 @@ int killall_over_time(struct mxq_server *server)
     /* limit killing to every >= 60 seconds */
     mx_within_rate_limit_or_return(60, 1);
 
-    mx_log_info("killall_over_time: Sending signals to all jobs running longer than requested.");
+    mx_log_debug("killall_over_time: Sending signals to all jobs running longer than requested.");
 
     gettimeofday(&now, NULL);
 
@@ -1731,13 +1731,13 @@ int killall_over_time(struct mxq_server *server)
                 pid = job->job.host_pid;
 
                 if (delta.tv_sec <= group->group.job_time*61) {
-                    mx_log_debug("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pid=%d",
+                    mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pid=%d",
                         group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
                     kill(pid, SIGXCPU);
                     continue;
                 }
 
-                mx_log_debug("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pgrp=%d",
+                mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pgrp=%d",
                     group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
                 kill(-pid, SIGXCPU);
 
