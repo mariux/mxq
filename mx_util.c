@@ -18,6 +18,8 @@
 #include "mx_log.h"
 #include "mx_util.h"
 
+static inline size_t mx_strvec_length_cache(char **strvec, int32_t len);
+
 static inline int _mx_strbeginswith(char *str, const char *start, char **endptr, short ignore_case)
 {
     size_t len;
@@ -930,8 +932,15 @@ void *mx_calloc_forever_sec(size_t nmemb, size_t size, unsigned int time)
 char **mx_strvec_new(void)
 {
     char **strvec;
+    size_t len;
 
     strvec = calloc(sizeof(*strvec), 1);
+    if (!strvec)
+        return NULL;
+
+    len = mx_strvec_length_cache(strvec, -1);
+    if (len != -1)
+        mx_strvec_length_cache(strvec, 0);
 
     return strvec;
 }

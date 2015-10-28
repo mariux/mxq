@@ -348,6 +348,30 @@ static void test_mx_strscan(void)
     mx_proc_pid_stat_free_content(pps);
 }
 
+static void test_mx_strvec_cachebug() {
+    char **strvec;
+    char **strvec2;
+    char *str;
+
+    strvec = mx_strvec_new();
+    assert(mx_strvec_length(strvec) == 0);
+
+    mx_strvec_push_str(&strvec, "Eins");
+    assert(mx_strvec_length(strvec) == 1);
+
+    str = mx_strvec_to_str(strvec);
+    assert(mx_streq(str, "Eins\\0"));
+
+    free(strvec); /* do not set to NULL for cache bug testing */
+
+    strvec2 = mx_strvec_new();
+    assert(mx_strvec_length(strvec2) == 0);
+    if (strvec != strvec2)
+        fprintf(stderr, "Warning: Can't test strvec cache bug. Skipping.");
+    mx_free_null(strvec2);
+    mx_free_null(str);
+}
+
 static void test_mx_strvec() {
     char **strvec;
     char *str;
@@ -442,6 +466,7 @@ int main(int argc, char *argv[])
     test_mx_read_first_line_from_file();
     test_mx_strscan();
     test_mx_strvec();
+    test_mx_strvec_cachebug();
     test_mx_strcat();
     test_mx_cpuset();
     return 0;
