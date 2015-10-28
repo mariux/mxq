@@ -652,55 +652,103 @@ void group_init(struct mxq_group_list *group)
     group->memory_max = memory_max;
 }
 
-/**********************************************************************/
+static struct mxq_user_list *server_find_user(struct mxq_server *server,uint32_t uid)
+{
+    struct mxq_user_list  *user_list;
+
+    for (user_list=server->users;user_list;user_list=user_list->next)
+        if (user_list->groups && user_list->groups[0].group.user_uid==uid) {
+            return user_list;
+        }
+    return NULL;
+}
+
+static struct mxq_group_list *server_find_group(struct mxq_server *server,uint64_t  group_id)
+{
+    struct mxq_user_list  *user_list;
+    struct mxq_group_list *group_list;
+
+    for (user_list=server->users;user_list;user_list=user_list->next)
+        for (group_list=user_list->groups;group_list;group_list=group_list->next)
+            if (group_list->group.group_id==group_id)
+                return group_list;
+    return NULL;
+}
+
+static struct mxq_job_list *server_find_job(struct mxq_server *server,uint64_t  job_id)
+{
+    struct mxq_user_list  *user_list;
+    struct mxq_group_list *group_list;
+    struct mxq_job_list   *job_list;
+
+    for (user_list=server->users;user_list;user_list=user_list->next)
+        for (group_list=user_list->groups;group_list;group_list=group_list->next)
+            for (job_list=group_list->jobs;job_list;job_list=job_list->next)
+                if (job_list->job.job_id==job_id)
+                    return job_list;
+    return NULL;
+}
+
+static struct mxq_job_list *server_find_job_by_pid(struct mxq_server *server,pid_t  pid)
+{
+    struct mxq_user_list  *user_list;
+    struct mxq_group_list *group_list;
+    struct mxq_job_list   *job_list;
+
+    for (user_list=server->users;user_list;user_list=user_list->next)
+        for (group_list=user_list->groups;group_list;group_list=group_list->next)
+            for (job_list=group_list->jobs;job_list;job_list=job_list->next)
+                if (job_list->job.host_pid==pid)
+                    return job_list;
+    return NULL;
+}
+
+
+void server_remove_job(struct mxq_job_list *job) {
+    struct mxq_group_list *group=job->group;
+    struct mxq_user_list *user=group->user;
+    struct mxq_server *server=user->server;
+
+    struct mxq_job_list **prev;
+
+    for (prev=&group->jobs;*prev;prev=&(*prev)->next) {
+        if (*prev==job) {
+            *prev=job->next;
+            group->job_cnt--;
+            user->job_cnt--;
+            server->job_cnt--;
+
+            group->slots_running  -= job->job.host_slots;
+            user->slots_running   -= job->job.host_slots;
+            server->slots_running -= job->job.host_slots;
+
+            group->threads_running  -= group->group.job_threads;
+            user->threads_running   -= group->group.job_threads;
+            server->threads_running -= group->group.job_threads;
+
+            group->group.group_jobs_running--;
+
+            group->jobs_running--;
+            user->jobs_running--;
+            server->jobs_running--;
+
+            group->memory_used  -= group->group.job_memory;
+            user->memory_used   -= group->group.job_memory;
+            server->memory_used -= group->group.job_memory;
+            break;
+        }
+    }
+}
 
 struct mxq_job_list *server_remove_job_by_pid(struct mxq_server *server, pid_t pid)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job, *prev;
+    struct mxq_job_list   *job;
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            for (job=group->jobs, prev=NULL; job; prev=job,job=job->next) {
-                if (job->job.host_pid == pid) {
-                    if (prev) {
-                        prev->next = job->next;
-                    } else {
-                        assert(group->jobs);
-                        assert(group->jobs == job);
-
-                        group->jobs = job->next;
-                    }
-
-                    group->job_cnt--;
-                    user->job_cnt--;
-                    server->job_cnt--;
-
-                    group->slots_running  -= job->job.host_slots;
-                    user->slots_running   -= job->job.host_slots;
-                    server->slots_running -= job->job.host_slots;
-
-                    group->threads_running  -= group->group.job_threads;
-                    user->threads_running   -= group->group.job_threads;
-                    server->threads_running -= group->group.job_threads;
-
-                    group->group.group_jobs_running--;
-
-                    group->jobs_running--;
-                    user->jobs_running--;
-                    server->jobs_running--;
-
-                    group->memory_used  -= group->group.job_memory;
-                    user->memory_used   -= group->group.job_memory;
-                    server->memory_used -= group->group.job_memory;
-
-                    return job;
-                }
-            }
-        }
+    job=server_find_job_by_pid(server,pid);
+    if (job) {
+        server_remove_job(job);
     }
-    return NULL;
+    return job;
 }
 
 /**********************************************************************/
@@ -1999,6 +2047,118 @@ static int fspool_scan(struct mxq_server *server) {
     return cnt;
 }
 
+static int file_exists(char *name) {
+    int res;
+    struct stat stat_buf;
+
+    res=stat(name,&stat_buf);
+    if (res<0) {
+        if (errno==ENOENT) {
+            return 0;
+        } else {
+            mx_log_warning("%s: %m",name);
+            return 1;
+        }
+    } else {
+        return 1;
+    }
+}
+
+static int fspool_file_exists(struct mxq_server *server,uint64_t job_id) {
+    _mx_cleanup_free_ char *fspool_filename=NULL;
+    fspool_filename=fspool_get_filename(server,job_id);
+    return file_exists(fspool_filename);
+}
+
+static int lost_scan_one(struct mxq_server *server)
+{
+    struct mxq_user_list  *user_list;
+    struct mxq_group_list *group_list;
+    struct mxq_job_list   *job_list;
+    int res;
+
+    for (user_list=server->users;user_list;user_list=user_list->next)
+        for (group_list=user_list->groups;group_list;group_list=group_list->next)
+            for (job_list=group_list->jobs;job_list;job_list=job_list->next) {
+                res=kill(job_list->job.host_pid,0);
+                if (res<0) {
+                    if (errno==ESRCH) {
+                        if (!fspool_file_exists(server,job_list->job.job_id)) {
+                            mx_log_warning("pid %u: process is gone. cancel job %d",job_list->job.host_pid,job_list->job.job_id);
+                            server_remove_job_by_pid(server, job_list->job.host_pid);
+                            job_list->job.job_status=MXQ_JOB_STATUS_UNKNOWN;
+                            job_has_finished(server,&group_list->group,job_list);
+                            return 1;
+                        }
+                    } else {
+                        return -errno;
+                    }
+                }
+            }
+    return 0;
+}
+
+static int lost_scan(struct mxq_server *server)
+{
+    int res;
+    int count=0;
+    do {
+        res=lost_scan_one(server);
+        if (res<0)
+            return res;
+        count+=res;
+    } while (res>0);
+    return count;
+}
+
+
+static int server_reload_running(struct mxq_server *server)
+{
+    int job_cnt;
+    struct mxq_job *jobs;
+    int j;
+
+    struct mxq_job_list   *mxq_job_list;
+    struct mxq_group_list *mxq_group_list;
+    struct mxq_user_list  *mxq_user_list;
+
+    int group_cnt;
+
+    job_cnt=mxq_load_jobs_running_on_server(server->mysql,&jobs,server->hostname,server->server_id);
+    if (job_cnt<0)
+        return job_cnt;
+    for (j=0;j<job_cnt;j++) {
+        struct mxq_job *job=&jobs[j];
+
+        job->stats_starttime.tv_sec=job->date_start;
+
+        mxq_job_list=server_find_job(server,job->job_id);
+        if (!mxq_job_list) {
+            mxq_group_list=server_find_group(server,job->group_id);
+            if (!mxq_group_list) {
+                struct mxq_group *groups=NULL;
+                struct mxq_group *group;
+                group_cnt=mxq_load_group(server->mysql,&groups,job->group_id);
+                if (group_cnt!=1)
+                    continue;
+                group=&groups[0];
+                mxq_user_list=server_find_user(server,group->user_uid);
+                if (!mxq_user_list) {
+                    mxq_group_list=server_add_user(server,group);
+                } else {
+                    mxq_group_list=user_add_group(mxq_user_list,group);
+                }
+                free(groups);
+            }
+            mxq_job_list=mxq_group_list->jobs;
+        }
+        group_add_job(mxq_group_list,job);
+    }
+
+    free(jobs);
+    return job_cnt;
+}
+
 int catchall(struct mxq_server *server) {
 
     struct rusage rusage;
@@ -2115,23 +2275,47 @@ int load_groups(struct mxq_server *server) {
 
 int recover_from_previous_crash(struct mxq_server *server)
 {
-    int res1;
+    int res;
 
     assert(server);
     assert(server->mysql);
     assert(server->hostname);
     assert(server->server_id);
 
-    res1 = mxq_unassign_jobs_of_server(server->mysql, server->hostname, server->server_id);
-    if (res1 < 0) {
+    res = mxq_unassign_jobs_of_server(server->mysql, server->hostname, server->server_id);
+    if (res < 0) {
         mx_log_info("mxq_unassign_jobs_of_server() failed: %m");
-        return res1;
+        return res;
     }
-    if (res1 > 0)
+    if (res > 0)
         mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: unassigned %d jobs.",
-            server->hostname, server->server_id, res1);
+            server->hostname, server->server_id, res);
 
-    return res1;
+    res=server_reload_running(server);
+    if (res<0) {
+        mx_log_err("recover: server_reload_running: %m");
+        return res;
+    }
+    if (res>0)
+        mx_log_info("recover: reload %d running jobs from database", res);
+
+    res=fspool_scan(server);
+    if (res<0) {
+        mx_log_err("recover: server_fspool_scan: %m");
+        return res;
+    }
+    if (res>0)
+        mx_log_info("recover: processed %d finished jobs from fspool",res);
+
+    res=lost_scan(server);
+    if (res<0) {
+        mx_log_err("recover: lost_scan: %m");
+        return(res);
+    }
+    if (res>0)
+        mx_log_warning("recover: %d jobs vanished from the system",res);
+
+    return 0;
 }
 
 /**********************************************************************/
@@ -2205,8 +2389,6 @@ int main(int argc, char *argv[])
         mx_log_warning("recover_from_previous_crash() failed. Aborting execution.");
         fail = 1;
     }
-    if (res > 0)
-        mx_log_warning("total %d jobs recovered from previous crash.", res);
 
     if (server.recoveronly)
         fail = 1;
