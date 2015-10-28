@@ -53,6 +53,7 @@
 
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
+volatile sig_atomic_t global_sigquit_cnt=0;
 
 int mxq_redirect_output(char *stdout_fname, char *stderr_fname);
 
@@ -2332,6 +2333,11 @@ static void sig_handler(int sig)
       global_sigterm_cnt++;
       return;
     }
+
+    if (sig == SIGQUIT) {
+      global_sigquit_cnt++;
+      return;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -2377,7 +2383,7 @@ int main(int argc, char *argv[])
 
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, sig_handler);
-    signal(SIGQUIT, SIG_IGN);
+    signal(SIGQUIT, sig_handler);
     signal(SIGHUP,  SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
@@ -2393,7 +2399,7 @@ int main(int argc, char *argv[])
     if (server.recoveronly)
         fail = 1;
 
-    while (!global_sigint_cnt && !global_sigterm_cnt && !fail) {
+    while (!global_sigint_cnt && !global_sigterm_cnt && !global_sigquit_cnt && !fail) {
         slots_returned = catchall(&server);
         slots_returned += fspool_scan(&server);
 
@@ -2445,28 +2451,29 @@ int main(int argc, char *argv[])
     }
     /*** clean up ***/
 
-    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting.", global_sigint_cnt, global_sigterm_cnt);
+    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d global_sigquit_cnt=%d: Exiting.", global_sigint_cnt, global_sigterm_cnt,global_sigquit_cnt);
 
-    while (server.jobs_running) {
-        slots_returned = catchall(&server);
-        slots_returned += fspool_scan(&server);
+    if (global_sigterm_cnt||global_sigint_cnt) {
+        while (server.jobs_running) {
+            slots_returned = catchall(&server);
+            slots_returned += fspool_scan(&server);
 
-        if (slots_returned) {
-           mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
-                   server.jobs_running, slots_returned, global_sigint_cnt, global_sigterm_cnt);
-           continue;
+            if (slots_returned) {
+                mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
+                    server.jobs_running, slots_returned, global_sigint_cnt, global_sigterm_cnt);
+                continue;
+            }
+            if (global_sigint_cnt)
+                killall(&server, SIGTERM, 1);
+
+            killallcancelled(&server, SIGTERM, 0);
+            killallcancelled(&server, SIGINT, 0);
+            killall_over_time(&server);
+            killall_over_memory(&server);
+            mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
+                server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
+            sleep(1);
         }
-        if (global_sigint_cnt)
-            killall(&server, SIGTERM, 0);
-
-        killallcancelled(&server, SIGTERM, 0);
-        killallcancelled(&server, SIGINT, 0);
-        killall_over_time(&server);
-        killall_over_memory(&server);
-
-        mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
-              server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
-        sleep(1);
     }
 
     mx_mysql_finish(&(server.mysql));
