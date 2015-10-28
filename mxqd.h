@@ -11,8 +11,6 @@ struct mxq_job_list {
     struct mxq_job job;
 
     unsigned long long int max_sum_rss;
-
-    pid_t pid;
 };
 
 struct mxq_group_list {
