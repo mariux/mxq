@@ -12,6 +12,7 @@
 
 #include "mx_util.h"
 #include "mx_log.h"
+#include "mx_util.h"
 
 #include "mxq_group.h"
 #include "mxq_job.h"
@@ -164,13 +165,28 @@ void mxq_job_free_content(struct mxq_job *j)
         j->job_argv = NULL;
 }
 
+static int do_jobs_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mxq_job **jobs)
+{
+    int res;
+    struct mxq_job j = {0};
+    struct mx_mysql_bind result = {0};
+
+    res = bind_result_job_fields(&result, &j);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, param, &result, &j, (void **)jobs, sizeof(**jobs));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+    return res;
+}
+
 int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job_id)
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -189,12 +205,8 @@ int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job
     res = mx_mysql_bind_var(&param, 0, uint64, &job_id);
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -202,13 +214,13 @@ int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job
     return res;
 }
 
+
+
 int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp)
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -227,12 +239,8 @@ int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, st
     res = mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -244,9 +252,7 @@ int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -268,12 +274,8 @@ int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **
     res += mx_mysql_bind_var(&param, 1, uint64, &job_status);
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -628,9 +630,7 @@ int mxq_load_job_from_group_assigned_to_server(struct mx_mysql *mysql, struct mx
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -659,12 +659,8 @@ int mxq_load_job_from_group_assigned_to_server(struct mx_mysql *mysql, struct mx
     res += mx_mysql_bind_var(&param, 2, uint64, &group_id);
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -731,11 +727,9 @@ int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *m
 int mxq_load_jobs_running_on_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, char *hostname, char *server_id)
 {
     int res;
-    *mxq_jobs=NULL;
-    struct mxq_job j = {0};
+    struct mxq_job *jobs = NULL;
 
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     char *query =
             "SELECT"
@@ -752,13 +746,11 @@ int mxq_load_jobs_running_on_server(struct mx_mysql *mysql, struct mxq_job **mxq
     res += mx_mysql_bind_var(&param, 1, string, &server_id);
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)mxq_jobs, sizeof(**mxq_jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
+
+    *mxq_jobs = jobs;
     return res;
 }
