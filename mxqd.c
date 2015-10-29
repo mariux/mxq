@@ -1621,14 +1621,17 @@ int killall_over_time(struct mxq_server *server)
 
 int killall_over_memory(struct mxq_server *server)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
-    struct mx_proc_tree   *pt = NULL;
-    struct mx_proc_info   *pinfo;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
+
+    struct mx_proc_tree *ptree = NULL;
+    struct mx_proc_info *pinfo;
+
     long pagesize;
-    pid_t pid;
-    unsigned long long int memory;
     int res;
 
     assert(server);
@@ -1645,40 +1648,50 @@ int killall_over_memory(struct mxq_server *server)
         pagesize = 4096;
     }
 
-    res = mx_proc_tree(&pt);
+    res = mx_proc_tree(&ptree);
     if (res < 0) {
         mx_log_err("killall_over_memory(): Reading process tree failed: %m");
         return res;
     }
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            for (job=group->jobs; job; job=job->next) {
-                pid = job->job.host_pid;
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
 
-                pinfo = mx_proc_tree_proc_info(pt, pid);
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                unsigned long long int memory;
+
+                job = &jlist->job;
+
+                pinfo = mx_proc_tree_proc_info(ptree, job->host_pid);
                 if (!pinfo) {
-                    mx_log_warning("killall_over_memory(): Can't find process with pid %llu in process tree", pid);
+                    mx_log_warning("killall_over_memory(): Can't find process with pid %llu in process tree",
+                        job->host_pid);
                     continue;
                 }
 
                 memory = pinfo->sum_rss * pagesize / 1024;
 
-                if (job->max_sum_rss < memory)
-                    job->max_sum_rss = memory;
+                if (jlist->max_sum_rss < memory)
+                    jlist->max_sum_rss = memory;
 
-                if (memory/1024 <= group->group.job_memory)
+                if (jlist->max_sum_rss/1024 <= group->job_memory)
                     continue;
 
                 mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
-                    memory/1024, group->group.job_memory,
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    jlist->max_sum_rss/1024,
+                    group->job_memory,
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->host_pid);
 
-                kill(pid, SIGTERM);
+                kill(job->host_pid, SIGTERM);
             }
         }
     }
-    mx_proc_tree_free(&pt);
+    mx_proc_tree_free(&ptree);
     return 0;
 }
 
