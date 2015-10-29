@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    host_hostname  VARCHAR(64)     NOT NULL DEFAULT "",
    host_pid       INT4 UNSIGNED   NOT NULL DEFAULT 0,
    host_slots     INT4 UNSIGNED   NOT NULL DEFAULT 0,
+   host_cpu_set   VARCHAR(4095)   NOT NULL DEFAULT "",
 
    date_submit  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
    date_start   TIMESTAMP NOT NULL DEFAULT 0,
