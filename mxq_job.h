@@ -45,6 +45,7 @@ struct mxq_job {
     uint32_t   host_pid;
     uint32_t   host_slots;
     cpu_set_t   host_cpu_set;
+    char *      host_cpu_set_str;
 
     int64_t    date_submit;
     int64_t    date_start;
