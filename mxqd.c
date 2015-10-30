@@ -1660,8 +1660,15 @@ int killall_over_memory(struct mxq_server *server)
 
             for (jlist = glist->jobs; jlist; jlist = jlist->next) {
                 unsigned long long int memory;
+                int signal;
 
                 job = &jlist->job;
+
+                /* sigterm has already been send last round ? */
+                if (jlist->max_sum_rss/1024 > group->job_memory)
+                    signal = SIGKILL;
+                else
+                    signal = SIGTERM;
 
                 pinfo = mx_proc_tree_proc_info(ptree, job->host_pid);
                 if (!pinfo) {
@@ -1678,16 +1685,17 @@ int killall_over_memory(struct mxq_server *server)
                 if (jlist->max_sum_rss/1024 <= group->job_memory)
                     continue;
 
-                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=%d to job=%s(%d):%lu:%lu pid=%d",
                     jlist->max_sum_rss/1024,
                     group->job_memory,
+                    signal,
                     group->user_name,
                     group->user_uid,
                     group->group_id,
                     job->job_id,
                     job->host_pid);
 
-                kill(job->host_pid, SIGTERM);
+                kill(job->host_pid, signal);
             }
         }
     }
