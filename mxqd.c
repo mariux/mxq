@@ -778,15 +778,13 @@ static struct mxq_user_list *_user_list_find_by_uid(struct mxq_user_list *ulist,
 
 /**********************************************************************/
 
-struct mxq_group_list *group_list_find_group(struct mxq_group_list *list, struct mxq_group *group)
+struct mxq_group_list *_group_list_find_by_group(struct mxq_group_list *glist, struct mxq_group *group)
 {
-    struct mxq_group_list *g;
-
     assert(group);
 
-    for (g = list; g; g = g->next) {
-        if (g->group.group_id == group->group_id) {
-            return g;
+    for (; glist; glist = glist->next) {
+        if (glist->group.group_id == group->group_id) {
+            return glist;
         }
     }
     return NULL;
@@ -911,8 +909,7 @@ static struct mxq_group_list *_user_list_update_group(struct mxq_user_list *ulis
     assert(ulist);
     assert(group);
 
-    glist = group_list_find_group(ulist->groups, group);
-
+    glist = _group_list_find_by_group(ulist->groups, group);
     if (!glist) {
         return _user_list_add_group(ulist, group);
     }
