@@ -915,16 +915,21 @@ struct mxq_group_list *server_add_user(struct mxq_server *server, struct mxq_gro
 
 /**********************************************************************/
 
-struct mxq_group_list *user_update_groupdata(struct mxq_user_list *user, struct mxq_group *group)
+static struct mxq_group_list *_user_list_update_group(struct mxq_user_list *ulist, struct mxq_group *group)
 {
     struct mxq_group_list *glist;
 
-    glist = group_list_find_group(user->groups, group);
+    assert(ulist);
+    assert(group);
+
+    glist = group_list_find_group(ulist->groups, group);
+
     if (!glist) {
-        return _user_list_add_group(user, group);
+        return _user_list_add_group(ulist, group);
     }
 
     mxq_group_free_content(&glist->group);
+
     memcpy(&glist->group, group, sizeof(*group));
 
     _group_list_init(glist);
@@ -943,7 +948,7 @@ static struct mxq_group_list *server_update_groupdata(struct mxq_server *server,
         return server_add_user(server, group);
     }
 
-    return user_update_groupdata(user, group);
+    return _user_list_update_group(user, group);
 }
 
 static void reset_signals()
