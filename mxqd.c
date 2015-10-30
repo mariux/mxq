@@ -934,16 +934,16 @@ static struct mxq_group_list *_user_list_update_group(struct mxq_user_list *ulis
 
 /**********************************************************************/
 
-static struct mxq_group_list *server_update_groupdata(struct mxq_server *server, struct mxq_group *group)
+static struct mxq_group_list *server_update_group(struct mxq_server *server, struct mxq_group *group)
 {
-    struct mxq_user_list *user;
+    struct mxq_user_list *ulist;
 
-    user = user_list_find_uid(server->users, group->user_uid);
-    if (!user) {
+    ulist = user_list_find_uid(server->users, group->user_uid);
+    if (!ulist) {
         return _server_add_group(server, group);
     }
 
-    return _user_list_update_group(user, group);
+    return _user_list_update_group(ulist, group);
 }
 
 static void reset_signals()
@@ -2307,7 +2307,7 @@ int load_groups(struct mxq_server *server) {
         group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
 
     for (i=0, total=0; i<group_cnt; i++) {
-        group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
+        group = server_update_group(server, &mxqgroups[group_cnt-i-1]);
         if (!group) {
             mx_log_err("Could not add Group to control structures.");
         } else {
