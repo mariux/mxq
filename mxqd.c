@@ -1251,6 +1251,11 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
 
     reset_signals();
 
+    signal(SIGINT,  SIG_IGN);
+    signal(SIGTERM, SIG_IGN);
+    signal(SIGHUP,  SIG_IGN);
+    signal(SIGXCPU, SIG_IGN);
+
     res = setsid();
     if (res<0) {
 	mx_log_warning("reaper_process setsid: %m");
