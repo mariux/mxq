@@ -583,73 +583,84 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
 /**********************************************************************/
 
-void group_init(struct mxq_group_list *group)
+static void _group_list_init(struct mxq_group_list *glist)
 {
-    struct mxq_server *s;
-    struct mxq_group *g;
+    struct mxq_server *server;
+    struct mxq_group *group;
 
     long double memory_threads;
     long double memory_per_thread;
     long double memory_max_available;
+
     unsigned long slots_per_job;
     unsigned long jobs_max;
     unsigned long slots_max;
     unsigned long memory_max;
 
-    assert(group);
-    assert(group->user);
-    assert(group->user->server);
+    assert(glist);
+    assert(glist->user);
+    assert(glist->user->server);
 
-    s = group->user->server;
-    g = &group->group;
+    server = glist->user->server;
+    group  = &glist->group;
 
-    memory_per_thread    = (long double)g->job_memory / (long double) g->job_threads;
-    memory_max_available = (long double)s->memory_total * (long double)s->memory_max_per_slot / memory_per_thread;
+    memory_per_thread    = (long double)group->job_memory / (long double)group->job_threads;
+    memory_max_available = (long double)server->memory_total * (long double)server->memory_max_per_slot / memory_per_thread;
 
-    if (memory_max_available > s->memory_total)
-        memory_max_available = s->memory_total;
+    if (memory_max_available > server->memory_total)
+        memory_max_available = server->memory_total;
 
-    slots_per_job = ceill((long double)g->job_memory / s->memory_avg_per_slot);
+    slots_per_job = ceill((long double)group->job_memory / server->memory_avg_per_slot);
 
-    if (slots_per_job < g->job_threads)
-       slots_per_job = g->job_threads;
+    if (slots_per_job < group->job_threads)
+        slots_per_job = group->job_threads;
 
     memory_threads = memory_max_available / memory_per_thread;
 
-    if (memory_per_thread > s->memory_max_per_slot) {
+    if (memory_per_thread > server->memory_max_per_slot) {
         jobs_max = memory_threads + 0.5;
-    } else if (memory_per_thread > s->memory_avg_per_slot) {
+    } else if (memory_per_thread > server->memory_avg_per_slot) {
         jobs_max = memory_threads + 0.5;
     } else {
-        jobs_max = s->slots;
+        jobs_max = server->slots;
     }
-    jobs_max /= g->job_threads;
+    jobs_max /= group->job_threads;
 
     /* limit maximum number of jobs on user/group request */
-    if (g->job_max_per_node && jobs_max > g->job_max_per_node)
-        jobs_max = g->job_max_per_node;
+    if (group->job_max_per_node && jobs_max > group->job_max_per_node)
+        jobs_max = group->job_max_per_node;
 
-    slots_max = jobs_max * slots_per_job;
-    memory_max = jobs_max * g->job_memory;
+    slots_max  = jobs_max * slots_per_job;
+    memory_max = jobs_max * group->job_memory;
 
-    if (group->memory_per_thread != memory_per_thread
-       || group->memory_max_available != memory_max_available
-       || group->memory_max_available != memory_max_available
-       || group->slots_per_job != slots_per_job
-       || group->jobs_max != jobs_max
-       || group->slots_max != slots_max
-       || group->memory_max != memory_max)
+    if (glist->memory_per_thread != memory_per_thread
+       || glist->memory_max_available != memory_max_available
+       || glist->memory_max_available != memory_max_available
+       || glist->slots_per_job != slots_per_job
+       || glist->jobs_max != jobs_max
+       || glist->slots_max != slots_max
+       || glist->memory_max != memory_max) {
         mx_log_info("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.",
-                    g->user_name, g->user_uid, g->group_id, jobs_max, slots_max, memory_max, slots_per_job,
-                    group->orphaned?"re":"");
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    jobs_max,
+                    slots_max,
+                    memory_max,
+                    slots_per_job,
+                    glist->orphaned ? "re" : "");
+    }
 
-    group->orphaned = 0;
-    group->memory_per_thread = memory_per_thread;
-    group->memory_max_available = memory_max_available;
-    group->slots_per_job = slots_per_job;
-    group->jobs_max = jobs_max;
-    group->slots_max = slots_max;
-    group->memory_max = memory_max;
+    glist->memory_per_thread    = memory_per_thread;
+    glist->memory_max_available = memory_max_available;
+
+    glist->slots_per_job = slots_per_job;
+
+    glist->jobs_max   = jobs_max;
+    glist->slots_max  = slots_max;
+    glist->memory_max = memory_max;
+
+    glist->orphaned = 0;
 }
 
 static struct mxq_user_list *server_find_user(struct mxq_server *server,uint32_t uid)
@@ -868,7 +879,7 @@ struct mxq_group_list *user_add_group(struct mxq_user_list *user, struct mxq_gro
     assert(user->server);
     user->server->group_cnt++;
 
-    group_init(g);
+    _group_list_init(g);
 
     assert(g);
     return g;
@@ -918,7 +929,7 @@ struct mxq_group_list *user_update_groupdata(struct mxq_user_list *user, struct 
     mxq_group_free_content(&glist->group);
     memcpy(&glist->group, group, sizeof(*group));
 
-    group_init(glist);
+    _group_list_init(glist);
 
     return glist;
 }
