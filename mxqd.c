@@ -856,33 +856,31 @@ struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job 
 }
 /**********************************************************************/
 
-struct mxq_group_list *user_add_group(struct mxq_user_list *user, struct mxq_group *group)
+static struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct mxq_group *group)
 {
-    struct mxq_group_list *g;
     struct mxq_group_list *glist;
+    struct mxq_server *server;
 
-    assert(user);
+    assert(ulist);
+    assert(ulist->server);
 
-    g = mx_calloc_forever(1, sizeof(*g));
-    assert(g);
+    server = ulist->server;
 
-    glist = user->groups;
+    glist = mx_calloc_forever(1, sizeof(*glist));
 
-    memcpy(&g->group, group, sizeof(*group));
+    memcpy(&glist->group, group, sizeof(*group));
 
-    g->user = user;
-    g->next = glist;
+    glist->user = ulist;
 
-    user->groups = g;
-    user->group_cnt++;
+    glist->next = ulist->groups;
+    ulist->groups = glist;
 
-    assert(user->server);
-    user->server->group_cnt++;
+    ulist->group_cnt++;
+    server->group_cnt++;
 
-    _group_list_init(g);
+    _group_list_init(glist);
 
-    assert(g);
-    return g;
+    return glist;
 }
 
 /**********************************************************************/
@@ -901,7 +899,7 @@ struct mxq_group_list *server_add_user(struct mxq_server *server, struct mxq_gro
 
     user->server = server;
 
-    glist = user_add_group(user, group);
+    glist = _user_list_add_group(user, group);
     assert(glist);
 
     ulist = server->users;
@@ -923,7 +921,7 @@ struct mxq_group_list *user_update_groupdata(struct mxq_user_list *user, struct 
 
     glist = group_list_find_group(user->groups, group);
     if (!glist) {
-        return user_add_group(user, group);
+        return _user_list_add_group(user, group);
     }
 
     mxq_group_free_content(&glist->group);
@@ -2196,7 +2194,7 @@ static int server_reload_running(struct mxq_server *server)
                 if (!mxq_user_list) {
                     mxq_group_list=server_add_user(server,group);
                 } else {
-                    mxq_group_list=user_add_group(mxq_user_list,group);
+                    mxq_group_list = _user_list_add_group(mxq_user_list,group);
                 }
                 free(groups);
             }
