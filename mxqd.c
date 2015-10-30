@@ -764,14 +764,13 @@ struct mxq_job_list *server_remove_job_by_pid(struct mxq_server *server, pid_t p
 
 /**********************************************************************/
 
-struct mxq_user_list *user_list_find_uid(struct mxq_user_list *list, uint32_t  uid)
+static struct mxq_user_list *_user_list_find_by_uid(struct mxq_user_list *ulist, uint32_t uid)
 {
-    struct mxq_user_list *u;
+    for (; ulist; ulist = ulist->next) {
+        assert(ulist->groups);
 
-    for (u = list; u; u = u->next) {
-        assert(u->groups);
-        if (u->groups[0].group.user_uid == uid) {
-            return u;
+        if (ulist->groups[0].group.user_uid == uid) {
+            return ulist;
         }
     }
     return NULL;
@@ -938,7 +937,7 @@ static struct mxq_group_list *server_update_group(struct mxq_server *server, str
 {
     struct mxq_user_list *ulist;
 
-    ulist = user_list_find_uid(server->users, group->user_uid);
+    ulist = _user_list_find_by_uid(server->users, group->user_uid);
     if (!ulist) {
         return _server_add_group(server, group);
     }
