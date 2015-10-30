@@ -126,7 +126,6 @@ static void cpuset_init_job(cpu_set_t *job_cpu_set,cpu_set_t *available,cpu_set_
     for (cpu=CPU_SETSIZE-1;slots&&cpu>=0;cpu--) {
         if (CPU_ISSET(cpu,available) && !CPU_ISSET(cpu,running)) {
             CPU_SET(cpu,job_cpu_set);
-            CPU_SET(cpu,running);
             slots--;
         }
     }
@@ -827,6 +826,8 @@ struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job 
     group->threads_running  += mxqgrp->job_threads;
     user->threads_running   += mxqgrp->job_threads;
     server->threads_running += mxqgrp->job_threads;
+
+    CPU_OR(&server->cpu_set_running,&server->cpu_set_running,&j->job.host_cpu_set);
 
     mxqgrp->group_jobs_running++;
     mxqgrp->group_jobs_inq--;
