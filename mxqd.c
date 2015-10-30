@@ -885,31 +885,26 @@ static struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, 
 
 /**********************************************************************/
 
-struct mxq_group_list *server_add_user(struct mxq_server *server, struct mxq_group *group)
+static struct mxq_group_list *_server_add_group(struct mxq_server *server, struct mxq_group *group)
 {
-    struct mxq_user_list  *user;
     struct mxq_user_list  *ulist;
     struct mxq_group_list *glist;
 
     assert(server);
     assert(group);
 
-    user = mx_calloc_forever(1, sizeof(*user));
-    assert(user);
+    ulist = mx_calloc_forever(1, sizeof(*ulist));
 
-    user->server = server;
+    ulist->server = server;
 
-    glist = _user_list_add_group(user, group);
-    assert(glist);
+    ulist->next   = server->users;
+    server->users = ulist;
 
-    ulist = server->users;
-
-    user->next    = ulist;
-
-    server->users = user;
     server->user_cnt++;
 
+    glist = _user_list_add_group(ulist, group);
     assert(glist);
+
     return glist;
 }
 
@@ -945,7 +940,7 @@ static struct mxq_group_list *server_update_groupdata(struct mxq_server *server,
 
     user = user_list_find_uid(server->users, group->user_uid);
     if (!user) {
-        return server_add_user(server, group);
+        return _server_add_group(server, group);
     }
 
     return _user_list_update_group(user, group);
@@ -2197,7 +2192,7 @@ static int server_reload_running(struct mxq_server *server)
                 group=&groups[0];
                 mxq_user_list=server_find_user(server,group->user_uid);
                 if (!mxq_user_list) {
-                    mxq_group_list=server_add_user(server,group);
+                    mxq_group_list = _server_add_group(server,group);
                 } else {
                     mxq_group_list = _user_list_add_group(mxq_user_list,group);
                 }
