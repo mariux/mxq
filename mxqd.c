@@ -794,64 +794,59 @@ struct mxq_group_list *group_list_find_group(struct mxq_group_list *list, struct
 
 /**********************************************************************/
 
-struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job *job)
+struct mxq_job_list *group_list_add_job(struct mxq_group_list *glist, struct mxq_job *job)
 {
-    struct mxq_job_list *j;
-    struct mxq_job_list *jlist;
-
     struct mxq_server *server;
-    struct mxq_user_list *user;
 
-    struct mxq_group *mxqgrp;
+    struct mxq_job_list  *jlist;
+    struct mxq_user_list *ulist;
 
-    assert(group);
-    assert(group->user);
-    assert(group->user->server);
+    struct mxq_group *group;
+
+    assert(glist);
+    assert(glist->user);
+    assert(glist->user->server);
     assert(job->job_status == MXQ_JOB_STATUS_RUNNING);
 
-    mxqgrp = &group->group;
-    user   = group->user;
-    server = user->server;
+    group  = &glist->group;
+    ulist  = glist->user;
+    server = ulist->server;
 
-    j = mx_calloc_forever(1, sizeof(*j));
-    assert(j);
+    jlist = mx_calloc_forever(1, sizeof(*jlist));
 
-    jlist = group->jobs;
+    memcpy(&jlist->job, job, sizeof(*job));
 
-    memcpy(&j->job, job, sizeof(*job));
+    jlist->group = glist;
 
-    j->group = group;
-    j->next  = jlist;
+    jlist->next  = glist->jobs;
+    glist->jobs  = jlist;
 
-    group->jobs = j;
-
-    group->job_cnt++;
-    user->job_cnt++;
+    glist->job_cnt++;
+    ulist->job_cnt++;
     server->job_cnt++;
 
-    group->slots_running  += group->slots_per_job;
-    user->slots_running   += group->slots_per_job;
-    server->slots_running += group->slots_per_job;
+    glist->slots_running  += glist->slots_per_job;
+    ulist->slots_running  += glist->slots_per_job;
+    server->slots_running += glist->slots_per_job;
 
-    group->threads_running  += mxqgrp->job_threads;
-    user->threads_running   += mxqgrp->job_threads;
-    server->threads_running += mxqgrp->job_threads;
+    glist->threads_running  += group->job_threads;
+    ulist->threads_running  += group->job_threads;
+    server->threads_running += group->job_threads;
 
-    CPU_OR(&server->cpu_set_running,&server->cpu_set_running,&j->job.host_cpu_set);
+    CPU_OR(&server->cpu_set_running, &server->cpu_set_running, &job->host_cpu_set);
 
-    mxqgrp->group_jobs_running++;
-    mxqgrp->group_jobs_inq--;
+    group->group_jobs_running++;
+    group->group_jobs_inq--;
 
-    group->jobs_running++;
-    user->jobs_running++;
+    glist->jobs_running++;
+    ulist->jobs_running++;
     server->jobs_running++;
 
-    group->memory_used += mxqgrp->job_memory;
-    user->memory_used += mxqgrp->job_memory;
-    server->memory_used += mxqgrp->job_memory;
+    glist->memory_used  += group->job_memory;
+    ulist->memory_used  += group->job_memory;
+    server->memory_used += group->job_memory;
 
-    assert(j);
-    return j;
+    return jlist;
 }
 /**********************************************************************/
 
@@ -1405,7 +1400,7 @@ unsigned long start_job(struct mxq_group_list *group)
         mx_log_err("job=%s(%d):%lu:%lu  mxq_job_update_status_running(): Job not found.",
             group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
 
-    job = group_add_job(group, &mxqjob);
+    job = group_list_add_job(group, &mxqjob);
     assert(job);
 
     mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
@@ -2199,7 +2194,7 @@ static int server_reload_running(struct mxq_server *server)
             }
             mxq_job_list=mxq_group_list->jobs;
         }
-        group_add_job(mxq_group_list,job);
+        group_list_add_job(mxq_group_list,job);
     }
 
     free(jobs);
