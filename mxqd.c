@@ -1557,58 +1557,68 @@ unsigned long start_users(struct mxq_server *server)
 
 /**********************************************************************/
 
-int remove_orphaned_groups(struct mxq_server *server)
+int remove_orphaned_group_lists(struct mxq_server *server)
 {
-    struct mxq_user_list  *user,  *unext, *uprev;
-    struct mxq_group_list *group, *gnext, *gprev;
+    struct mxq_user_list  *ulist, *unext, *uprev;
+    struct mxq_group_list *glist, *gnext, *gprev;
+
+    struct mxq_group *group;
+
     int cnt=0;
 
-    for (user=server->users, uprev=NULL; user; user=unext) {
-        unext = user->next;
-        for (group=user->groups, gprev=NULL; group; group=gnext) {
-            gnext = group->next;
+    for (ulist = server->users, uprev = NULL; ulist; ulist = unext) {
+        unext = ulist->next;
 
-            if (group->job_cnt) {
-                gprev = group;
+        for (glist = ulist->groups, gprev = NULL; glist; glist = gnext) {
+            gnext = glist->next;
+            group = &glist->group;
+
+            if (glist->job_cnt) {
+                gprev = glist;
                 continue;
             }
 
-            assert(!group->jobs);
+            assert(!glist->jobs);
 
-            if (!group->orphaned && mxq_group_jobs_active(&group->group)) {
-                group->orphaned = 1;
-                gprev = group;
+            if (!glist->orphaned && mxq_group_jobs_active(group)) {
+                glist->orphaned = 1;
+                gprev = glist;
                 continue;
             }
 
             if (gprev) {
                 gprev->next = gnext;
             } else {
-                assert(group == user->groups);
-                user->groups = gnext;
+                assert(glist == ulist->groups);
+                ulist->groups = gnext;
             }
 
-            mx_log_info("group=%s(%d):%lu : Removing orphaned group.", group->group.user_name, group->group.user_uid, group->group.group_id);
+            mx_log_info("group=%s(%d):%lu : Removing orphaned group.",
+                        group->user_name,
+                        group->user_uid,
+                        group->group_id);
 
-            user->group_cnt--;
+            ulist->group_cnt--;
             server->group_cnt--;
             cnt++;
-            mxq_group_free_content(&group->group);
-            mx_free_null(group);
+            mxq_group_free_content(group);
+            mx_free_null(glist);
         }
-        if(user->groups) {
-            uprev = user;
+
+        if(ulist->groups) {
+            uprev = ulist;
             continue;
         }
 
         if (uprev) {
             uprev->next = unext;
         } else {
-            assert(user == server->users);
+            assert(ulist == server->users);
             server->users = unext;
         }
+
         server->user_cnt--;
-        mx_free_null(user);
+        mx_free_null(ulist);
 
         mx_log_info("Removed orphaned user. %lu users left.", server->user_cnt);
     }
@@ -2307,7 +2317,7 @@ int load_groups(struct mxq_server *server) {
     }
     free(mxqgroups);
 
-    remove_orphaned_groups(server);
+    remove_orphaned_group_lists(server);
 
     return total;
 }
