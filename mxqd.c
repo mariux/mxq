@@ -700,20 +700,27 @@ static struct mxq_job_list *server_find_job(struct mxq_server *server,uint64_t  
     return NULL;
 }
 
-static struct mxq_job_list *server_find_job_by_pid(struct mxq_server *server,pid_t  pid)
+static struct mxq_job_list *server_get_job_list_by_pid(struct mxq_server *server, pid_t pid)
 {
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
-    struct mxq_job_list   *job_list;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
 
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            for (job_list=group_list->jobs;job_list;job_list=job_list->next)
-                if (job_list->job.host_pid==pid)
-                    return job_list;
+    struct mxq_job *job;
+
+    assert(server);
+
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                if (job->host_pid == pid)
+                    return jlist;
+            }
+        }
+    }
     return NULL;
 }
-
 
 void server_remove_job(struct mxq_job_list *job) {
     struct mxq_group_list *group=job->group;
@@ -757,7 +764,7 @@ struct mxq_job_list *server_remove_job_list_by_pid(struct mxq_server *server, pi
 
     assert(server);
 
-    jlist = server_find_job_by_pid(server, pid);
+    jlist = server_get_job_list_by_pid(server, pid);
     if (jlist) {
         server_remove_job(jlist);
     }
@@ -2265,7 +2272,7 @@ int catchall(struct mxq_server *server) {
 
         assert(siginfo.si_pid > 1);
 
-        job = server_find_job_by_pid(server,siginfo.si_pid);
+        job = server_get_job_list_by_pid(server,siginfo.si_pid);
         if (!job) {
             mx_log_warning("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d",
                 siginfo.si_pid, siginfo.si_uid, siginfo.si_code, siginfo.si_status,
