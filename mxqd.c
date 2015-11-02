@@ -2182,29 +2182,41 @@ static int fspool_file_exists(struct mxq_server *server,uint64_t job_id) {
 
 static int lost_scan_one(struct mxq_server *server)
 {
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
-    struct mxq_job_list   *job_list;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_job *job;
+
     int res;
 
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            for (job_list=group_list->jobs;job_list;job_list=job_list->next) {
-                res=kill(job_list->job.host_pid,0);
-                if (res<0) {
-                    if (errno==ESRCH) {
-                        if (!fspool_file_exists(server,job_list->job.job_id)) {
-                            mx_log_warning("pid %u: process is gone. cancel job %d",job_list->job.host_pid,job_list->job.job_id);
-                            server_remove_job_list_by_pid(server, job_list->job.host_pid);
-                            job_list->job.job_status=MXQ_JOB_STATUS_UNKNOWN;
-                            job_is_lost(server,&group_list->group,job_list);
-                            return 1;
-                        }
-                    } else {
-                        return -errno;
-                    }
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                res = kill(job->host_pid, 0);
+                if (res >= 0)
+                    continue;
+
+                /* PID is not */
+
+                if (errno != ESRCH)
+                    return -errno;
+
+                if (!fspool_file_exists(server, job->job_id)) {
+                    mx_log_warning("pid %u: process is gone. cancel job %d",
+                                jlist->job.host_pid,
+                                jlist->job.job_id);
+                    server_remove_job_list_by_pid(server, job->host_pid);
+
+                    job->job_status = MXQ_JOB_STATUS_UNKNOWN;
+
+                    job_is_lost(server, &glist->group, jlist);
+                    return 1;
                 }
             }
+        }
+    }
     return 0;
 }
 
