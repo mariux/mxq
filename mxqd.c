@@ -686,17 +686,23 @@ static struct mxq_group_list *server_find_group(struct mxq_server *server,uint64
     return NULL;
 }
 
-static struct mxq_job_list *server_find_job(struct mxq_server *server,uint64_t  job_id)
+static struct mxq_job_list *server_get_job_list_by_job_id(struct mxq_server *server, uint64_t job_id)
 {
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
-    struct mxq_job_list   *job_list;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
 
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            for (job_list=group_list->jobs;job_list;job_list=job_list->next)
-                if (job_list->job.job_id==job_id)
-                    return job_list;
+    struct mxq_job *job;
+
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                if (job->job_id == job_id)
+                    return jlist;
+            }
+        }
+    }
     return NULL;
 }
 
@@ -2231,7 +2237,7 @@ static int server_reload_running(struct mxq_server *server)
 
         job->stats_starttime.tv_sec=job->date_start;
 
-        mxq_job_list=server_find_job(server,job->job_id);
+        mxq_job_list = server_get_job_list_by_job_id(server, job->job_id);
         if (!mxq_job_list) {
             mxq_group_list=server_find_group(server,job->group_id);
             if (!mxq_group_list) {
