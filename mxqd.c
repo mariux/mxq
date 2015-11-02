@@ -751,15 +751,17 @@ void server_remove_job(struct mxq_job_list *job) {
     }
 }
 
-struct mxq_job_list *server_remove_job_by_pid(struct mxq_server *server, pid_t pid)
+struct mxq_job_list *server_remove_job_list_by_pid(struct mxq_server *server, pid_t pid)
 {
-    struct mxq_job_list   *job;
+    struct mxq_job_list *jlist;
 
-    job=server_find_job_by_pid(server,pid);
-    if (job) {
-        server_remove_job(job);
+    assert(server);
+
+    jlist = server_find_job_by_pid(server, pid);
+    if (jlist) {
+        server_remove_job(jlist);
     }
-    return job;
+    return jlist;
 }
 
 /**********************************************************************/
@@ -2046,7 +2048,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
 
     mx_log_info("job finished (via fspool) : job %d pid %d status %d",job_id,pid,status);
 
-    job = server_remove_job_by_pid(server, pid);
+    job = server_remove_job_list_by_pid(server, pid);
     if (!job) {
         mx_log_warning("fspool_process_file: %s : job unknown on server",filename);
         return(-1);
@@ -2157,7 +2159,7 @@ static int lost_scan_one(struct mxq_server *server)
                     if (errno==ESRCH) {
                         if (!fspool_file_exists(server,job_list->job.job_id)) {
                             mx_log_warning("pid %u: process is gone. cancel job %d",job_list->job.host_pid,job_list->job.job_id);
-                            server_remove_job_by_pid(server, job_list->job.host_pid);
+                            server_remove_job_list_by_pid(server, job_list->job.host_pid);
                             job_list->job.job_status=MXQ_JOB_STATUS_UNKNOWN;
                             job_is_lost(server,&group_list->group,job_list);
                             return 1;
