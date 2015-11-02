@@ -722,39 +722,57 @@ static struct mxq_job_list *server_get_job_list_by_pid(struct mxq_server *server
     return NULL;
 }
 
-void server_remove_job(struct mxq_job_list *job) {
-    struct mxq_group_list *group=job->group;
-    struct mxq_user_list *user=group->user;
-    struct mxq_server *server=user->server;
+void job_list_remove_self(struct mxq_job_list *jlist)
+{
+    struct mxq_group_list *glist;
+    struct mxq_user_list  *ulist;
+    struct mxq_server     *server;
 
-    struct mxq_job_list **prev;
+    struct mxq_job_list **jprevp;
 
-    for (prev=&group->jobs;*prev;prev=&(*prev)->next) {
-        if (*prev==job) {
-            *prev=job->next;
-            group->job_cnt--;
-            user->job_cnt--;
-            server->job_cnt--;
+    struct mxq_job   *job;
+    struct mxq_group *group;
 
-            group->slots_running  -= job->job.host_slots;
-            user->slots_running   -= job->job.host_slots;
-            server->slots_running -= job->job.host_slots;
+    assert(jlist);
+    assert(jlist->group);
+    assert(jlist->group->user);
+    assert(jlist->group->user->server);
 
-            group->threads_running  -= group->group.job_threads;
-            user->threads_running   -= group->group.job_threads;
-            server->threads_running -= group->group.job_threads;
+    glist  = jlist->group;
+    ulist  = glist->user;
+    server = ulist->server;
 
-            group->group.group_jobs_running--;
+    group = &glist->group;
+    job   = &jlist->job;
 
-            group->jobs_running--;
-            user->jobs_running--;
-            server->jobs_running--;
+    for (jprevp = &glist->jobs; *jprevp; jprevp = &(*jprevp)->next) {
+        if (*jprevp != jlist)
+            continue;
 
-            group->memory_used  -= group->group.job_memory;
-            user->memory_used   -= group->group.job_memory;
-            server->memory_used -= group->group.job_memory;
-            break;
-        }
+        *jprevp = jlist->next;
+
+        glist->job_cnt--;
+        ulist->job_cnt--;
+        server->job_cnt--;
+
+        glist->slots_running  -= job->host_slots;
+        ulist->slots_running  -= job->host_slots;
+        server->slots_running -= job->host_slots;
+
+        glist->threads_running  -= group->job_threads;
+        ulist->threads_running  -= group->job_threads;
+        server->threads_running -= group->job_threads;
+
+        group->group_jobs_running--;
+
+        glist->jobs_running--;
+        ulist->jobs_running--;
+        server->jobs_running--;
+
+        glist->memory_used  -= group->job_memory;
+        ulist->memory_used  -= group->job_memory;
+        server->memory_used -= group->job_memory;
+        break;
     }
 }
 
@@ -766,7 +784,7 @@ struct mxq_job_list *server_remove_job_list_by_pid(struct mxq_server *server, pi
 
     jlist = server_get_job_list_by_pid(server, pid);
     if (jlist) {
-        server_remove_job(jlist);
+        job_list_remove_self(jlist);
     }
     return jlist;
 }
@@ -2287,7 +2305,7 @@ int catchall(struct mxq_server *server) {
             continue;
         }
         mx_log_err("reaper died. status=%d. Cleaning up job from catchall.",status);
-        server_remove_job(job);
+        job_list_remove_self(job);
 
         /* reap child and save new state */
         pid = wait4(siginfo.si_pid, &status, WNOHANG, &rusage);
