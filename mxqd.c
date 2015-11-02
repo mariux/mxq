@@ -1511,12 +1511,13 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
 
 unsigned long start_users(struct mxq_server *server)
 {
-    long slots_to_start;
     unsigned long slots_started;
-    int started = 0;
     unsigned long slots_started_total = 0;
+    long slots_to_start;
+    int started = 0;
 
-    struct mxq_user_list  *user, *unext=NULL;
+    struct mxq_user_list *ulist;
+    struct mxq_user_list *unext = NULL;
 
     assert(server);
 
@@ -1525,27 +1526,27 @@ unsigned long start_users(struct mxq_server *server)
 
     mx_log_debug("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users", server->slots - server->slots_running, server->user_cnt);
 
-    for (user=server->users; user; user=user->next) {
+    for (ulist = server->users; ulist; ulist = ulist->next) {
 
-        slots_to_start = server->slots / server->user_cnt - user->slots_running;
+        slots_to_start = server->slots / server->user_cnt - ulist->slots_running;
 
         if (slots_to_start < 0)
             continue;
 
-        if (server->slots - server->slots_running < slots_to_start)
-            slots_to_start = server->slots - server->slots_running;
+        if (slots_to_start > (server->slots - server->slots_running))
+            slots_to_start = (server->slots - server->slots_running);
 
-        slots_started = start_user(user, 0, slots_to_start);
+        slots_started = start_user(ulist, 0, slots_to_start);
         slots_started_total += slots_started;
     }
 
-    for (user=server->users; user && server->slots - server->slots_running; user=unext) {
+    for (ulist = server->users; ulist && server->slots - server->slots_running; ulist = unext) {
         slots_to_start = server->slots - server->slots_running;
-        slots_started  = start_user(user, 1, slots_to_start);
+        slots_started  = start_user(ulist, 1, slots_to_start);
         slots_started_total += slots_started;
         started = (started || slots_started);
 
-        unext = user->next;
+        unext = ulist->next;
         if (!unext && started) {
             unext = server->users;
             started = 0;
