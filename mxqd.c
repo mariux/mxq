@@ -674,15 +674,20 @@ static struct mxq_user_list *server_find_user(struct mxq_server *server,uint32_t
     return NULL;
 }
 
-static struct mxq_group_list *server_find_group(struct mxq_server *server,uint64_t  group_id)
+static struct mxq_group_list *server_get_group_list_by_group_id(struct mxq_server *server, uint64_t group_id)
 {
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
 
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            if (group_list->group.group_id==group_id)
-                return group_list;
+    struct mxq_group *group;
+
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
+            if (group->group_id == group_id)
+                return glist;
+        }
+    }
     return NULL;
 }
 
@@ -2239,7 +2244,7 @@ static int server_reload_running(struct mxq_server *server)
 
         mxq_job_list = server_get_job_list_by_job_id(server, job->job_id);
         if (!mxq_job_list) {
-            mxq_group_list=server_find_group(server,job->group_id);
+            mxq_group_list = server_get_group_list_by_group_id(server, job->group_id);
             if (!mxq_group_list) {
                 struct mxq_group *groups=NULL;
                 struct mxq_group *group;
