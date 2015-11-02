@@ -1376,31 +1376,38 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
     return(0);
 }
 
-unsigned long start_job(struct mxq_group_list *group)
+unsigned long start_job(struct mxq_group_list *glist)
 {
     struct mxq_server *server;
-    struct mxq_job mxqjob;
-    struct mxq_job_list *job;
+    struct mxq_job_list *jlist;
+
+    struct mxq_job _mxqjob;
+    struct mxq_job *job;
+
+    struct mxq_group *group;
+
     pid_t pid;
     int res;
 
-    assert(group);
-    assert(group->user);
-    assert(group->user->server);
+    assert(glist);
+    assert(glist->user);
+    assert(glist->user->server);
 
-    server = group->user->server;
+    server = glist->user->server;
+    group  = &glist->group;
+    job    = &_mxqjob;
 
-    res = mxq_load_job_from_group_for_server(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id, server->host_id);
-
+    res = mxq_load_job_from_group_for_server(server->mysql, job, group->group_id, server->hostname, server->server_id, server->host_id);
     if (!res) {
         return 0;
     }
     mx_log_info("   job=%s(%d):%lu:%lu :: new job loaded.",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
 
-    cpuset_init_job(&mxqjob.host_cpu_set,&server->cpu_set_available,&server->cpu_set_running,group->slots_per_job);
-    mxqjob.host_cpu_set_str=mx_cpuset_to_str(&mxqjob.host_cpu_set);
-    mx_log_info("job assigned cpus: [%s]",mxqjob.host_cpu_set_str);
+    cpuset_init_job(&job->host_cpu_set, &server->cpu_set_available, &server->cpu_set_running, glist->slots_per_job);
+    job->host_cpu_set_str = mx_cpuset_to_str(&job->host_cpu_set);
+
+    mx_log_info("job assigned cpus: [%s]", job->host_cpu_set_str);
 
     mx_mysql_disconnect(server->mysql);
 
@@ -1409,35 +1416,39 @@ unsigned long start_job(struct mxq_group_list *group)
         mx_log_err("fork: %m");
         return 0;
     } else if (pid == 0) {
-        mxqjob.host_pid = getpid();
+        job->host_pid = getpid();
 
         mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d pgrp=%d :: new child process forked.",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-            mxqjob.host_pid, getpgrp());
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->host_pid,
+                    getpgrp());
 
-        res=reaper_process(server,group,&mxqjob);
+        res = reaper_process(server, glist, job);
         _exit(res<0 ? EX__MAX+1 : 0);
     }
 
-    gettimeofday(&mxqjob.stats_starttime, NULL);
+    gettimeofday(&job->stats_starttime, NULL);
 
     mx_mysql_connect_forever(&(server->mysql));
 
-    mxqjob.host_pid = pid;
-    mxqjob.host_slots = group->slots_per_job;
-    res = mxq_set_job_status_running(server->mysql, &mxqjob);
+    job->host_pid   = pid;
+    job->host_slots = glist->slots_per_job;
+    res = mxq_set_job_status_running(server->mysql, job);
     if (res < 0)
         mx_log_err("job=%s(%d):%lu:%lu mxq_job_update_status_running(): %m",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
     if (res == 0)
         mx_log_err("job=%s(%d):%lu:%lu  mxq_job_update_status_running(): Job not found.",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
 
-    job = group_list_add_job(group, &mxqjob);
-    assert(job);
+    jlist = group_list_add_job(glist, job);
+    assert(jlist);
 
     mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
-        group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+        group->user_name, group->user_uid, group->group_id, job->job_id);
 
     return 1;
 }
