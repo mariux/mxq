@@ -1664,33 +1664,58 @@ int remove_orphaned_group_lists(struct mxq_server *server)
 
 void server_dump(struct mxq_server *server)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
 
     if (!server->user_cnt)
         return;
 
     mx_log_info("====================== SERVER DUMP START ======================");
-    for (user=server->users; user; user=user->next) {
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        if (!ulist->groups) {
+            mx_log_fatal("BUG: missing group in userlist.");
+            continue;
+        }
+        group = &ulist->groups[0].group;
         mx_log_info("    user=%s(%d) slots_running=%lu",
-            user->groups->group.user_name, user->groups->group.user_uid,
-            user->slots_running);
-        for (group=user->groups; group; group=group->next) {
+                group->user_name,
+                group->user_uid,
+                ulist->slots_running);
+
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
             mx_log_info("        group=%s(%d):%lu %s jobs_in_q=%lu",
-                group->group.user_name, group->group.user_uid, group->group.group_id,
-                group->group.group_name, mxq_group_jobs_inq(&group->group));
-            for (job=group->jobs; job; job=job->next) {
+                group->user_name,
+                group->user_uid,
+                group->group_id,
+                group->group_name,
+                mxq_group_jobs_inq(group));
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
                 mx_log_info("            job=%s(%d):%lu:%lu %s",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
-                    job->job.job_argv_str);
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->job_argv_str);
             }
         }
     }
 
-    mx_log_info("memory_used=%lu memory_total=%lu", server->memory_used, server->memory_total);
-    mx_log_info("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu", server->slots_running, server->slots, server->threads_running, server->jobs_running);
-    cpuset_log("cpu set running",&server->cpu_set_running);
+    mx_log_info("memory_used=%lu memory_total=%lu",
+                server->memory_used,
+                server->memory_total);
+    mx_log_info("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu",
+                server->slots_running,
+                server->slots,
+                server->threads_running,
+                server->jobs_running);
+    cpuset_log("cpu set running",
+                &server->cpu_set_running);
     mx_log_info("====================== SERVER DUMP END ======================");
 }
 
