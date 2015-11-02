@@ -1721,23 +1721,23 @@ void server_dump(struct mxq_server *server)
 
 void server_close(struct mxq_server *server)
 {
-    struct mxq_user_list  *user,  *unext;
-    struct mxq_group_list *group, *gnext;
-    struct mxq_job_list   *job,   *jnext;
+    struct mxq_user_list  *ulist, *unext;
+    struct mxq_group_list *glist, *gnext;
+    struct mxq_job_list   *jlist, *jnext;
 
-    for (user=server->users; user; user=unext) {
-        for (group=user->groups; group; group=gnext) {
-            for (job=group->jobs; job; job=jnext) {
-                jnext = job->next;
-                mxq_job_free_content(&job->job);
-                free(job);
+    for (ulist = server->users; ulist; ulist = unext) {
+        for (glist = ulist->groups; glist; glist = gnext) {
+            for (jlist = glist->jobs; jlist; jlist = jnext) {
+                jnext = jlist->next;
+                mxq_job_free_content(&jlist->job);
+                mx_free_null(jlist);
             }
-            gnext = group->next;
-            mxq_group_free_content(&group->group);
-            free(group);
+            gnext = glist->next;
+            mxq_group_free_content(&glist->group);
+            mx_free_null(glist);
         }
-        unext = user->next;
-        free(user);
+        unext = ulist->next;
+        mx_free_null(ulist);
     }
 
     if (server->pidfilename)
