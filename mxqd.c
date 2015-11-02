@@ -1408,99 +1408,99 @@ unsigned long start_job(struct mxq_group_list *group)
 
 /**********************************************************************/
 
-unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_to_start)
+unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_to_start)
 {
     struct mxq_server *server;
-    struct mxq_group_list *group;
+    struct mxq_group_list *glist;
     struct mxq_group_list *gnext = NULL;
-    struct mxq_group *mxqgrp;
+    struct mxq_group *group;
 
     unsigned int prio;
     unsigned char started = 0;
     unsigned long slots_started = 0;
     int jobs_started = 0;
 
-    assert(user);
-    assert(user->server);
-    assert(user->groups);
+    assert(ulist);
+    assert(ulist->server);
+    assert(ulist->groups);
 
-    server = user->server;
-    group  = user->groups;
-    mxqgrp = &group->group;
+    server = ulist->server;
+    glist  = ulist->groups;
+    group  = &glist->group;
 
-    prio = mxqgrp->group_priority;
+    prio = group->group_priority;
 
     assert(slots_to_start <= server->slots - server->slots_running);
 
     mx_log_debug(" user=%s(%d) slots_to_start=%ld job_limit=%d :: trying to start jobs for user.",
-            mxqgrp->user_name, mxqgrp->user_uid, slots_to_start, job_limit);
+            group->user_name, group->user_uid, slots_to_start, job_limit);
 
-    for (group=user->groups; group && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); group=gnext) {
+    for (glist = ulist->groups; glist && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); glist = gnext) {
 
-        mxqgrp  = &group->group;
+        group  = &glist->group;
 
-        assert(group->jobs_running <= mxqgrp->group_jobs);
-        assert(group->jobs_running <= group->jobs_max);
+        assert(glist->jobs_running <= group->group_jobs);
+        assert(glist->jobs_running <= glist->jobs_max);
 
-        if (group->jobs_running == mxqgrp->group_jobs) {
-            gnext = group->next;
+        if (glist->jobs_running == group->group_jobs) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (group->jobs_running == group->jobs_max) {
-            gnext = group->next;
+        if (glist->jobs_running == glist->jobs_max) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (mxq_group_jobs_inq(mxqgrp) == 0) {
-            gnext = group->next;
+        if (mxq_group_jobs_inq(group) == 0) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (group->slots_per_job > slots_to_start) {
-            gnext = group->next;
+        if (glist->slots_per_job > slots_to_start) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (mxqgrp->group_priority < prio) {
+        if (group->group_priority < prio) {
             if (started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
                 continue;
             }
-            prio = mxqgrp->group_priority;
+            prio = group->group_priority;
         }
         mx_log_info("  group=%s(%d):%lu slots_to_start=%ld slots_per_job=%lu :: trying to start job for group.",
-                mxqgrp->user_name, mxqgrp->user_uid, mxqgrp->group_id, slots_to_start, group->slots_per_job);
+                group->user_name, group->user_uid, group->group_id, slots_to_start, glist->slots_per_job);
 
-        if (start_job(group)) {
+        if (start_job(glist)) {
 
-            slots_to_start -= group->slots_per_job;
+            slots_to_start -= glist->slots_per_job;
             jobs_started++;
-            slots_started += group->slots_per_job;
+            slots_started += glist->slots_per_job;
 
             started = 1;
         }
 
-        gnext = group->next;
+        gnext = glist->next;
         if (!gnext && started) {
-            gnext = group->user->groups;
+            gnext = ulist->groups;
             started = 0;
         }
     }
