@@ -300,6 +300,13 @@ mxq_job.h += mxq_group.h
 
 mxqd.h += mxqd.h
 
+### mxqd_conrol.h ------------------------------------------------------
+
+mxqd_control.h += mxqd_control.h
+mxqd_control.h += mxq_group.h
+mxqd_control.h += mxq_job.h
+mxqd_control.h += mxqd.h
+
 ### mx_getopt.h --------------------------------------------------------
 
 mx_getopt.h += mx_getopt.h
@@ -406,6 +413,12 @@ mxq_job.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_job.o
 
+### mxqd_control.o -----------------------------------------------------
+
+mxqd_control.o: $(mxqd_control.h)
+
+clean: CLEAN += mxqd_control.o
+
 ### mxqd.o -------------------------------------------------------------
 
 mxqd.o: $(mx_getopt.h)
@@ -452,6 +465,7 @@ mxqd: mx_getopt.o
 mxqd: mxq_group.o
 mxqd: mxq_job.o
 mxqd: mx_mysql.o
+mxqd: mxqd_control.o
 mxqd: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqd
@@ -600,3 +614,18 @@ test_mx_mysql: mx_log.o
 test_mx_mysql: mx_util.o
 test_mx_mysql: LDLIBS += $(LDLIBS_MYSQL)
 clean: CLEAN += test_mx_mysql
+
+
+test_mxqd_control.o: $(mxqd_control.h)
+clean: CLEAN += test_mxqd_control.o
+
+test_mxqd_control: mxqd_control.o
+test_mxqd_control: mx_log.o
+test_mxqd_control: mx_util.o
+test_mxqd_control: mx_mysql.o
+test_mxqd_control: mxq_group.o
+test_mxqd_control: LDLIBS += $(LDLIBS_MYSQL)
+
+clean: CLEAN += test_mxqd_control
+
+test: test_mxqd_control
