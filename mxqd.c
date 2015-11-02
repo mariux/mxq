@@ -2224,48 +2224,50 @@ static int lost_scan(struct mxq_server *server)
 
 static int server_reload_running(struct mxq_server *server)
 {
-    int job_cnt;
-    struct mxq_job *jobs;
-    int j;
+    _mx_cleanup_free_ struct mxq_job *jobs = NULL;
 
-    struct mxq_job_list   *mxq_job_list;
-    struct mxq_group_list *mxq_group_list;
-    struct mxq_user_list  *mxq_user_list;
+    struct mxq_job_list   *jlist;
+    struct mxq_group_list *glist;
+    struct mxq_user_list  *ulist;
+
+    struct mxq_group *grps = NULL;
+    struct mxq_group *group;
+    struct mxq_job   *job;
 
     int group_cnt;
+    int job_cnt;
 
-    job_cnt=mxq_load_jobs_running_on_server(server->mysql,&jobs,server->hostname,server->server_id);
-    if (job_cnt<0)
+    int j;
+
+    job_cnt = mxq_load_jobs_running_on_server(server->mysql, &jobs, server->hostname, server->server_id);
+    if (job_cnt < 0)
         return job_cnt;
-    for (j=0;j<job_cnt;j++) {
-        struct mxq_job *job=&jobs[j];
 
-        job->stats_starttime.tv_sec=job->date_start;
+    for (j=0; j < job_cnt; j++) {
+        job = &jobs[j];
 
-        mxq_job_list = server_get_job_list_by_job_id(server, job->job_id);
-        if (!mxq_job_list) {
-            mxq_group_list = server_get_group_list_by_group_id(server, job->group_id);
-            if (!mxq_group_list) {
-                struct mxq_group *groups=NULL;
-                struct mxq_group *group;
-                group_cnt=mxq_load_group(server->mysql,&groups,job->group_id);
-                if (group_cnt!=1)
+        job->stats_starttime.tv_sec = job->date_start;
+
+        jlist = server_get_job_list_by_job_id(server, job->job_id);
+        if (!jlist) {
+            glist = server_get_group_list_by_group_id(server, job->group_id);
+            if (!glist) {
+                group_cnt = mxq_load_group(server->mysql, &grps, job->group_id);
+                if (group_cnt != 1)
                     continue;
-                group=&groups[0];
-                mxq_user_list=server_find_user(server,group->user_uid);
-                if (!mxq_user_list) {
-                    mxq_group_list = _server_add_group(server,group);
+                group = &grps[0];
+                ulist = server_find_user(server, group->user_uid);
+                if (!ulist) {
+                    glist = _server_add_group(server, group);
                 } else {
-                    mxq_group_list = _user_list_add_group(mxq_user_list,group);
+                    glist = _user_list_add_group(ulist, group);
                 }
-                free(groups);
+                mx_free_null(grps);
             }
-            mxq_job_list=mxq_group_list->jobs;
+            jlist = glist->jobs;
         }
-        group_list_add_job(mxq_group_list,job);
+        group_list_add_job(glist, job);
     }
-
-    free(jobs);
     return job_cnt;
 }
 
