@@ -1870,31 +1870,39 @@ int killall_over_memory(struct mxq_server *server)
     return 0;
 }
 
-int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
+int killall_cancelled(struct mxq_server *server, int sig, unsigned int pgrp)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
+
     pid_t pid;
 
     assert(server);
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            if (group->group.group_status != MXQ_GROUP_STATUS_CANCELLED)
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
+
+            if (group->group_status != MXQ_GROUP_STATUS_CANCELLED)
                 continue;
 
-            if (group->jobs)
+            if (glist->jobs)
                 mx_log_debug("Cancelling all running jobs in group=%s(%d):%lu",
-                    group->group.user_name, group->group.user_uid, group->group.group_id);
+                    group->user_name, group->user_uid, group->group_id);
 
-            for (job=group->jobs; job; job=job->next) {
-                pid = job->job.host_pid;
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+
+                pid = job->host_pid;
                 if (pgrp)
                     pid = -pid;
                 mx_log_info("  Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
                     sig,
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    group->user_name, group->user_uid, group->group_id, job->job_id,
                     pgrp?"pgrp":"pid", pid);
                 kill(pid, sig);
             }
@@ -2478,8 +2486,7 @@ int main(int argc, char *argv[])
         if (group_cnt)
            mx_log_debug("group_cnt=%d :: %d Groups loaded", group_cnt, group_cnt);
 
-        killallcancelled(&server, SIGTERM, 0);
-        killallcancelled(&server, SIGINT, 0);
+        killall_cancelled(&server, SIGTERM, 0);
         killall_over_time(&server);
         killall_over_memory(&server);
 
@@ -2529,8 +2536,7 @@ int main(int argc, char *argv[])
             if (global_sigint_cnt)
                 killall(&server, SIGTERM, 1);
 
-            killallcancelled(&server, SIGTERM, 0);
-            killallcancelled(&server, SIGINT, 0);
+            killall_cancelled(&server, SIGTERM, 0);
             killall_over_time(&server);
             killall_over_memory(&server);
             mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
