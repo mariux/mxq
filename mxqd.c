@@ -2269,16 +2269,17 @@ static int server_reload_running(struct mxq_server *server)
     return job_cnt;
 }
 
-int catchall(struct mxq_server *server) {
+int catchall(struct mxq_server *server)
+{
+    struct mxq_job_list *jlist;
+    struct mxq_job *job;
+    struct mxq_group *group;
 
     struct rusage rusage;
     struct timeval now;
     int status;
     pid_t pid;
     int cnt = 0;
-    struct mxq_job_list *job;
-    struct mxq_job *j;
-    struct mxq_group *g;
     int res;
 
     while (1) {
@@ -2301,22 +2302,34 @@ int catchall(struct mxq_server *server) {
 
         assert(siginfo.si_pid > 1);
 
-        job = server_get_job_list_by_pid(server,siginfo.si_pid);
-        if (!job) {
+        jlist = server_get_job_list_by_pid(server, siginfo.si_pid);
+        if (!jlist) {
             mx_log_warning("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d",
-                siginfo.si_pid, siginfo.si_uid, siginfo.si_code, siginfo.si_status,
-                getpgid(siginfo.si_pid), getsid(siginfo.si_pid));
-            pid = waitpid(siginfo.si_pid, &status, WNOHANG);
+                            siginfo.si_pid,
+                            siginfo.si_uid,
+                            siginfo.si_code,
+                            siginfo.si_status,
+                            getpgid(siginfo.si_pid),
+                            getsid(siginfo.si_pid));
+            /* collect child, ignore status */
+            pid = waitpid(siginfo.si_pid, NULL, WNOHANG);
             if (pid != siginfo.si_pid)
                 mx_log_err("FIX ME BUG!!! pid=%d errno=%d (%m)", pid, errno);
             continue;
         }
-        if (fspool_file_exists(server,job->job.job_id)) {
+
+        assert(jlist);
+        assert(jlist->group);
+
+        job   = &jlist->job;
+        group = &jlist->group->group;
+
+        if (fspool_file_exists(server, job->job_id)) {
             waitpid(siginfo.si_pid, &status, WNOHANG);
             continue;
         }
         mx_log_err("reaper died. status=%d. Cleaning up job from catchall.",status);
-        job_list_remove_self(job);
+        job_list_remove_self(jlist);
 
         /* reap child and save new state */
         pid = wait4(siginfo.si_pid, &status, WNOHANG, &rusage);
@@ -2335,22 +2348,23 @@ int catchall(struct mxq_server *server) {
 
         gettimeofday(&now, NULL);
 
-        j = &job->job;
-        assert(job->group);
-        g = &job->group->group;
 
-        timersub(&now, &j->stats_starttime, &j->stats_realtime);
-        j->stats_max_sumrss = job->max_sum_rss;
-        j->stats_status = status;
-        j->stats_rusage = rusage;
+        timersub(&now, &job->stats_starttime, &job->stats_realtime);
+        job->stats_max_sumrss = jlist->max_sum_rss;
+        job->stats_status = status;
+        job->stats_rusage = rusage;
 
         mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.",
-                g->user_name, g->user_uid, g->group_id, j->job_id, pid, status);
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    pid,
+                    status);
 
-        fspool_unlink(server,j->job_id);
+        fspool_unlink(server, job->job_id);
 
-        cnt+=job_has_finished(server,g,job);
-
+        cnt += job_has_finished(server, group, jlist);
     }
 
     return cnt;
