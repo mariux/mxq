@@ -663,17 +663,6 @@ static void _group_list_init(struct mxq_group_list *glist)
     glist->orphaned = 0;
 }
 
-static struct mxq_user_list *server_find_user(struct mxq_server *server,uint32_t uid)
-{
-    struct mxq_user_list  *user_list;
-
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        if (user_list->groups && user_list->groups[0].group.user_uid==uid) {
-            return user_list;
-        }
-    return NULL;
-}
-
 static struct mxq_group_list *server_get_group_list_by_group_id(struct mxq_server *server, uint64_t group_id)
 {
     struct mxq_user_list  *ulist;
@@ -812,6 +801,15 @@ static struct mxq_user_list *_user_list_find_by_uid(struct mxq_user_list *ulist,
         }
     }
     return NULL;
+}
+
+/**********************************************************************/
+
+static struct mxq_user_list *server_find_user_by_uid(struct mxq_server *server, uint32_t uid)
+{
+    assert(server);
+
+    return _user_list_find_by_uid(server->users, uid);
 }
 
 /**********************************************************************/
@@ -2268,7 +2266,7 @@ static int server_reload_running(struct mxq_server *server)
                 if (group_cnt != 1)
                     continue;
                 group = &grps[0];
-                ulist = server_find_user(server, group->user_uid);
+                ulist = server_find_user_by_uid(server, group->user_uid);
                 if (!ulist) {
                     glist = _server_add_group(server, group);
                 } else {
