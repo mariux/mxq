@@ -1717,9 +1717,12 @@ int killall(struct mxq_server *server, int sig, unsigned int pgrp)
 
 int killall_over_time(struct mxq_server *server)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
 
     struct timeval now;
     struct timeval delta;
@@ -1738,54 +1741,58 @@ int killall_over_time(struct mxq_server *server)
 
     gettimeofday(&now, NULL);
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            for (job=group->jobs; job; job=job->next) {
-                timersub(&now, &job->job.stats_starttime, &delta);
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
 
-                if (delta.tv_sec <= group->group.job_time*60)
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+
+                timersub(&now, &job->stats_starttime, &delta);
+
+                if (delta.tv_sec <= group->job_time*60)
                     continue;
 
-                pid = job->job.host_pid;
+                pid = job->host_pid;
 
-                if (delta.tv_sec <= group->group.job_time*61) {
+                if (delta.tv_sec <= group->job_time*61) {
                     mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pid=%d",
-                        group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                        group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                     kill(pid, SIGXCPU);
                     continue;
                 }
 
                 mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGXCPU);
 
-                if (delta.tv_sec <= group->group.job_time*63)
+                if (delta.tv_sec <= group->job_time*63)
                     continue;
 
                 mx_log_info("killall_over_time(): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(pid, SIGTERM);
 
                 mx_log_info("killall_over_time(): Sending signal=HUP to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGHUP);
 
-                if (delta.tv_sec <= group->group.job_time*64)
+                if (delta.tv_sec <= group->job_time*64)
                     continue;
 
                 mx_log_info("killall_over_time(): Sending signal=TERM to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGTERM);
 
-                if (delta.tv_sec <= group->group.job_time*66)
+                if (delta.tv_sec <= group->job_time*66)
                     continue;
 
                 mx_log_info("killall_over_time(): Sending signal=KILL to job=%s(%d):%lu:%lu pid=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(pid, SIGKILL);
 
                 mx_log_info("killall_over_time(): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGKILL);
             }
         }
