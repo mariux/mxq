@@ -1691,22 +1691,29 @@ void server_close(struct mxq_server *server)
 
 int killall(struct mxq_server *server, int sig, unsigned int pgrp)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
+
     pid_t pid;
 
     assert(server);
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            for (job=group->jobs; job; job=job->next) {
-                pid = job->job.host_pid;
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
+
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                pid = job->host_pid;
                 if (pgrp)
                     pid = -pid;
                 mx_log_info("Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
                     sig,
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    group->user_name, group->user_uid, group->group_id, job->job_id,
                     pgrp?"pgrp":"pid", pid);
                 kill(pid, sig);
             }
