@@ -2356,27 +2356,35 @@ int catchall(struct mxq_server *server) {
     return cnt;
 }
 
-int load_groups(struct mxq_server *server) {
-    struct mxq_group *mxqgroups = NULL;
-    struct mxq_group_list *group;
-    int group_cnt;
+int load_groups(struct mxq_server *server)
+{
+    struct mxq_group_list *glist;
+    struct mxq_group *grps;
+    struct mxq_group *group;
+
+    int grp_cnt;
     int total;
     int i;
 
-    if (RUNNING_AS_ROOT)
-        group_cnt = mxq_load_running_groups(server->mysql, &mxqgroups);
-    else
-        group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
+    assert(server);
 
-    for (i=0, total=0; i<group_cnt; i++) {
-        group = server_update_group(server, &mxqgroups[group_cnt-i-1]);
-        if (!group) {
+    grps = NULL;
+
+    if (RUNNING_AS_ROOT)
+        grp_cnt = mxq_load_running_groups(server->mysql, &grps);
+    else
+        grp_cnt = mxq_load_running_groups_for_user(server->mysql, &grps, getuid());
+
+    for (i=0, total=0; i < grp_cnt; i++) {
+        group = &grps[grp_cnt-i-1];
+        glist = server_update_group(server, group);
+        if (!glist) {
             mx_log_err("Could not add Group to control structures.");
         } else {
             total++;
         }
     }
-    free(mxqgroups);
+    free(grps);
 
     remove_orphaned_group_lists(server);
 
