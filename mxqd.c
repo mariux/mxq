@@ -1336,13 +1336,16 @@ void server_dump(struct mxq_server *server)
             continue;
         }
         group = &ulist->groups[0].group;
-        mx_log_info("    user=%s(%d) slots_running=%lu",
+        mx_log_info("    user=%s(%d) slots_running=%lu global_slots_running=%lu global_threads_running=%lu",
                 group->user_name,
                 group->user_uid,
-                ulist->slots_running);
+                ulist->slots_running,
+                ulist->global_slots_running,
+                ulist->global_threads_running);
 
         for (glist = ulist->groups; glist; glist = glist->next) {
             group = &glist->group;
+
             mx_log_info("        group=%s(%d):%lu %s jobs_in_q=%lu",
                 group->user_name,
                 group->user_uid,
@@ -1369,6 +1372,9 @@ void server_dump(struct mxq_server *server)
                 server->slots,
                 server->threads_running,
                 server->jobs_running);
+    mx_log_info("global_slots_running=%lu global_threads_running=%lu",
+                server->global_slots_running,
+                server->global_threads_running);
     cpuset_log("cpu set running",
                 &server->cpu_set_running);
     mx_log_info("====================== SERVER DUMP END ======================");
