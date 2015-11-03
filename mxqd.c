@@ -939,6 +939,7 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list *glist, struc
         mx_log_err("fork: %m");
         return pid;
     } else if (pid == 0) {
+        mx_log_info("starting user process.");
         res = user_process(glist, job);
         _exit(EX__MAX+1);
     }
@@ -1057,6 +1058,8 @@ unsigned long start_job(struct mxq_group_list *glist)
                     job->job_id,
                     job->host_pid,
                     getpgrp());
+
+        mx_log_info("starting reaper process.");
 
         res = reaper_process(server, glist, job);
         _exit(res<0 ? EX__MAX+1 : 0);
