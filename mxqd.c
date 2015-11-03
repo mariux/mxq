@@ -840,46 +840,62 @@ int mxq_redirect_input(char *stdin_fname)
     return 1;
 }
 
-int user_process(struct mxq_group_list *group,struct mxq_job *mxqjob)
+int user_process(struct mxq_group_list *glist, struct mxq_job *job)
 {
     int res;
     char **argv;
 
-    res = init_child_process(group, mxqjob);
+    struct mxq_group *group;
+
+    group = &glist->group;
+
+    res = init_child_process(glist, job);
     if (!res)
         return(-1);
 
-    mxq_job_set_tmpfilenames(&group->group, mxqjob);
+    mxq_job_set_tmpfilenames(group, job);
 
     res = mxq_redirect_input("/dev/null");
     if (res < 0) {
         mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_input() failed (%d): %m",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
-            res);
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    res);
         return(res);
     }
 
-    res = mxq_redirect_output(mxqjob->tmp_stdout, mxqjob->tmp_stderr);
+    res = mxq_redirect_output(job->tmp_stdout, job->tmp_stderr);
     if (res < 0) {
         mx_log_err("   job=%s(%d):%lu:%lu mxq_redirect_output() failed (%d): %m",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
-            res);
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    res);
         return(res);
     }
 
-    argv = mx_strvec_from_str(mxqjob->job_argv_str);
+    argv = mx_strvec_from_str(job->job_argv_str);
     if (!argv) {
         mx_log_err("job=%s(%d):%lu:%lu Can't recaculate commandline. str_to_strvev(%s) failed: %m",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
-            mxqjob->job_argv_str);
-        return(-errno);
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->job_argv_str);
+        return -errno;
     }
 
-    res=execvp(argv[0], argv);
+    res = execvp(argv[0], argv);
     mx_log_err("job=%s(%d):%lu:%lu execvp(\"%s\", ...): %m",
-        group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob->job_id,
-        argv[0]);
-    return(res);
+                group->user_name,
+                group->user_uid,
+                group->group_id,
+                job->job_id,
+                argv[0]);
+    return res;
 }
 
 int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struct mxq_job *job) {
