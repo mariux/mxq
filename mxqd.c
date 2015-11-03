@@ -596,36 +596,36 @@ static void reset_signals()
     signal(SIGPIPE, SIG_DFL);
 }
 
-static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
+static int init_child_process(struct mxq_group_list *glist, struct mxq_job *job)
 {
-    struct mxq_group *g;
-    struct mxq_server *s;
+    struct mxq_server *server;
+    struct mxq_group  *group;
     struct passwd *passwd;
     int res;
     int fh;
     struct rlimit rlim;
 
-    assert(j);
-    assert(group);
-    assert(group->user);
-    assert(group->user->server);
+    assert(job);
+    assert(glist);
+    assert(glist->user);
+    assert(glist->user->server);
 
-    s = group->user->server;
-    g = &group->group;
+    server = glist->user->server;
+    group  = &glist->group;
 
     reset_signals();
 
-    passwd = getpwuid(g->user_uid);
+    passwd = getpwuid(group->user_uid);
     if (!passwd) {
         mx_log_err("job=%s(%d):%lu:%lu getpwuid(): %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
         return 0;
     }
 
-    if (!mx_streq(passwd->pw_name, g->user_name)) {
+    if (!mx_streq(passwd->pw_name, group->user_name)) {
         mx_log_err("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping",
-            g->user_name, g->user_uid, g->group_id, j->job_id,
-            g->user_uid, g->user_name, passwd->pw_name);
+            group->user_name, group->user_uid, group->group_id, job->job_id,
+            group->user_uid, group->user_name, passwd->pw_name);
         return 0;
     }
 
@@ -635,56 +635,56 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     res = clearenv();
     if (res != 0) {
         mx_log_err("job=%s(%d):%lu:%lu clearenv(): %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
         return 0;
     }
 
-    mx_setenv_forever("USER",     g->user_name);
-    mx_setenv_forever("USERNAME", g->user_name);
-    mx_setenv_forever("LOGNAME",  g->user_name);
-    mx_setenv_forever("PATH",     s->initial_path);
-    mx_setenv_forever("TMPDIR",   s->initial_tmpdir);
-    mx_setenv_forever("PWD",      j->job_workdir);
+    mx_setenv_forever("USER",     group->user_name);
+    mx_setenv_forever("USERNAME", group->user_name);
+    mx_setenv_forever("LOGNAME",  group->user_name);
+    mx_setenv_forever("PATH",     server->initial_path);
+    mx_setenv_forever("TMPDIR",   server->initial_tmpdir);
+    mx_setenv_forever("PWD",      job->job_workdir);
     mx_setenv_forever("HOME",     passwd->pw_dir);
     mx_setenv_forever("SHELL",    passwd->pw_shell);
     mx_setenv_forever("HOSTNAME", mx_hostname());
-    mx_setenvf_forever("JOB_ID",      "%lu",    j->job_id);
-    mx_setenvf_forever("MXQ_JOBID",   "%lu",    j->job_id);
-    mx_setenvf_forever("MXQ_THREADS", "%d",     g->job_threads);
-    mx_setenvf_forever("MXQ_SLOTS",   "%lu",    group->slots_per_job);
-    mx_setenvf_forever("MXQ_MEMORY",  "%lu",    g->job_memory);
-    mx_setenvf_forever("MXQ_TIME",    "%d",     g->job_time);
-    mx_setenv_forever("MXQ_HOSTID",   s->host_id);
-    mx_setenv_forever("MXQ_HOSTNAME", s->hostname);
-    mx_setenv_forever("MXQ_SERVERID", s->server_id);
+    mx_setenvf_forever("JOB_ID",      "%lu",    job->job_id);
+    mx_setenvf_forever("MXQ_JOBID",   "%lu",    job->job_id);
+    mx_setenvf_forever("MXQ_THREADS", "%d",     group->job_threads);
+    mx_setenvf_forever("MXQ_SLOTS",   "%lu",    glist->slots_per_job);
+    mx_setenvf_forever("MXQ_MEMORY",  "%lu",    group->job_memory);
+    mx_setenvf_forever("MXQ_TIME",    "%d",     group->job_time);
+    mx_setenv_forever("MXQ_HOSTID",   server->host_id);
+    mx_setenv_forever("MXQ_HOSTNAME", server->hostname);
+    mx_setenv_forever("MXQ_SERVERID", server->server_id);
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {
         mx_log_err("job=%s(%d):%lu:%lu open(%s) failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id, "/proc/self/loginuid");
+            group->user_name, group->user_uid, group->group_id, job->job_id, "/proc/self/loginuid");
         return 0;
     }
-    dprintf(fh, "%d", g->user_uid);
+    dprintf(fh, "%d", group->user_uid);
     close(fh);
 
     /* set memory limits */
-    rlim.rlim_cur = g->job_memory*1024*1024;
-    rlim.rlim_max = g->job_memory*1024*1024;
+    rlim.rlim_cur = group->job_memory*1024*1024;
+    rlim.rlim_max = group->job_memory*1024*1024;
 
     res = setrlimit(RLIMIT_AS, &rlim);
     if (res == -1)
         mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_AS, ...) failed: %m",
-                    g->user_name, g->user_uid, g->group_id, j->job_id);
+                    group->user_name, group->user_uid, group->group_id, job->job_id);
 
     res = setrlimit(RLIMIT_DATA, &rlim);
     if (res == -1)
         mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_DATA, ...) failed: %m",
-                    g->user_name, g->user_uid, g->group_id, j->job_id);
+                    group->user_name, group->user_uid, group->group_id, job->job_id);
 
     res = setrlimit(RLIMIT_RSS, &rlim);
     if (res == -1)
         mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_RSS, ...) failed: %m",
-                    g->user_name, g->user_uid, g->group_id, j->job_id);
+                    group->user_name, group->user_uid, group->group_id, job->job_id);
 
     /* disable core files */
     rlim.rlim_cur = 0;
@@ -693,57 +693,57 @@ static int init_child_process(struct mxq_group_list *group, struct mxq_job *j)
     res = setrlimit(RLIMIT_CORE,  &rlim);
     if (res == -1)
         mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_CORE, ...) failed: %m",
-                    g->user_name, g->user_uid, g->group_id, j->job_id);
+                    group->user_name, group->user_uid, group->group_id, job->job_id);
 
     /* set single threaded time limits */
-    if (g->job_threads == 1) {
+    if (group->job_threads == 1) {
             /* set cpu time limits - hardlimit is 105% of softlimit */
-            rlim.rlim_cur = g->job_time*60;
-            rlim.rlim_cur = g->job_time*63;
+            rlim.rlim_cur = group->job_time*60;
+            rlim.rlim_cur = group->job_time*63;
 
             res = setrlimit(RLIMIT_CPU,  &rlim);
             if (res == -1)
                 mx_log_err("job=%s(%d):%lu:%lu setrlimit(RLIMIT_CPU, ...) failed: %m",
-                            g->user_name, g->user_uid, g->group_id, j->job_id);
+                            group->user_name, group->user_uid, group->group_id, job->job_id);
     }
 
     if(RUNNING_AS_ROOT) {
 
-        res = initgroups(passwd->pw_name, g->user_gid);
+        res = initgroups(passwd->pw_name, group->user_gid);
         if (res == -1) {
             mx_log_err("job=%s(%d):%lu:%lu initgroups() failed: %m",
-                g->user_name, g->user_uid, g->group_id, j->job_id);
+                group->user_name, group->user_uid, group->group_id, job->job_id);
             return 0;
         }
 
-        res = setregid(g->user_gid, g->user_gid);
+        res = setregid(group->user_gid, group->user_gid);
         if (res == -1) {
             mx_log_err("job=%s(%d):%lu:%lu setregid(%d, %d) failed: %m",
-                g->user_name, g->user_uid, g->group_id, j->job_id,
-                g->user_gid, g->user_gid);
+                group->user_name, group->user_uid, group->group_id, job->job_id,
+                group->user_gid, group->user_gid);
             return 0;
         }
 
-        res = setreuid(g->user_uid, g->user_uid);
+        res = setreuid(group->user_uid, group->user_uid);
         if (res == -1) {
             mx_log_err("job=%s(%d):%lu:%lu setreuid(%d, %d) failed: %m",
-                g->user_name, g->user_uid, g->group_id, j->job_id,
-                g->user_uid, g->user_uid);
+                group->user_name, group->user_uid, group->group_id, job->job_id,
+                group->user_uid, group->user_uid);
             return 0;
         }
     }
 
-    res = chdir(j->job_workdir);
+    res = chdir(job->job_workdir);
     if (res == -1) {
         mx_log_err("job=%s(%d):%lu:%lu chdir(%s) failed: %m",
-            g->user_name, g->user_uid, g->group_id, j->job_id,
-            j->job_workdir);
+            group->user_name, group->user_uid, group->group_id, job->job_id,
+            job->job_workdir);
         return 0;
     }
 
-    umask(j->job_umask);
+    umask(job->job_umask);
 
-    res=sched_setaffinity(0,sizeof(j->host_cpu_set),&j->host_cpu_set);
+    res=sched_setaffinity(0,sizeof(job->host_cpu_set),&job->host_cpu_set);
     if (res<0) mx_log_warning("sched_setaffinity: $m");
 
     return 1;
