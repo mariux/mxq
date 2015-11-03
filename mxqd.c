@@ -898,7 +898,7 @@ int user_process(struct mxq_group_list *glist, struct mxq_job *job)
     return res;
 }
 
-int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struct mxq_job *job) {
+int reaper_process(struct mxq_server *server,struct mxq_group_list *glist, struct mxq_job *job) {
     pid_t pid;
     struct rusage rusage;
     int status;
@@ -911,6 +911,10 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
     FILE *out;
     int res;
 
+    struct mxq_group *group;
+
+    group = &glist->group;
+
     reset_signals();
 
     signal(SIGINT,  SIG_IGN);
@@ -919,12 +923,13 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
     signal(SIGXCPU, SIG_IGN);
 
     res = setsid();
-    if (res<0) {
-	mx_log_warning("reaper_process setsid: %m");
+    if (res < 0) {
+        mx_log_warning("reaper_process setsid: %m");
+        return res;
     }
 
-    res=prctl(PR_SET_CHILD_SUBREAPER, 1);
-    if (res<0) {
+    res = prctl(PR_SET_CHILD_SUBREAPER, 1);
+    if (res < 0) {
         mx_log_err("set subreaper: %m");
         return res;
     }
@@ -932,16 +937,16 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
     pid = fork();
     if (pid < 0) {
         mx_log_err("fork: %m");
-        return(pid);
+        return pid;
     } else if (pid == 0) {
-        res=user_process(group,job);
+        res = user_process(glist, job);
         _exit(EX__MAX+1);
     }
     gettimeofday(&job->stats_starttime, NULL);
 
     while (1) {
-        waited_pid=wait(&waited_status);
-        if (waited_pid<0) {
+        waited_pid = wait(&waited_status);
+        if (waited_pid < 0) {
             if (errno==ECHILD) {
                 break;
             } else {
@@ -949,20 +954,20 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
                 sleep(1);
             }
         }
-        if (waited_pid==pid) {
-            status=waited_status;
+        if (waited_pid == pid) {
+            status = waited_status;
         }
     }
     gettimeofday(&now, NULL);
     timersub(&now, &job->stats_starttime, &realtime);
-    res=getrusage(RUSAGE_CHILDREN,&rusage);
-    if (res<0) {
+    res = getrusage(RUSAGE_CHILDREN, &rusage);
+    if (res < 0) {
         mx_log_err("reaper: getrusage: %m");
         return(res);
     }
 
-    mx_asprintf_forever(&finished_job_filename,"%s/%lu.stat",server->finished_jobsdir,job->job_id);
-    mx_asprintf_forever(&finished_job_tmpfilename,"%s.tmp",finished_job_filename);
+    mx_asprintf_forever(&finished_job_filename, "%s/%lu.stat", server->finished_jobsdir, job->job_id);
+    mx_asprintf_forever(&finished_job_tmpfilename, "%s.tmp", finished_job_filename);
 
     out=fopen(finished_job_tmpfilename,"w");
     if (!out) {
