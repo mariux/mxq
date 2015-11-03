@@ -1465,41 +1465,21 @@ int killall_over_time(struct mxq_server *server)
 
                 pid = job->host_pid;
 
-                if (delta.tv_sec <= group->job_time*61) {
-                    mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pid=%d",
-                        group->user_name, group->user_uid, group->group_id, job->job_id, pid);
-                    kill(pid, SIGXCPU);
-                    continue;
-                }
-
                 mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pgrp=%d",
                     group->user_name, group->user_uid, group->group_id, job->job_id, pid);
+                kill(-pid, SIGCONT);
                 kill(-pid, SIGXCPU);
 
                 if (delta.tv_sec <= group->job_time*63)
                     continue;
 
-                mx_log_info("killall_over_time(): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
-                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
-                kill(pid, SIGTERM);
-
-                mx_log_info("killall_over_time(): Sending signal=HUP to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
-                kill(-pid, SIGHUP);
-
-                if (delta.tv_sec <= group->job_time*64)
-                    continue;
-
                 mx_log_info("killall_over_time(): Sending signal=TERM to job=%s(%d):%lu:%lu pgrp=%d",
                     group->user_name, group->user_uid, group->group_id, job->job_id, pid);
+                kill(-pid, SIGCONT);
                 kill(-pid, SIGTERM);
 
-                if (delta.tv_sec <= group->job_time*66)
+                if (delta.tv_sec <= group->job_time*66+60*10)
                     continue;
-
-                mx_log_info("killall_over_time(): Sending signal=KILL to job=%s(%d):%lu:%lu pid=%d",
-                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
-                kill(pid, SIGKILL);
 
                 mx_log_info("killall_over_time(): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
                     group->user_name, group->user_uid, group->group_id, job->job_id, pid);
@@ -1576,7 +1556,7 @@ int killall_over_memory(struct mxq_server *server)
                 if (jlist->max_sum_rss/1024 <= group->job_memory)
                     continue;
 
-                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=%d to job=%s(%d):%lu:%lu pid=%d",
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=%d to job=%s(%d):%lu:%lu pgrp=%d",
                     jlist->max_sum_rss/1024,
                     group->job_memory,
                     signal,
@@ -1586,7 +1566,8 @@ int killall_over_memory(struct mxq_server *server)
                     job->job_id,
                     job->host_pid);
 
-                kill(job->host_pid, signal);
+                kill(-job->host_pid, SIGCONT);
+                kill(-job->host_pid, signal);
             }
         }
     }
@@ -1594,7 +1575,7 @@ int killall_over_memory(struct mxq_server *server)
     return 0;
 }
 
-int killall_cancelled(struct mxq_server *server, int sig, unsigned int pgrp)
+int killall_cancelled(struct mxq_server *server)
 {
     struct mxq_user_list  *ulist;
     struct mxq_group_list *glist;
@@ -1622,13 +1603,14 @@ int killall_cancelled(struct mxq_server *server, int sig, unsigned int pgrp)
                 job = &jlist->job;
 
                 pid = job->host_pid;
-                if (pgrp)
-                    pid = -pid;
-                mx_log_info("  Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
-                    sig,
-                    group->user_name, group->user_uid, group->group_id, job->job_id,
-                    pgrp?"pgrp":"pid", pid);
-                kill(pid, sig);
+                mx_log_info("  Sending signal=TERM to job=%s(%d):%lu:%lu pgrp=%d",
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    pid);
+                kill(-pid, SIGCONT);
+                kill(-pid, SIGTERM);
             }
         }
     }
@@ -2247,7 +2229,7 @@ int main(int argc, char *argv[])
         if (group_cnt)
            mx_log_debug("group_cnt=%d :: %d Groups loaded", group_cnt, group_cnt);
 
-        killall_cancelled(&server, SIGTERM, 0);
+        killall_cancelled(&server);
         killall_over_time(&server);
         killall_over_memory(&server);
 
@@ -2297,7 +2279,7 @@ int main(int argc, char *argv[])
             if (global_sigint_cnt)
                 killall(&server, SIGTERM, 1);
 
-            killall_cancelled(&server, SIGTERM, 0);
+            killall_cancelled(&server);
             killall_over_time(&server);
             killall_over_memory(&server);
             mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
