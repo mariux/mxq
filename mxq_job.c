@@ -149,6 +149,7 @@ char *mxq_job_status_to_name(uint64_t status)
 void mxq_job_free_content(struct mxq_job *j)
 {
         mx_free_null(j->job_workdir);
+        mx_free_null(j->job_argv);
         mx_free_null(j->job_argv_str);
         mx_free_null(j->job_stdout);
         mx_free_null(j->job_stderr);
@@ -161,11 +162,9 @@ void mxq_job_free_content(struct mxq_job *j)
         mx_free_null(j->tmp_stderr);
         mx_free_null(j->host_submit);
         mx_free_null(j->host_id);
-        mx_free_null(j->host_cpu_set_str);
         mx_free_null(j->server_id);
         mx_free_null(j->host_hostname);
-        mx_free_null(j->job_argv);
-        j->job_argv = NULL;
+        mx_free_null(j->host_cpu_set_str);
 }
 
 static int do_jobs_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mxq_job **jobs)

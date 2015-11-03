@@ -765,8 +765,8 @@ int mxq_redirect_open(char *fname)
     } else if (!mx_streq(fname, "/dev/null")) {
         res = unlink(fname);
         if (res == -1 && errno != ENOENT) {
-            mx_log_err("unlink() failed: %m");
-           return -2;
+            mx_log_err("%s: unlink() failed: %m", fname);
+            return -2;
         }
         flags |= O_EXCL;
     }
