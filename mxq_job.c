@@ -12,11 +12,12 @@
 
 #include "mx_util.h"
 #include "mx_log.h"
+#include "mx_util.h"
 
 #include "mxq_group.h"
 #include "mxq_job.h"
 
-#define JOB_FIELDS_CNT 36
+#define JOB_FIELDS_CNT 37
 #define JOB_FIELDS \
                 " job_id, " \
                 " job_status, " \
@@ -35,6 +36,7 @@
                 " host_hostname, " \
                 " host_pid, " \
                 " host_slots, " \
+                " host_cpu_set, " \
                 " UNIX_TIMESTAMP(date_submit) as date_submit, " \
                 " UNIX_TIMESTAMP(date_start) as date_start, " \
                 " UNIX_TIMESTAMP(date_end) as date_end, " \
@@ -80,6 +82,7 @@ static int bind_result_job_fields(struct mx_mysql_bind *result, struct mxq_job *
     res += mx_mysql_bind_var(result, idx++, string, &(j->host_hostname));
     res += mx_mysql_bind_var(result, idx++, uint32, &(j->host_pid));
     res += mx_mysql_bind_var(result, idx++, uint32, &(j->host_slots));
+    res += mx_mysql_bind_var(result, idx++, string, &(j->host_cpu_set_str));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_submit));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_start));
     res += mx_mysql_bind_var(result, idx++,  int64, &(j->date_end));
@@ -146,6 +149,7 @@ char *mxq_job_status_to_name(uint64_t status)
 void mxq_job_free_content(struct mxq_job *j)
 {
         mx_free_null(j->job_workdir);
+        mx_free_null(j->job_argv);
         mx_free_null(j->job_argv_str);
         mx_free_null(j->job_stdout);
         mx_free_null(j->job_stderr);
@@ -160,17 +164,33 @@ void mxq_job_free_content(struct mxq_job *j)
         mx_free_null(j->host_id);
         mx_free_null(j->server_id);
         mx_free_null(j->host_hostname);
-        mx_free_null(j->job_argv);
-        j->job_argv = NULL;
+        mx_free_null(j->host_cpu_set_str);
+}
+
+static int do_jobs_statement(struct mx_mysql *mysql, char *query, struct mx_mysql_bind *param, struct mxq_job **jobs)
+{
+    int res,i;
+    struct mxq_job j = {0};
+    struct mx_mysql_bind result = {0};
+
+    res = bind_result_job_fields(&result, &j);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement(mysql, query, param, &result, &j, (void **)jobs, sizeof(**jobs));
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+    for (i=0;i<res;i++)
+        mx_str_to_cpuset(&(*jobs)[i].host_cpu_set,(*jobs)[i].host_cpu_set_str);
+    return res;
 }
 
 int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job_id)
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -189,12 +209,8 @@ int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job
     res = mx_mysql_bind_var(&param, 0, uint64, &job_id);
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -202,13 +218,13 @@ int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job
     return res;
 }
 
+
+
 int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp)
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -227,12 +243,8 @@ int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, st
     res = mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -244,9 +256,7 @@ int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -268,12 +278,8 @@ int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **
     res += mx_mysql_bind_var(&param, 1, uint64, &job_status);
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -415,22 +421,24 @@ int mxq_set_job_status_running(struct mx_mysql *mysql, struct mxq_job *job)
             " job_status = " status_str(MXQ_JOB_STATUS_RUNNING) ","
             " date_start = NULL,"
             " host_pid = ?,"
-            " host_slots = ?"
+            " host_slots = ?,"
+            " host_cpu_set = ?"
             " WHERE job_id = ?"
             " AND job_status = " status_str(MXQ_JOB_STATUS_LOADED)
             " AND host_hostname = ?"
             " AND server_id = ?"
             " AND host_pid = 0";
 
-    res = mx_mysql_bind_init_param(&param, 5);
+    res = mx_mysql_bind_init_param(&param, 6);
     assert(res == 0);
 
     res = 0;
     res += mx_mysql_bind_var(&param, 0, uint32, &(job->host_pid));
     res += mx_mysql_bind_var(&param, 1, uint32, &(job->host_slots));
-    res += mx_mysql_bind_var(&param, 2, uint64, &(job->job_id));
-    res += mx_mysql_bind_var(&param, 3, string, &(job->host_hostname));
-    res += mx_mysql_bind_var(&param, 4, string, &(job->server_id));
+    res += mx_mysql_bind_var(&param, 2, string, &(job->host_cpu_set_str));
+    res += mx_mysql_bind_var(&param, 3, uint64, &(job->job_id));
+    res += mx_mysql_bind_var(&param, 4, string, &(job->host_hostname));
+    res += mx_mysql_bind_var(&param, 5, string, &(job->server_id));
     assert(res == 0);
 
     res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
@@ -573,6 +581,29 @@ int mxq_set_job_status_unknown_for_server(struct mx_mysql *mysql, char *hostname
     return res;
 }
 
+int mxq_set_job_status_unknown(struct mx_mysql *mysql, struct mxq_job *job)
+{
+    int res;
+    struct mx_mysql_bind param = {0};
+
+    char *query =
+            "UPDATE mxq_job SET"
+            " job_status = " status_str(MXQ_JOB_STATUS_UNKNOWN)
+            " WHERE job_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 1);
+    res += mx_mysql_bind_var(&param, 0, uint64, &job->job_id);
+    assert(res == 0);
+
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    return res;
+}
+
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j)
 {
     if (!mx_streq(j->job_stdout, "/dev/null")) {
@@ -605,9 +636,7 @@ int mxq_load_job_from_group_assigned_to_server(struct mx_mysql *mysql, struct mx
 {
     int res;
     struct mxq_job *jobs = NULL;
-    struct mxq_job j = {0};
     struct mx_mysql_bind param = {0};
-    struct mx_mysql_bind result = {0};
 
     assert(mysql);
     assert(mxq_jobs);
@@ -636,12 +665,8 @@ int mxq_load_job_from_group_assigned_to_server(struct mx_mysql *mysql, struct mx
     res += mx_mysql_bind_var(&param, 2, uint64, &group_id);
     assert(res == 0);
 
-    res = bind_result_job_fields(&result, &j);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement(mysql, query, &param, &result, &j, (void **)&jobs, sizeof(*jobs));
+    res=do_jobs_statement(mysql, query, &param, &jobs);
     if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
         return res;
     }
 
@@ -703,4 +728,35 @@ int mxq_load_job_from_group_for_server(struct mx_mysql *mysql, struct mxq_job *m
     mxqjob->job_status = MXQ_JOB_STATUS_LOADED;
 
     return 1;
+}
+
+int mxq_load_jobs_running_on_server(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, char *hostname, char *server_id)
+{
+    int res;
+    struct mxq_job *jobs = NULL;
+
+    struct mx_mysql_bind param = {0};
+
+    char *query =
+            "SELECT"
+                JOB_FIELDS
+            " FROM mxq_job"
+            "   WHERE job_status = " status_str(MXQ_JOB_STATUS_RUNNING)
+            "   AND host_hostname=?"
+            "   AND server_id=?";
+    res = mx_mysql_bind_init_param(&param, 2);
+    assert(res == 0);
+
+    res=0;
+    res += mx_mysql_bind_var(&param, 0, string, &hostname);
+    res += mx_mysql_bind_var(&param, 1, string, &server_id);
+    assert(res == 0);
+
+    res=do_jobs_statement(mysql, query, &param, &jobs);
+    if (res < 0) {
+        return res;
+    }
+
+    *mxq_jobs = jobs;
+    return res;
 }

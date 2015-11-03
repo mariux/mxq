@@ -73,12 +73,15 @@ MXQ_MYSQL_DEFAULT_GROUP_DEVELOPMENT = mxqdevel
 MXQ_INITIAL_PATH   = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 MXQ_INITIAL_TMPDIR = /tmp
 
+MXQ_FINISHED_JOBSDIR = ${LOCALSTATEDIR}/spool/mxqd
+
 CFLAGS_MXQ_MYSQL_DEFAULT_FILE  = -DMXQ_MYSQL_DEFAULT_FILE=\"$(MXQ_MYSQL_DEFAULT_FILE)\"
 CFLAGS_MXQ_MYSQL_DEFAULT_GROUP = -DMXQ_MYSQL_DEFAULT_GROUP_CLIENT=\"$(MXQ_MYSQL_DEFAULT_GROUP_CLIENT)\"
 CFLAGS_MXQ_MYSQL_DEFAULT_GROUP += -DMXQ_MYSQL_DEFAULT_GROUP_SERVER=\"$(MXQ_MYSQL_DEFAULT_GROUP_SERVER)\"
 CFLAGS_MXQ_MYSQL_DEFAULT_GROUP += -DMXQ_MYSQL_DEFAULT_GROUP_DEVELOPMENT=\"$(MXQ_MYSQL_DEFAULT_GROUP_DEVELOPMENT)\"
 CFLAGS_MXQ_INITIAL_PATH        = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 CFLAGS_MXQ_INITIAL_TMPDIR      = -DMXQ_INITIAL_TMPDIR=\"$(MXQ_INITIAL_TMPDIR)\"
+CFLAGS_MXQ_FINISHED_JOBSDIR    = -DMXQ_FINISHED_JOBSDIR=\"${MXQ_FINISHED_JOBSDIR}\"
 
 MYSQL_CONFIG = mysql_config
 
@@ -297,6 +300,13 @@ mxq_job.h += mxq_group.h
 
 mxqd.h += mxqd.h
 
+### mxqd_conrol.h ------------------------------------------------------
+
+mxqd_control.h += mxqd_control.h
+mxqd_control.h += mxq_group.h
+mxqd_control.h += mxq_job.h
+mxqd_control.h += mxqd.h
+
 ### mx_getopt.h --------------------------------------------------------
 
 mx_getopt.h += mx_getopt.h
@@ -403,6 +413,12 @@ mxq_job.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_job.o
 
+### mxqd_control.o -----------------------------------------------------
+
+mxqd_control.o: $(mxqd_control.h)
+
+clean: CLEAN += mxqd_control.o
+
 ### mxqd.o -------------------------------------------------------------
 
 mxqd.o: $(mx_getopt.h)
@@ -417,6 +433,7 @@ mxqd.o: $(mx_mysql.h)
 mxqd.o: CFLAGS += $(CFLAGS_MYSQL)
 mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_PATH)
 mxqd.o: CFLAGS += $(CFLAGS_MXQ_INITIAL_TMPDIR)
+mxqd.o: CFLAGS += $(CFLAGS_MXQ_FINISHED_JOBSDIR)
 mxqd.o: CFLAGS += -Wno-unused-but-set-variable
 
 clean: CLEAN += mxqd.o
@@ -448,6 +465,7 @@ mxqd: mx_getopt.o
 mxqd: mxq_group.o
 mxqd: mxq_job.o
 mxqd: mx_mysql.o
+mxqd: mxqd_control.o
 mxqd: LDLIBS += $(LDLIBS_MYSQL)
 
 build: mxqd
@@ -596,3 +614,18 @@ test_mx_mysql: mx_log.o
 test_mx_mysql: mx_util.o
 test_mx_mysql: LDLIBS += $(LDLIBS_MYSQL)
 clean: CLEAN += test_mx_mysql
+
+
+test_mxqd_control.o: $(mxqd_control.h)
+clean: CLEAN += test_mxqd_control.o
+
+test_mxqd_control: mxqd_control.o
+test_mxqd_control: mx_log.o
+test_mxqd_control: mx_util.o
+test_mxqd_control: mx_mysql.o
+test_mxqd_control: mxq_group.o
+test_mxqd_control: LDLIBS += $(LDLIBS_MYSQL)
+
+clean: CLEAN += test_mxqd_control
+
+test: test_mxqd_control
