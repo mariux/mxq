@@ -1036,6 +1036,7 @@ unsigned long start_job(struct mxq_group_list *glist)
             group->user_name, group->user_uid, group->group_id, job->job_id);
 
     cpuset_init_job(&job->host_cpu_set, &server->cpu_set_available, &server->cpu_set_running, glist->slots_per_job);
+    mx_free_null(job->host_cpu_set_str);
     job->host_cpu_set_str = mx_cpuset_to_str(&job->host_cpu_set);
 
     mx_log_info("job assigned cpus: [%s]", job->host_cpu_set_str);
