@@ -1614,78 +1614,82 @@ int killall_cancelled(struct mxq_server *server, int sig, unsigned int pgrp)
     return 0;
 }
 
-static int job_has_finished (struct mxq_server *server,struct mxq_group *g,struct mxq_job_list *job)
+static void rename_outfiles(struct mxq_group *group, struct mxq_job *job)
 {
-        int cnt=0;
-        int res;
-        struct mxq_job *j=&job->job;
+    int res;
 
-        mxq_set_job_status_exited(server->mysql, j);
+    mxq_job_set_tmpfilenames(group, job);
 
-        if (j->job_status == MXQ_JOB_STATUS_FINISHED) {
-            g->group_jobs_finished++;
-        } else if(j->job_status == MXQ_JOB_STATUS_FAILED) {
-            g->group_jobs_failed++;
-        } else if(j->job_status == MXQ_JOB_STATUS_KILLED) {
-            g->group_jobs_failed++;
+    if (!mx_streq(job->job_stdout, "/dev/null")) {
+        res = rename(job->tmp_stdout, job->job_stdout);
+        if (res == -1) {
+            mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m",
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->host_pid);
+        }
+    }
+
+    if (!mx_streq(job->job_stderr, "/dev/null") && !mx_streq(job->job_stderr, job->job_stdout)) {
+        res = rename(job->tmp_stderr, job->job_stderr);
+        if (res == -1) {
+            mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m",
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->host_pid);
+        }
+    }
+}
+
+static int job_has_finished(struct mxq_server *server, struct mxq_group *group, struct mxq_job_list *jlist)
+{
+        int cnt;
+        struct mxq_job *job;
+
+        job=&jlist->job;
+
+        mxq_set_job_status_exited(server->mysql, job);
+
+        if (job->job_status == MXQ_JOB_STATUS_FINISHED) {
+            group->group_jobs_finished++;
+        } else if(job->job_status == MXQ_JOB_STATUS_FAILED) {
+            group->group_jobs_failed++;
+        } else if(job->job_status == MXQ_JOB_STATUS_KILLED) {
+            group->group_jobs_failed++;
         }
 
-        mxq_job_set_tmpfilenames(g, j);
+        rename_outfiles(group, job);
 
-        if (!mx_streq(j->job_stdout, "/dev/null")) {
-            res = rename(j->tmp_stdout, j->job_stdout);
-            if (res == -1) {
-                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m",
-                        g->user_name, g->user_uid, g->group_id, j->job_id, j->host_pid);
-            }
-        }
-
-        if (!mx_streq(j->job_stderr, "/dev/null") && !mx_streq(j->job_stderr, j->job_stdout)) {
-            res = rename(j->tmp_stderr, j->job_stderr);
-            if (res == -1) {
-                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m",
-                        g->user_name, g->user_uid, g->group_id, j->job_id, j->host_pid);
-            }
-        }
-
-        cnt += job->group->slots_per_job;
-        cpuset_clear_running(&server->cpu_set_running,&j->host_cpu_set);
-        mxq_job_free_content(j);
-        free(job);
+        cnt = jlist->group->slots_per_job;
+        cpuset_clear_running(&server->cpu_set_running, &job->host_cpu_set);
+        mxq_job_free_content(job);
+        free(jlist);
         return cnt;
 }
 
-static int job_is_lost (struct mxq_server *server,struct mxq_group *g,struct mxq_job_list *job)
+static int job_is_lost(struct mxq_server *server,struct mxq_group *group, struct mxq_job_list *jlist)
 {
-        int cnt=0;
-        int res;
-        struct mxq_job *j=&job->job;
+        int cnt;
+        struct mxq_job *job;
 
-        mxq_set_job_status_unknown(server->mysql, j);
-        g->group_jobs_unknown++;
+        assert(jlist->group);
+        assert(!jlist->next);
 
-        mxq_job_set_tmpfilenames(g, j);
+        job = &jlist->job;
 
-        if (!mx_streq(j->job_stdout, "/dev/null")) {
-            res = rename(j->tmp_stdout, j->job_stdout);
-            if (res == -1) {
-                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stdout) failed: %m",
-                        g->user_name, g->user_uid, g->group_id, j->job_id, j->host_pid);
-            }
-        }
+        mxq_set_job_status_unknown(server->mysql, job);
+        group->group_jobs_unknown++;
 
-        if (!mx_streq(j->job_stderr, "/dev/null") && !mx_streq(j->job_stderr, j->job_stdout)) {
-            res = rename(j->tmp_stderr, j->job_stderr);
-            if (res == -1) {
-                mx_log_err("   job=%s(%d):%lu:%lu host_pid=%d :: rename(stderr) failed: %m",
-                        g->user_name, g->user_uid, g->group_id, j->job_id, j->host_pid);
-            }
-        }
+        rename_outfiles(group, job);
 
-        cnt += job->group->slots_per_job;
-        cpuset_clear_running(&server->cpu_set_running,&j->host_cpu_set);
-        mxq_job_free_content(j);
-        free(job);
+        cnt = jlist->group->slots_per_job;
+        cpuset_clear_running(&server->cpu_set_running, &job->host_cpu_set);
+        mxq_job_free_content(job);
+        free(jlist);
         return cnt;
 }
 
