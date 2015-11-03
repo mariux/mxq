@@ -2049,7 +2049,7 @@ int catchall(struct mxq_server *server)
     return cnt;
 }
 
-int load_groups(struct mxq_server *server)
+int load_running_groups(struct mxq_server *server)
 {
     struct mxq_group_list *glist;
     struct mxq_group *grps;
@@ -2221,7 +2221,7 @@ int main(int argc, char *argv[])
             slots_started = 0;
         }
 
-        group_cnt = load_groups(&server);
+        group_cnt = load_running_groups(&server);
         if (group_cnt)
            mx_log_debug("group_cnt=%d :: %d Groups loaded", group_cnt, group_cnt);
 
