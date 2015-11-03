@@ -1711,20 +1711,24 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
     struct rusage rusage;
     struct timeval realtime;
 
-    struct mxq_job_list *job;
-    struct mxq_job *j;
-    struct mxq_group *g;
+    struct mxq_job_list *jlist;
+    struct mxq_job *job;
+    struct mxq_group *group;
 
     in=fopen(filename,"r");
     if (!in) {
         return -errno;
     }
+    errno=0;
     res=fscanf(in,"1 %d %d %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld",
         &pid,
         &status,
-        &realtime.tv_sec,&realtime.tv_usec,
-        &rusage.ru_utime.tv_sec,&rusage.ru_utime.tv_usec,
-        &rusage.ru_stime.tv_sec,&rusage.ru_stime.tv_usec,
+        &realtime.tv_sec,
+        &realtime.tv_usec,
+        &rusage.ru_utime.tv_sec,
+        &rusage.ru_utime.tv_usec,
+        &rusage.ru_stime.tv_sec,
+        &rusage.ru_stime.tv_usec,
         &rusage.ru_maxrss,
         &rusage.ru_ixrss,
         &rusage.ru_idrss,
@@ -1749,26 +1753,35 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
 
     mx_log_info("job finished (via fspool) : job %d pid %d status %d",job_id,pid,status);
 
-    job = server_remove_job_list_by_pid(server, pid);
-    if (!job) {
-        mx_log_warning("fspool_process_file: %s : job unknown on server",filename);
-        return(-1);
+    jlist = server_remove_job_list_by_pid(server, pid);
+    if (!jlist) {
+        mx_log_warning("fspool_process_file: %s : job unknown on server", filename);
+        return -(errno=ENOENT);
     }
-    j = &job->job;
-    assert(job->group);
-    assert(j->job_id=job_id);
-    g = &job->group->group;
 
-    j->stats_realtime=realtime;
-    j->stats_status=status;
-    j->stats_rusage=rusage;
+    job = &jlist->job;
+    if (job->job_id != job_id) {
+        mx_log_warning("fspool_process_file: %s: job_id(pid)[%ld] != job_id(filename)[%ld]",
+                        filename,
+                        job->job_id,
+                        job_id);
+        return -(errno=EINVAL);
+    }
 
-    job_has_finished(server,g,job);
+    assert(jlist->group);
+
+    group = &jlist->group->group;
+
+    job->stats_realtime = realtime;
+    job->stats_status   = status;
+    job->stats_rusage   = rusage;
+
+    job_has_finished(server, group, jlist);
     fspool_unlink(server,job_id);
     return(0);
 }
 
-static int fspool_is_valid_name_parse(const char *name,int *job_id) {
+static int fspool_is_valid_name_parse(const char *name, unsigned long long int *job_id) {
     const char *c=name;
     if (!*c)
         return 0;
@@ -1781,7 +1794,7 @@ static int fspool_is_valid_name_parse(const char *name,int *job_id) {
         return 0;
     }
     if (job_id) {
-        *job_id=atol(name);
+        *job_id = strtoull(name, NULL, 10);
     }
     return 1;
 }
@@ -1797,6 +1810,8 @@ static int fspool_scan(struct mxq_server *server) {
     struct dirent **namelist;
     int i;
     int res;
+    unsigned long long int job_id;
+    char *filename;
 
 
     entries=scandir(server->finished_jobsdir,&namelist,&fspool_is_valid_name,&alphasort);
@@ -1806,8 +1821,6 @@ static int fspool_scan(struct mxq_server *server) {
     }
 
     for (i=0;i<entries;i++) {
-        char *filename;
-        int job_id;
         mx_asprintf_forever(&filename,"%s/%s",server->finished_jobsdir,namelist[i]->d_name);
         fspool_is_valid_name_parse(namelist[i]->d_name,&job_id);
         res=fspool_process_file(server,filename,job_id);
