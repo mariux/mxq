@@ -583,358 +583,394 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
 /**********************************************************************/
 
-void group_init(struct mxq_group_list *group)
+static void _group_list_init(struct mxq_group_list *glist)
 {
-    struct mxq_server *s;
-    struct mxq_group *g;
+    struct mxq_server *server;
+    struct mxq_group *group;
 
     long double memory_threads;
     long double memory_per_thread;
     long double memory_max_available;
+
     unsigned long slots_per_job;
     unsigned long jobs_max;
     unsigned long slots_max;
     unsigned long memory_max;
 
-    assert(group);
-    assert(group->user);
-    assert(group->user->server);
+    assert(glist);
+    assert(glist->user);
+    assert(glist->user->server);
 
-    s = group->user->server;
-    g = &group->group;
+    server = glist->user->server;
+    group  = &glist->group;
 
-    memory_per_thread    = (long double)g->job_memory / (long double) g->job_threads;
-    memory_max_available = (long double)s->memory_total * (long double)s->memory_max_per_slot / memory_per_thread;
+    memory_per_thread    = (long double)group->job_memory / (long double)group->job_threads;
+    memory_max_available = (long double)server->memory_total * (long double)server->memory_max_per_slot / memory_per_thread;
 
-    if (memory_max_available > s->memory_total)
-        memory_max_available = s->memory_total;
+    if (memory_max_available > server->memory_total)
+        memory_max_available = server->memory_total;
 
-    slots_per_job = ceill((long double)g->job_memory / s->memory_avg_per_slot);
+    slots_per_job = ceill((long double)group->job_memory / server->memory_avg_per_slot);
 
-    if (slots_per_job < g->job_threads)
-       slots_per_job = g->job_threads;
+    if (slots_per_job < group->job_threads)
+        slots_per_job = group->job_threads;
 
     memory_threads = memory_max_available / memory_per_thread;
 
-    if (memory_per_thread > s->memory_max_per_slot) {
+    if (memory_per_thread > server->memory_max_per_slot) {
         jobs_max = memory_threads + 0.5;
-    } else if (memory_per_thread > s->memory_avg_per_slot) {
+    } else if (memory_per_thread > server->memory_avg_per_slot) {
         jobs_max = memory_threads + 0.5;
     } else {
-        jobs_max = s->slots;
+        jobs_max = server->slots;
     }
-    jobs_max /= g->job_threads;
+    jobs_max /= group->job_threads;
 
     /* limit maximum number of jobs on user/group request */
-    if (g->job_max_per_node && jobs_max > g->job_max_per_node)
-        jobs_max = g->job_max_per_node;
+    if (group->job_max_per_node && jobs_max > group->job_max_per_node)
+        jobs_max = group->job_max_per_node;
 
-    slots_max = jobs_max * slots_per_job;
-    memory_max = jobs_max * g->job_memory;
+    slots_max  = jobs_max * slots_per_job;
+    memory_max = jobs_max * group->job_memory;
 
-    if (group->memory_per_thread != memory_per_thread
-       || group->memory_max_available != memory_max_available
-       || group->memory_max_available != memory_max_available
-       || group->slots_per_job != slots_per_job
-       || group->jobs_max != jobs_max
-       || group->slots_max != slots_max
-       || group->memory_max != memory_max)
+    if (glist->memory_per_thread != memory_per_thread
+       || glist->memory_max_available != memory_max_available
+       || glist->memory_max_available != memory_max_available
+       || glist->slots_per_job != slots_per_job
+       || glist->jobs_max != jobs_max
+       || glist->slots_max != slots_max
+       || glist->memory_max != memory_max) {
         mx_log_info("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.",
-                    g->user_name, g->user_uid, g->group_id, jobs_max, slots_max, memory_max, slots_per_job,
-                    group->orphaned?"re":"");
-
-    group->orphaned = 0;
-    group->memory_per_thread = memory_per_thread;
-    group->memory_max_available = memory_max_available;
-    group->slots_per_job = slots_per_job;
-    group->jobs_max = jobs_max;
-    group->slots_max = slots_max;
-    group->memory_max = memory_max;
-}
-
-static struct mxq_user_list *server_find_user(struct mxq_server *server,uint32_t uid)
-{
-    struct mxq_user_list  *user_list;
-
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        if (user_list->groups && user_list->groups[0].group.user_uid==uid) {
-            return user_list;
-        }
-    return NULL;
-}
-
-static struct mxq_group_list *server_find_group(struct mxq_server *server,uint64_t  group_id)
-{
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
-
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            if (group_list->group.group_id==group_id)
-                return group_list;
-    return NULL;
-}
-
-static struct mxq_job_list *server_find_job(struct mxq_server *server,uint64_t  job_id)
-{
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
-    struct mxq_job_list   *job_list;
-
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            for (job_list=group_list->jobs;job_list;job_list=job_list->next)
-                if (job_list->job.job_id==job_id)
-                    return job_list;
-    return NULL;
-}
-
-static struct mxq_job_list *server_find_job_by_pid(struct mxq_server *server,pid_t  pid)
-{
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
-    struct mxq_job_list   *job_list;
-
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            for (job_list=group_list->jobs;job_list;job_list=job_list->next)
-                if (job_list->job.host_pid==pid)
-                    return job_list;
-    return NULL;
-}
-
-
-void server_remove_job(struct mxq_job_list *job) {
-    struct mxq_group_list *group=job->group;
-    struct mxq_user_list *user=group->user;
-    struct mxq_server *server=user->server;
-
-    struct mxq_job_list **prev;
-
-    for (prev=&group->jobs;*prev;prev=&(*prev)->next) {
-        if (*prev==job) {
-            *prev=job->next;
-            group->job_cnt--;
-            user->job_cnt--;
-            server->job_cnt--;
-
-            group->slots_running  -= job->job.host_slots;
-            user->slots_running   -= job->job.host_slots;
-            server->slots_running -= job->job.host_slots;
-
-            group->threads_running  -= group->group.job_threads;
-            user->threads_running   -= group->group.job_threads;
-            server->threads_running -= group->group.job_threads;
-
-            group->group.group_jobs_running--;
-
-            group->jobs_running--;
-            user->jobs_running--;
-            server->jobs_running--;
-
-            group->memory_used  -= group->group.job_memory;
-            user->memory_used   -= group->group.job_memory;
-            server->memory_used -= group->group.job_memory;
-            break;
-        }
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    jobs_max,
+                    slots_max,
+                    memory_max,
+                    slots_per_job,
+                    glist->orphaned ? "re" : "");
     }
+
+    glist->memory_per_thread    = memory_per_thread;
+    glist->memory_max_available = memory_max_available;
+
+    glist->slots_per_job = slots_per_job;
+
+    glist->jobs_max   = jobs_max;
+    glist->slots_max  = slots_max;
+    glist->memory_max = memory_max;
+
+    glist->orphaned = 0;
 }
 
-struct mxq_job_list *server_remove_job_by_pid(struct mxq_server *server, pid_t pid)
+static struct mxq_group_list *server_get_group_list_by_group_id(struct mxq_server *server, uint64_t group_id)
 {
-    struct mxq_job_list   *job;
-
-    job=server_find_job_by_pid(server,pid);
-    if (job) {
-        server_remove_job(job);
-    }
-    return job;
-}
-
-/**********************************************************************/
-
-struct mxq_user_list *user_list_find_uid(struct mxq_user_list *list, uint32_t  uid)
-{
-    struct mxq_user_list *u;
-
-    for (u = list; u; u = u->next) {
-        assert(u->groups);
-        if (u->groups[0].group.user_uid == uid) {
-            return u;
-        }
-    }
-    return NULL;
-}
-
-/**********************************************************************/
-
-struct mxq_group_list *group_list_find_group(struct mxq_group_list *list, struct mxq_group *group)
-{
-    struct mxq_group_list *g;
-
-    assert(group);
-
-    for (g = list; g; g = g->next) {
-        if (g->group.group_id == group->group_id) {
-            return g;
-        }
-    }
-    return NULL;
-}
-
-/**********************************************************************/
-
-struct mxq_job_list *group_add_job(struct mxq_group_list *group, struct mxq_job *job)
-{
-    struct mxq_job_list *j;
-    struct mxq_job_list *jlist;
-
-    struct mxq_server *server;
-    struct mxq_user_list *user;
-
-    struct mxq_group *mxqgrp;
-
-    assert(group);
-    assert(group->user);
-    assert(group->user->server);
-    assert(job->job_status == MXQ_JOB_STATUS_RUNNING);
-
-    mxqgrp = &group->group;
-    user   = group->user;
-    server = user->server;
-
-    j = mx_calloc_forever(1, sizeof(*j));
-    assert(j);
-
-    jlist = group->jobs;
-
-    memcpy(&j->job, job, sizeof(*job));
-
-    j->group = group;
-    j->next  = jlist;
-
-    group->jobs = j;
-
-    group->job_cnt++;
-    user->job_cnt++;
-    server->job_cnt++;
-
-    group->slots_running  += group->slots_per_job;
-    user->slots_running   += group->slots_per_job;
-    server->slots_running += group->slots_per_job;
-
-    group->threads_running  += mxqgrp->job_threads;
-    user->threads_running   += mxqgrp->job_threads;
-    server->threads_running += mxqgrp->job_threads;
-
-    CPU_OR(&server->cpu_set_running,&server->cpu_set_running,&j->job.host_cpu_set);
-
-    mxqgrp->group_jobs_running++;
-    mxqgrp->group_jobs_inq--;
-
-    group->jobs_running++;
-    user->jobs_running++;
-    server->jobs_running++;
-
-    group->memory_used += mxqgrp->job_memory;
-    user->memory_used += mxqgrp->job_memory;
-    server->memory_used += mxqgrp->job_memory;
-
-    assert(j);
-    return j;
-}
-/**********************************************************************/
-
-struct mxq_group_list *user_add_group(struct mxq_user_list *user, struct mxq_group *group)
-{
-    struct mxq_group_list *g;
+    struct mxq_user_list  *ulist;
     struct mxq_group_list *glist;
 
-    assert(user);
+    struct mxq_group *group;
 
-    g = mx_calloc_forever(1, sizeof(*g));
-    assert(g);
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
+            if (group->group_id == group_id)
+                return glist;
+        }
+    }
+    return NULL;
+}
 
-    glist = user->groups;
+static struct mxq_job_list *server_get_job_list_by_job_id(struct mxq_server *server, uint64_t job_id)
+{
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
 
-    memcpy(&g->group, group, sizeof(*group));
+    struct mxq_job *job;
 
-    g->user = user;
-    g->next = glist;
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                if (job->job_id == job_id)
+                    return jlist;
+            }
+        }
+    }
+    return NULL;
+}
 
-    user->groups = g;
-    user->group_cnt++;
+static struct mxq_job_list *server_get_job_list_by_pid(struct mxq_server *server, pid_t pid)
+{
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
 
-    assert(user->server);
-    user->server->group_cnt++;
+    struct mxq_job *job;
 
-    group_init(g);
+    assert(server);
 
-    assert(g);
-    return g;
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                if (job->host_pid == pid)
+                    return jlist;
+            }
+        }
+    }
+    return NULL;
+}
+
+void job_list_remove_self(struct mxq_job_list *jlist)
+{
+    struct mxq_group_list *glist;
+    struct mxq_user_list  *ulist;
+    struct mxq_server     *server;
+
+    struct mxq_job_list **jprevp;
+
+    struct mxq_job   *job;
+    struct mxq_group *group;
+
+    assert(jlist);
+    assert(jlist->group);
+    assert(jlist->group->user);
+    assert(jlist->group->user->server);
+
+    glist  = jlist->group;
+    ulist  = glist->user;
+    server = ulist->server;
+
+    group = &glist->group;
+    job   = &jlist->job;
+
+    for (jprevp = &glist->jobs; *jprevp; jprevp = &(*jprevp)->next) {
+        if (*jprevp != jlist)
+            continue;
+
+        *jprevp = jlist->next;
+
+        glist->job_cnt--;
+        ulist->job_cnt--;
+        server->job_cnt--;
+
+        glist->slots_running  -= job->host_slots;
+        ulist->slots_running  -= job->host_slots;
+        server->slots_running -= job->host_slots;
+
+        glist->threads_running  -= group->job_threads;
+        ulist->threads_running  -= group->job_threads;
+        server->threads_running -= group->job_threads;
+
+        group->group_jobs_running--;
+
+        glist->jobs_running--;
+        ulist->jobs_running--;
+        server->jobs_running--;
+
+        glist->memory_used  -= group->job_memory;
+        ulist->memory_used  -= group->job_memory;
+        server->memory_used -= group->job_memory;
+        break;
+    }
+}
+
+struct mxq_job_list *server_remove_job_list_by_pid(struct mxq_server *server, pid_t pid)
+{
+    struct mxq_job_list *jlist;
+
+    assert(server);
+
+    jlist = server_get_job_list_by_pid(server, pid);
+    if (jlist) {
+        job_list_remove_self(jlist);
+    }
+    return jlist;
 }
 
 /**********************************************************************/
 
-struct mxq_group_list *server_add_user(struct mxq_server *server, struct mxq_group *group)
+static struct mxq_user_list *_user_list_find_by_uid(struct mxq_user_list *ulist, uint32_t uid)
 {
-    struct mxq_user_list  *user;
+    for (; ulist; ulist = ulist->next) {
+        assert(ulist->groups);
+
+        if (ulist->groups[0].group.user_uid == uid) {
+            return ulist;
+        }
+    }
+    return NULL;
+}
+
+/**********************************************************************/
+
+static struct mxq_user_list *server_find_user_by_uid(struct mxq_server *server, uint32_t uid)
+{
+    assert(server);
+
+    return _user_list_find_by_uid(server->users, uid);
+}
+
+/**********************************************************************/
+
+struct mxq_group_list *_group_list_find_by_group(struct mxq_group_list *glist, struct mxq_group *group)
+{
+    assert(group);
+
+    for (; glist; glist = glist->next) {
+        if (glist->group.group_id == group->group_id) {
+            return glist;
+        }
+    }
+    return NULL;
+}
+
+/**********************************************************************/
+
+struct mxq_job_list *group_list_add_job(struct mxq_group_list *glist, struct mxq_job *job)
+{
+    struct mxq_server *server;
+
+    struct mxq_job_list  *jlist;
+    struct mxq_user_list *ulist;
+
+    struct mxq_group *group;
+
+    assert(glist);
+    assert(glist->user);
+    assert(glist->user->server);
+    assert(job->job_status == MXQ_JOB_STATUS_RUNNING);
+
+    group  = &glist->group;
+    ulist  = glist->user;
+    server = ulist->server;
+
+    jlist = mx_calloc_forever(1, sizeof(*jlist));
+
+    memcpy(&jlist->job, job, sizeof(*job));
+
+    jlist->group = glist;
+
+    jlist->next  = glist->jobs;
+    glist->jobs  = jlist;
+
+    glist->job_cnt++;
+    ulist->job_cnt++;
+    server->job_cnt++;
+
+    glist->slots_running  += glist->slots_per_job;
+    ulist->slots_running  += glist->slots_per_job;
+    server->slots_running += glist->slots_per_job;
+
+    glist->threads_running  += group->job_threads;
+    ulist->threads_running  += group->job_threads;
+    server->threads_running += group->job_threads;
+
+    CPU_OR(&server->cpu_set_running, &server->cpu_set_running, &job->host_cpu_set);
+
+    group->group_jobs_running++;
+    group->group_jobs_inq--;
+
+    glist->jobs_running++;
+    ulist->jobs_running++;
+    server->jobs_running++;
+
+    glist->memory_used  += group->job_memory;
+    ulist->memory_used  += group->job_memory;
+    server->memory_used += group->job_memory;
+
+    return jlist;
+}
+/**********************************************************************/
+
+static struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct mxq_group *group)
+{
+    struct mxq_group_list *glist;
+    struct mxq_server *server;
+
+    assert(ulist);
+    assert(ulist->server);
+
+    server = ulist->server;
+
+    glist = mx_calloc_forever(1, sizeof(*glist));
+
+    memcpy(&glist->group, group, sizeof(*group));
+
+    glist->user = ulist;
+
+    glist->next = ulist->groups;
+    ulist->groups = glist;
+
+    ulist->group_cnt++;
+    server->group_cnt++;
+
+    _group_list_init(glist);
+
+    return glist;
+}
+
+/**********************************************************************/
+
+static struct mxq_group_list *_server_add_group(struct mxq_server *server, struct mxq_group *group)
+{
     struct mxq_user_list  *ulist;
     struct mxq_group_list *glist;
 
     assert(server);
     assert(group);
 
-    user = mx_calloc_forever(1, sizeof(*user));
-    assert(user);
+    ulist = mx_calloc_forever(1, sizeof(*ulist));
 
-    user->server = server;
+    ulist->server = server;
 
-    glist = user_add_group(user, group);
-    assert(glist);
+    ulist->next   = server->users;
+    server->users = ulist;
 
-    ulist = server->users;
-
-    user->next    = ulist;
-
-    server->users = user;
     server->user_cnt++;
 
+    glist = _user_list_add_group(ulist, group);
     assert(glist);
+
     return glist;
 }
 
 /**********************************************************************/
 
-struct mxq_group_list *user_update_groupdata(struct mxq_user_list *user, struct mxq_group *group)
+static struct mxq_group_list *_user_list_update_group(struct mxq_user_list *ulist, struct mxq_group *group)
 {
     struct mxq_group_list *glist;
 
-    glist = group_list_find_group(user->groups, group);
+    assert(ulist);
+    assert(group);
+
+    glist = _group_list_find_by_group(ulist->groups, group);
     if (!glist) {
-        return user_add_group(user, group);
+        return _user_list_add_group(ulist, group);
     }
 
     mxq_group_free_content(&glist->group);
+
     memcpy(&glist->group, group, sizeof(*group));
 
-    group_init(glist);
+    _group_list_init(glist);
 
     return glist;
 }
 
 /**********************************************************************/
 
-static struct mxq_group_list *server_update_groupdata(struct mxq_server *server, struct mxq_group *group)
+static struct mxq_group_list *server_update_group(struct mxq_server *server, struct mxq_group *group)
 {
-    struct mxq_user_list *user;
+    struct mxq_user_list *ulist;
 
-    user = user_list_find_uid(server->users, group->user_uid);
-    if (!user) {
-        return server_add_user(server, group);
+    ulist = _user_list_find_by_uid(server->users, group->user_uid);
+    if (!ulist) {
+        return _server_add_group(server, group);
     }
 
-    return user_update_groupdata(user, group);
+    return _user_list_update_group(ulist, group);
 }
 
 static void reset_signals()
@@ -1340,31 +1376,38 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list  *group,struc
     return(0);
 }
 
-unsigned long start_job(struct mxq_group_list *group)
+unsigned long start_job(struct mxq_group_list *glist)
 {
     struct mxq_server *server;
-    struct mxq_job mxqjob;
-    struct mxq_job_list *job;
+    struct mxq_job_list *jlist;
+
+    struct mxq_job _mxqjob;
+    struct mxq_job *job;
+
+    struct mxq_group *group;
+
     pid_t pid;
     int res;
 
-    assert(group);
-    assert(group->user);
-    assert(group->user->server);
+    assert(glist);
+    assert(glist->user);
+    assert(glist->user->server);
 
-    server = group->user->server;
+    server = glist->user->server;
+    group  = &glist->group;
+    job    = &_mxqjob;
 
-    res = mxq_load_job_from_group_for_server(server->mysql, &mxqjob, group->group.group_id, server->hostname, server->server_id, server->host_id);
-
+    res = mxq_load_job_from_group_for_server(server->mysql, job, group->group_id, server->hostname, server->server_id, server->host_id);
     if (!res) {
         return 0;
     }
     mx_log_info("   job=%s(%d):%lu:%lu :: new job loaded.",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
 
-    cpuset_init_job(&mxqjob.host_cpu_set,&server->cpu_set_available,&server->cpu_set_running,group->slots_per_job);
-    mxqjob.host_cpu_set_str=mx_cpuset_to_str(&mxqjob.host_cpu_set);
-    mx_log_info("job assigned cpus: [%s]",mxqjob.host_cpu_set_str);
+    cpuset_init_job(&job->host_cpu_set, &server->cpu_set_available, &server->cpu_set_running, glist->slots_per_job);
+    job->host_cpu_set_str = mx_cpuset_to_str(&job->host_cpu_set);
+
+    mx_log_info("job assigned cpus: [%s]", job->host_cpu_set_str);
 
     mx_mysql_disconnect(server->mysql);
 
@@ -1373,134 +1416,138 @@ unsigned long start_job(struct mxq_group_list *group)
         mx_log_err("fork: %m");
         return 0;
     } else if (pid == 0) {
-        mxqjob.host_pid = getpid();
+        job->host_pid = getpid();
 
         mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d pgrp=%d :: new child process forked.",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id,
-            mxqjob.host_pid, getpgrp());
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->host_pid,
+                    getpgrp());
 
-        res=reaper_process(server,group,&mxqjob);
+        res = reaper_process(server, glist, job);
         _exit(res<0 ? EX__MAX+1 : 0);
     }
 
-    gettimeofday(&mxqjob.stats_starttime, NULL);
+    gettimeofday(&job->stats_starttime, NULL);
 
     mx_mysql_connect_forever(&(server->mysql));
 
-    mxqjob.host_pid = pid;
-    mxqjob.host_slots = group->slots_per_job;
-    res = mxq_set_job_status_running(server->mysql, &mxqjob);
+    job->host_pid   = pid;
+    job->host_slots = glist->slots_per_job;
+    res = mxq_set_job_status_running(server->mysql, job);
     if (res < 0)
         mx_log_err("job=%s(%d):%lu:%lu mxq_job_update_status_running(): %m",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
     if (res == 0)
         mx_log_err("job=%s(%d):%lu:%lu  mxq_job_update_status_running(): Job not found.",
-            group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+            group->user_name, group->user_uid, group->group_id, job->job_id);
 
-    job = group_add_job(group, &mxqjob);
-    assert(job);
+    jlist = group_list_add_job(glist, job);
+    assert(jlist);
 
     mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
-        group->group.user_name, group->group.user_uid, group->group.group_id, mxqjob.job_id);
+        group->user_name, group->user_uid, group->group_id, job->job_id);
 
     return 1;
 }
 
 /**********************************************************************/
 
-unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_to_start)
+unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_to_start)
 {
     struct mxq_server *server;
-    struct mxq_group_list *group;
+    struct mxq_group_list *glist;
     struct mxq_group_list *gnext = NULL;
-    struct mxq_group *mxqgrp;
+    struct mxq_group *group;
 
     unsigned int prio;
     unsigned char started = 0;
     unsigned long slots_started = 0;
     int jobs_started = 0;
 
-    assert(user);
-    assert(user->server);
-    assert(user->groups);
+    assert(ulist);
+    assert(ulist->server);
+    assert(ulist->groups);
 
-    server = user->server;
-    group  = user->groups;
-    mxqgrp = &group->group;
+    server = ulist->server;
+    glist  = ulist->groups;
+    group  = &glist->group;
 
-    prio = mxqgrp->group_priority;
+    prio = group->group_priority;
 
     assert(slots_to_start <= server->slots - server->slots_running);
 
     mx_log_debug(" user=%s(%d) slots_to_start=%ld job_limit=%d :: trying to start jobs for user.",
-            mxqgrp->user_name, mxqgrp->user_uid, slots_to_start, job_limit);
+            group->user_name, group->user_uid, slots_to_start, job_limit);
 
-    for (group=user->groups; group && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); group=gnext) {
+    for (glist = ulist->groups; glist && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); glist = gnext) {
 
-        mxqgrp  = &group->group;
+        group  = &glist->group;
 
-        assert(group->jobs_running <= mxqgrp->group_jobs);
-        assert(group->jobs_running <= group->jobs_max);
+        assert(glist->jobs_running <= group->group_jobs);
+        assert(glist->jobs_running <= glist->jobs_max);
 
-        if (group->jobs_running == mxqgrp->group_jobs) {
-            gnext = group->next;
+        if (glist->jobs_running == group->group_jobs) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (group->jobs_running == group->jobs_max) {
-            gnext = group->next;
+        if (glist->jobs_running == glist->jobs_max) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (mxq_group_jobs_inq(mxqgrp) == 0) {
-            gnext = group->next;
+        if (mxq_group_jobs_inq(group) == 0) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (group->slots_per_job > slots_to_start) {
-            gnext = group->next;
+        if (glist->slots_per_job > slots_to_start) {
+            gnext = glist->next;
             if (!gnext && started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
             }
             continue;
         }
 
-        if (mxqgrp->group_priority < prio) {
+        if (group->group_priority < prio) {
             if (started) {
-                gnext = group->user->groups;
+                gnext = ulist->groups;
                 started = 0;
                 continue;
             }
-            prio = mxqgrp->group_priority;
+            prio = group->group_priority;
         }
         mx_log_info("  group=%s(%d):%lu slots_to_start=%ld slots_per_job=%lu :: trying to start job for group.",
-                mxqgrp->user_name, mxqgrp->user_uid, mxqgrp->group_id, slots_to_start, group->slots_per_job);
+                group->user_name, group->user_uid, group->group_id, slots_to_start, glist->slots_per_job);
 
-        if (start_job(group)) {
+        if (start_job(glist)) {
 
-            slots_to_start -= group->slots_per_job;
+            slots_to_start -= glist->slots_per_job;
             jobs_started++;
-            slots_started += group->slots_per_job;
+            slots_started += glist->slots_per_job;
 
             started = 1;
         }
 
-        gnext = group->next;
+        gnext = glist->next;
         if (!gnext && started) {
-            gnext = group->user->groups;
+            gnext = ulist->groups;
             started = 0;
         }
     }
@@ -1511,12 +1558,13 @@ unsigned long start_user(struct mxq_user_list *user, int job_limit, long slots_t
 
 unsigned long start_users(struct mxq_server *server)
 {
-    long slots_to_start;
     unsigned long slots_started;
-    int started = 0;
     unsigned long slots_started_total = 0;
+    long slots_to_start;
+    int started = 0;
 
-    struct mxq_user_list  *user, *unext=NULL;
+    struct mxq_user_list *ulist;
+    struct mxq_user_list *unext = NULL;
 
     assert(server);
 
@@ -1525,27 +1573,27 @@ unsigned long start_users(struct mxq_server *server)
 
     mx_log_debug("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users", server->slots - server->slots_running, server->user_cnt);
 
-    for (user=server->users; user; user=user->next) {
+    for (ulist = server->users; ulist; ulist = ulist->next) {
 
-        slots_to_start = server->slots / server->user_cnt - user->slots_running;
+        slots_to_start = server->slots / server->user_cnt - ulist->slots_running;
 
         if (slots_to_start < 0)
             continue;
 
-        if (server->slots - server->slots_running < slots_to_start)
-            slots_to_start = server->slots - server->slots_running;
+        if (slots_to_start > (server->slots - server->slots_running))
+            slots_to_start = (server->slots - server->slots_running);
 
-        slots_started = start_user(user, 0, slots_to_start);
+        slots_started = start_user(ulist, 0, slots_to_start);
         slots_started_total += slots_started;
     }
 
-    for (user=server->users; user && server->slots - server->slots_running; user=unext) {
+    for (ulist = server->users; ulist && server->slots - server->slots_running; ulist = unext) {
         slots_to_start = server->slots - server->slots_running;
-        slots_started  = start_user(user, 1, slots_to_start);
+        slots_started  = start_user(ulist, 1, slots_to_start);
         slots_started_total += slots_started;
         started = (started || slots_started);
 
-        unext = user->next;
+        unext = ulist->next;
         if (!unext && started) {
             unext = server->users;
             started = 0;
@@ -1557,58 +1605,68 @@ unsigned long start_users(struct mxq_server *server)
 
 /**********************************************************************/
 
-int remove_orphaned_groups(struct mxq_server *server)
+int remove_orphaned_group_lists(struct mxq_server *server)
 {
-    struct mxq_user_list  *user,  *unext, *uprev;
-    struct mxq_group_list *group, *gnext, *gprev;
+    struct mxq_user_list  *ulist, *unext, *uprev;
+    struct mxq_group_list *glist, *gnext, *gprev;
+
+    struct mxq_group *group;
+
     int cnt=0;
 
-    for (user=server->users, uprev=NULL; user; user=unext) {
-        unext = user->next;
-        for (group=user->groups, gprev=NULL; group; group=gnext) {
-            gnext = group->next;
+    for (ulist = server->users, uprev = NULL; ulist; ulist = unext) {
+        unext = ulist->next;
 
-            if (group->job_cnt) {
-                gprev = group;
+        for (glist = ulist->groups, gprev = NULL; glist; glist = gnext) {
+            gnext = glist->next;
+            group = &glist->group;
+
+            if (glist->job_cnt) {
+                gprev = glist;
                 continue;
             }
 
-            assert(!group->jobs);
+            assert(!glist->jobs);
 
-            if (!group->orphaned && mxq_group_jobs_active(&group->group)) {
-                group->orphaned = 1;
-                gprev = group;
+            if (!glist->orphaned && mxq_group_jobs_active(group)) {
+                glist->orphaned = 1;
+                gprev = glist;
                 continue;
             }
 
             if (gprev) {
                 gprev->next = gnext;
             } else {
-                assert(group == user->groups);
-                user->groups = gnext;
+                assert(glist == ulist->groups);
+                ulist->groups = gnext;
             }
 
-            mx_log_info("group=%s(%d):%lu : Removing orphaned group.", group->group.user_name, group->group.user_uid, group->group.group_id);
+            mx_log_info("group=%s(%d):%lu : Removing orphaned group.",
+                        group->user_name,
+                        group->user_uid,
+                        group->group_id);
 
-            user->group_cnt--;
+            ulist->group_cnt--;
             server->group_cnt--;
             cnt++;
-            mxq_group_free_content(&group->group);
-            mx_free_null(group);
+            mxq_group_free_content(group);
+            mx_free_null(glist);
         }
-        if(user->groups) {
-            uprev = user;
+
+        if(ulist->groups) {
+            uprev = ulist;
             continue;
         }
 
         if (uprev) {
             uprev->next = unext;
         } else {
-            assert(user == server->users);
+            assert(ulist == server->users);
             server->users = unext;
         }
+
         server->user_cnt--;
-        mx_free_null(user);
+        mx_free_null(ulist);
 
         mx_log_info("Removed orphaned user. %lu users left.", server->user_cnt);
     }
@@ -1617,55 +1675,80 @@ int remove_orphaned_groups(struct mxq_server *server)
 
 void server_dump(struct mxq_server *server)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
 
     if (!server->user_cnt)
         return;
 
     mx_log_info("====================== SERVER DUMP START ======================");
-    for (user=server->users; user; user=user->next) {
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        if (!ulist->groups) {
+            mx_log_fatal("BUG: missing group in userlist.");
+            continue;
+        }
+        group = &ulist->groups[0].group;
         mx_log_info("    user=%s(%d) slots_running=%lu",
-            user->groups->group.user_name, user->groups->group.user_uid,
-            user->slots_running);
-        for (group=user->groups; group; group=group->next) {
+                group->user_name,
+                group->user_uid,
+                ulist->slots_running);
+
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
             mx_log_info("        group=%s(%d):%lu %s jobs_in_q=%lu",
-                group->group.user_name, group->group.user_uid, group->group.group_id,
-                group->group.group_name, mxq_group_jobs_inq(&group->group));
-            for (job=group->jobs; job; job=job->next) {
+                group->user_name,
+                group->user_uid,
+                group->group_id,
+                group->group_name,
+                mxq_group_jobs_inq(group));
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
                 mx_log_info("            job=%s(%d):%lu:%lu %s",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
-                    job->job.job_argv_str);
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    job->job_argv_str);
             }
         }
     }
 
-    mx_log_info("memory_used=%lu memory_total=%lu", server->memory_used, server->memory_total);
-    mx_log_info("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu", server->slots_running, server->slots, server->threads_running, server->jobs_running);
-    cpuset_log("cpu set running",&server->cpu_set_running);
+    mx_log_info("memory_used=%lu memory_total=%lu",
+                server->memory_used,
+                server->memory_total);
+    mx_log_info("slots_running=%lu slots=%lu threads_running=%lu jobs_running=%lu",
+                server->slots_running,
+                server->slots,
+                server->threads_running,
+                server->jobs_running);
+    cpuset_log("cpu set running",
+                &server->cpu_set_running);
     mx_log_info("====================== SERVER DUMP END ======================");
 }
 
 void server_close(struct mxq_server *server)
 {
-    struct mxq_user_list  *user,  *unext;
-    struct mxq_group_list *group, *gnext;
-    struct mxq_job_list   *job,   *jnext;
+    struct mxq_user_list  *ulist, *unext;
+    struct mxq_group_list *glist, *gnext;
+    struct mxq_job_list   *jlist, *jnext;
 
-    for (user=server->users; user; user=unext) {
-        for (group=user->groups; group; group=gnext) {
-            for (job=group->jobs; job; job=jnext) {
-                jnext = job->next;
-                mxq_job_free_content(&job->job);
-                free(job);
+    for (ulist = server->users; ulist; ulist = unext) {
+        for (glist = ulist->groups; glist; glist = gnext) {
+            for (jlist = glist->jobs; jlist; jlist = jnext) {
+                jnext = jlist->next;
+                mxq_job_free_content(&jlist->job);
+                mx_free_null(jlist);
             }
-            gnext = group->next;
-            mxq_group_free_content(&group->group);
-            free(group);
+            gnext = glist->next;
+            mxq_group_free_content(&glist->group);
+            mx_free_null(glist);
         }
-        unext = user->next;
-        free(user);
+        unext = ulist->next;
+        mx_free_null(ulist);
     }
 
     if (server->pidfilename)
@@ -1680,22 +1763,29 @@ void server_close(struct mxq_server *server)
 
 int killall(struct mxq_server *server, int sig, unsigned int pgrp)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
+
     pid_t pid;
 
     assert(server);
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            for (job=group->jobs; job; job=job->next) {
-                pid = job->job.host_pid;
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
+
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                pid = job->host_pid;
                 if (pgrp)
                     pid = -pid;
                 mx_log_info("Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
                     sig,
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    group->user_name, group->user_uid, group->group_id, job->job_id,
                     pgrp?"pgrp":"pid", pid);
                 kill(pid, sig);
             }
@@ -1706,9 +1796,12 @@ int killall(struct mxq_server *server, int sig, unsigned int pgrp)
 
 int killall_over_time(struct mxq_server *server)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
 
     struct timeval now;
     struct timeval delta;
@@ -1727,54 +1820,58 @@ int killall_over_time(struct mxq_server *server)
 
     gettimeofday(&now, NULL);
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            for (job=group->jobs; job; job=job->next) {
-                timersub(&now, &job->job.stats_starttime, &delta);
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
 
-                if (delta.tv_sec <= group->group.job_time*60)
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+
+                timersub(&now, &job->stats_starttime, &delta);
+
+                if (delta.tv_sec <= group->job_time*60)
                     continue;
 
-                pid = job->job.host_pid;
+                pid = job->host_pid;
 
-                if (delta.tv_sec <= group->group.job_time*61) {
+                if (delta.tv_sec <= group->job_time*61) {
                     mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pid=%d",
-                        group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                        group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                     kill(pid, SIGXCPU);
                     continue;
                 }
 
                 mx_log_info("killall_over_time(): Sending signal=XCPU to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGXCPU);
 
-                if (delta.tv_sec <= group->group.job_time*63)
+                if (delta.tv_sec <= group->job_time*63)
                     continue;
 
                 mx_log_info("killall_over_time(): Sending signal=TERM to job=%s(%d):%lu:%lu pid=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(pid, SIGTERM);
 
                 mx_log_info("killall_over_time(): Sending signal=HUP to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGHUP);
 
-                if (delta.tv_sec <= group->group.job_time*64)
+                if (delta.tv_sec <= group->job_time*64)
                     continue;
 
                 mx_log_info("killall_over_time(): Sending signal=TERM to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGTERM);
 
-                if (delta.tv_sec <= group->group.job_time*66)
+                if (delta.tv_sec <= group->job_time*66)
                     continue;
 
                 mx_log_info("killall_over_time(): Sending signal=KILL to job=%s(%d):%lu:%lu pid=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(pid, SIGKILL);
 
                 mx_log_info("killall_over_time(): Sending signal=KILL to job=%s(%d):%lu:%lu pgrp=%d",
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id, pid);
+                    group->user_name, group->user_uid, group->group_id, job->job_id, pid);
                 kill(-pid, SIGKILL);
             }
         }
@@ -1845,31 +1942,39 @@ int killall_over_memory(struct mxq_server *server)
     return 0;
 }
 
-int killallcancelled(struct mxq_server *server, int sig, unsigned int pgrp)
+int killall_cancelled(struct mxq_server *server, int sig, unsigned int pgrp)
 {
-    struct mxq_user_list  *user;
-    struct mxq_group_list *group;
-    struct mxq_job_list   *job;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_group *group;
+    struct mxq_job   *job;
+
     pid_t pid;
 
     assert(server);
 
-    for (user=server->users; user; user=user->next) {
-        for (group=user->groups; group; group=group->next) {
-            if (group->group.group_status != MXQ_GROUP_STATUS_CANCELLED)
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
+
+            if (group->group_status != MXQ_GROUP_STATUS_CANCELLED)
                 continue;
 
-            if (group->jobs)
+            if (glist->jobs)
                 mx_log_debug("Cancelling all running jobs in group=%s(%d):%lu",
-                    group->group.user_name, group->group.user_uid, group->group.group_id);
+                    group->user_name, group->user_uid, group->group_id);
 
-            for (job=group->jobs; job; job=job->next) {
-                pid = job->job.host_pid;
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+
+                pid = job->host_pid;
                 if (pgrp)
                     pid = -pid;
                 mx_log_info("  Sending signal=%d to job=%s(%d):%lu:%lu %s=%d",
                     sig,
-                    group->group.user_name, group->group.user_uid, group->group.group_id, job->job.job_id,
+                    group->user_name, group->user_uid, group->group_id, job->job_id,
                     pgrp?"pgrp":"pid", pid);
                 kill(pid, sig);
             }
@@ -2013,7 +2118,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
 
     mx_log_info("job finished (via fspool) : job %d pid %d status %d",job_id,pid,status);
 
-    job = server_remove_job_by_pid(server, pid);
+    job = server_remove_job_list_by_pid(server, pid);
     if (!job) {
         mx_log_warning("fspool_process_file: %s : job unknown on server",filename);
         return(-1);
@@ -2111,29 +2216,41 @@ static int fspool_file_exists(struct mxq_server *server,uint64_t job_id) {
 
 static int lost_scan_one(struct mxq_server *server)
 {
-    struct mxq_user_list  *user_list;
-    struct mxq_group_list *group_list;
-    struct mxq_job_list   *job_list;
+    struct mxq_user_list  *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_job_list   *jlist;
+
+    struct mxq_job *job;
+
     int res;
 
-    for (user_list=server->users;user_list;user_list=user_list->next)
-        for (group_list=user_list->groups;group_list;group_list=group_list->next)
-            for (job_list=group_list->jobs;job_list;job_list=job_list->next) {
-                res=kill(job_list->job.host_pid,0);
-                if (res<0) {
-                    if (errno==ESRCH) {
-                        if (!fspool_file_exists(server,job_list->job.job_id)) {
-                            mx_log_warning("pid %u: process is gone. cancel job %d",job_list->job.host_pid,job_list->job.job_id);
-                            server_remove_job_by_pid(server, job_list->job.host_pid);
-                            job_list->job.job_status=MXQ_JOB_STATUS_UNKNOWN;
-                            job_is_lost(server,&group_list->group,job_list);
-                            return 1;
-                        }
-                    } else {
-                        return -errno;
-                    }
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            for (jlist = glist->jobs; jlist; jlist = jlist->next) {
+                job = &jlist->job;
+                res = kill(job->host_pid, 0);
+                if (res >= 0)
+                    continue;
+
+                /* PID is not */
+
+                if (errno != ESRCH)
+                    return -errno;
+
+                if (!fspool_file_exists(server, job->job_id)) {
+                    mx_log_warning("pid %u: process is gone. cancel job %d",
+                                jlist->job.host_pid,
+                                jlist->job.job_id);
+                    server_remove_job_list_by_pid(server, job->host_pid);
+
+                    job->job_status = MXQ_JOB_STATUS_UNKNOWN;
+
+                    job_is_lost(server, &glist->group, jlist);
+                    return 1;
                 }
             }
+        }
+    }
     return 0;
 }
 
@@ -2153,61 +2270,64 @@ static int lost_scan(struct mxq_server *server)
 
 static int server_reload_running(struct mxq_server *server)
 {
-    int job_cnt;
-    struct mxq_job *jobs;
-    int j;
+    _mx_cleanup_free_ struct mxq_job *jobs = NULL;
 
-    struct mxq_job_list   *mxq_job_list;
-    struct mxq_group_list *mxq_group_list;
-    struct mxq_user_list  *mxq_user_list;
+    struct mxq_job_list   *jlist;
+    struct mxq_group_list *glist;
+    struct mxq_user_list  *ulist;
+
+    struct mxq_group *grps = NULL;
+    struct mxq_group *group;
+    struct mxq_job   *job;
 
     int group_cnt;
+    int job_cnt;
 
-    job_cnt=mxq_load_jobs_running_on_server(server->mysql,&jobs,server->hostname,server->server_id);
-    if (job_cnt<0)
+    int j;
+
+    job_cnt = mxq_load_jobs_running_on_server(server->mysql, &jobs, server->hostname, server->server_id);
+    if (job_cnt < 0)
         return job_cnt;
-    for (j=0;j<job_cnt;j++) {
-        struct mxq_job *job=&jobs[j];
 
-        job->stats_starttime.tv_sec=job->date_start;
+    for (j=0; j < job_cnt; j++) {
+        job = &jobs[j];
 
-        mxq_job_list=server_find_job(server,job->job_id);
-        if (!mxq_job_list) {
-            mxq_group_list=server_find_group(server,job->group_id);
-            if (!mxq_group_list) {
-                struct mxq_group *groups=NULL;
-                struct mxq_group *group;
-                group_cnt=mxq_load_group(server->mysql,&groups,job->group_id);
-                if (group_cnt!=1)
+        job->stats_starttime.tv_sec = job->date_start;
+
+        jlist = server_get_job_list_by_job_id(server, job->job_id);
+        if (!jlist) {
+            glist = server_get_group_list_by_group_id(server, job->group_id);
+            if (!glist) {
+                group_cnt = mxq_load_group(server->mysql, &grps, job->group_id);
+                if (group_cnt != 1)
                     continue;
-                group=&groups[0];
-                mxq_user_list=server_find_user(server,group->user_uid);
-                if (!mxq_user_list) {
-                    mxq_group_list=server_add_user(server,group);
+                group = &grps[0];
+                ulist = server_find_user_by_uid(server, group->user_uid);
+                if (!ulist) {
+                    glist = _server_add_group(server, group);
                 } else {
-                    mxq_group_list=user_add_group(mxq_user_list,group);
+                    glist = _user_list_add_group(ulist, group);
                 }
-                free(groups);
+                mx_free_null(grps);
             }
-            mxq_job_list=mxq_group_list->jobs;
+            jlist = glist->jobs;
         }
-        group_add_job(mxq_group_list,job);
+        group_list_add_job(glist, job);
     }
-
-    free(jobs);
     return job_cnt;
 }
 
-int catchall(struct mxq_server *server) {
+int catchall(struct mxq_server *server)
+{
+    struct mxq_job_list *jlist;
+    struct mxq_job *job;
+    struct mxq_group *group;
 
     struct rusage rusage;
     struct timeval now;
     int status;
     pid_t pid;
     int cnt = 0;
-    struct mxq_job_list *job;
-    struct mxq_job *j;
-    struct mxq_group *g;
     int res;
 
     while (1) {
@@ -2230,22 +2350,34 @@ int catchall(struct mxq_server *server) {
 
         assert(siginfo.si_pid > 1);
 
-        job = server_find_job_by_pid(server,siginfo.si_pid);
-        if (!job) {
+        jlist = server_get_job_list_by_pid(server, siginfo.si_pid);
+        if (!jlist) {
             mx_log_warning("unknown pid returned.. si_pid=%d si_uid=%d si_code=%d si_status=%d getpgid(si_pid)=%d getsid(si_pid)=%d",
-                siginfo.si_pid, siginfo.si_uid, siginfo.si_code, siginfo.si_status,
-                getpgid(siginfo.si_pid), getsid(siginfo.si_pid));
-            pid = waitpid(siginfo.si_pid, &status, WNOHANG);
+                            siginfo.si_pid,
+                            siginfo.si_uid,
+                            siginfo.si_code,
+                            siginfo.si_status,
+                            getpgid(siginfo.si_pid),
+                            getsid(siginfo.si_pid));
+            /* collect child, ignore status */
+            pid = waitpid(siginfo.si_pid, NULL, WNOHANG);
             if (pid != siginfo.si_pid)
                 mx_log_err("FIX ME BUG!!! pid=%d errno=%d (%m)", pid, errno);
             continue;
         }
-        if (fspool_file_exists(server,job->job.job_id)) {
+
+        assert(jlist);
+        assert(jlist->group);
+
+        job   = &jlist->job;
+        group = &jlist->group->group;
+
+        if (fspool_file_exists(server, job->job_id)) {
             waitpid(siginfo.si_pid, &status, WNOHANG);
             continue;
         }
         mx_log_err("reaper died. status=%d. Cleaning up job from catchall.",status);
-        server_remove_job(job);
+        job_list_remove_self(jlist);
 
         /* reap child and save new state */
         pid = wait4(siginfo.si_pid, &status, WNOHANG, &rusage);
@@ -2264,50 +2396,59 @@ int catchall(struct mxq_server *server) {
 
         gettimeofday(&now, NULL);
 
-        j = &job->job;
-        assert(job->group);
-        g = &job->group->group;
 
-        timersub(&now, &j->stats_starttime, &j->stats_realtime);
-        j->stats_max_sumrss = job->max_sum_rss;
-        j->stats_status = status;
-        j->stats_rusage = rusage;
+        timersub(&now, &job->stats_starttime, &job->stats_realtime);
+        job->stats_max_sumrss = jlist->max_sum_rss;
+        job->stats_status = status;
+        job->stats_rusage = rusage;
 
         mx_log_info("   job=%s(%d):%lu:%lu host_pid=%d stats_status=%d :: child process returned.",
-                g->user_name, g->user_uid, g->group_id, j->job_id, pid, status);
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    job->job_id,
+                    pid,
+                    status);
 
-        fspool_unlink(server,j->job_id);
+        fspool_unlink(server, job->job_id);
 
-        cnt+=job_has_finished(server,g,job);
-
+        cnt += job_has_finished(server, group, jlist);
     }
 
     return cnt;
 }
 
-int load_groups(struct mxq_server *server) {
-    struct mxq_group *mxqgroups = NULL;
-    struct mxq_group_list *group;
-    int group_cnt;
+int load_groups(struct mxq_server *server)
+{
+    struct mxq_group_list *glist;
+    struct mxq_group *grps;
+    struct mxq_group *group;
+
+    int grp_cnt;
     int total;
     int i;
 
-    if (RUNNING_AS_ROOT)
-        group_cnt = mxq_load_running_groups(server->mysql, &mxqgroups);
-    else
-        group_cnt = mxq_load_running_groups_for_user(server->mysql, &mxqgroups, getuid());
+    assert(server);
 
-    for (i=0, total=0; i<group_cnt; i++) {
-        group = server_update_groupdata(server, &mxqgroups[group_cnt-i-1]);
-        if (!group) {
+    grps = NULL;
+
+    if (RUNNING_AS_ROOT)
+        grp_cnt = mxq_load_running_groups(server->mysql, &grps);
+    else
+        grp_cnt = mxq_load_running_groups_for_user(server->mysql, &grps, getuid());
+
+    for (i=0, total=0; i < grp_cnt; i++) {
+        group = &grps[grp_cnt-i-1];
+        glist = server_update_group(server, group);
+        if (!glist) {
             mx_log_err("Could not add Group to control structures.");
         } else {
             total++;
         }
     }
-    free(mxqgroups);
+    free(grps);
 
-    remove_orphaned_groups(server);
+    remove_orphaned_group_lists(server);
 
     return total;
 }
@@ -2453,8 +2594,7 @@ int main(int argc, char *argv[])
         if (group_cnt)
            mx_log_debug("group_cnt=%d :: %d Groups loaded", group_cnt, group_cnt);
 
-        killallcancelled(&server, SIGTERM, 0);
-        killallcancelled(&server, SIGINT, 0);
+        killall_cancelled(&server, SIGTERM, 0);
         killall_over_time(&server);
         killall_over_memory(&server);
 
@@ -2504,8 +2644,7 @@ int main(int argc, char *argv[])
             if (global_sigint_cnt)
                 killall(&server, SIGTERM, 1);
 
-            killallcancelled(&server, SIGTERM, 0);
-            killallcancelled(&server, SIGINT, 0);
+            killall_cancelled(&server, SIGTERM, 0);
             killall_over_time(&server);
             killall_over_memory(&server);
             mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
