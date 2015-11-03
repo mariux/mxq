@@ -58,6 +58,7 @@ volatile sig_atomic_t global_sigterm_cnt=0;
 volatile sig_atomic_t global_sigquit_cnt=0;
 
 int mxq_redirect_output(char *stdout_fname, char *stderr_fname);
+void server_free(struct mxq_server *server);
 
 static void print_usage(void)
 {
@@ -1060,8 +1061,15 @@ unsigned long start_job(struct mxq_group_list *glist)
                     getpgrp());
 
         mx_log_info("starting reaper process.");
+        mx_mysql_finish(&server->mysql);
 
         res = reaper_process(server, glist, job);
+
+        mxq_job_free_content(job);
+
+        mx_log_info("shutting down reaper, bye bye.");
+        mx_log_finish();
+        server_free(server);
         _exit(res<0 ? EX__MAX+1 : 0);
     }
 
@@ -1365,7 +1373,7 @@ void server_dump(struct mxq_server *server)
     mx_log_info("====================== SERVER DUMP END ======================");
 }
 
-void server_close(struct mxq_server *server)
+void server_free(struct mxq_server *server)
 {
     struct mxq_user_list  *ulist, *unext;
     struct mxq_group_list *glist, *gnext;
@@ -1386,14 +1394,21 @@ void server_close(struct mxq_server *server)
         mx_free_null(ulist);
     }
 
+    mx_free_null(server->boot_id);
+    mx_free_null(server->host_id);
+    mx_free_null(server->finished_jobsdir);
+    mx_flock_free(server->flock);
+}
+
+void server_close(struct mxq_server *server)
+{
     if (server->pidfilename)
         unlink(server->pidfilename);
 
     mx_funlock(server->flock);
+    server->flock = NULL;
 
-    mx_free_null(server->boot_id);
-    mx_free_null(server->host_id);
-    mx_free_null(server->finished_jobsdir);
+    server_free(server);
 }
 
 int killall(struct mxq_server *server, int sig, unsigned int pgrp)
