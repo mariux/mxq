@@ -1696,12 +1696,6 @@ static char *fspool_get_filename (struct mxq_server *server,long unsigned int jo
     return fspool_filename;
 }
 
-void fspool_unlink(struct mxq_server *server,int job_id) {
-    char *fspool_filename=fspool_get_filename(server,job_id);
-    unlink(fspool_filename);
-    free(fspool_filename);
-}
-
 static int fspool_process_file(struct mxq_server *server,char *filename,int job_id) {
     FILE *in;
     int res;
@@ -1777,7 +1771,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
     job->stats_rusage   = rusage;
 
     job_has_finished(server, group, jlist);
-    fspool_unlink(server,job_id);
+    unlink(filename);
     return(0);
 }
 
@@ -2042,8 +2036,6 @@ int catchall(struct mxq_server *server)
                     job->job_id,
                     pid,
                     status);
-
-        fspool_unlink(server, job->job_id);
 
         cnt += job_has_finished(server, group, jlist);
     }
