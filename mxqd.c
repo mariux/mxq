@@ -1899,19 +1899,15 @@ static int lost_scan(struct mxq_server *server)
 }
 
 
-static int server_reload_running(struct mxq_server *server)
+static int load_running_jobs(struct mxq_server *server)
 {
     _mx_cleanup_free_ struct mxq_job *jobs = NULL;
 
     struct mxq_job_list   *jlist;
     struct mxq_group_list *glist;
-    struct mxq_user_list  *ulist;
 
-    struct mxq_group *grps = NULL;
-    struct mxq_group *group;
     struct mxq_job   *job;
 
-    int group_cnt;
     int job_cnt;
 
     int j;
@@ -1926,24 +1922,17 @@ static int server_reload_running(struct mxq_server *server)
         job->stats_starttime.tv_sec = job->date_start;
 
         jlist = server_get_job_list_by_job_id(server, job->job_id);
-        if (!jlist) {
-            glist = server_get_group_list_by_group_id(server, job->group_id);
-            if (!glist) {
-                group_cnt = mxq_load_group(server->mysql, &grps, job->group_id);
-                if (group_cnt != 1)
-                    continue;
-                group = &grps[0];
-                ulist = server_find_user_by_uid(server, group->user_uid);
-                if (!ulist) {
-                    glist = _server_add_group(server, group);
-                } else {
-                    glist = _user_list_add_group(ulist, group);
-                }
-                mx_free_null(grps);
-            }
-            jlist = glist->jobs;
+        if (jlist)
+            continue;
+
+        glist = server_get_group_list_by_group_id(server, job->group_id);
+        if (!glist) {
+            mx_log_fatal("BUG17: group %lu of job %lu not loaded. skipping job.",
+                        job->group_id, job->job_id);
+            return -(errno=EUCLEAN);
+        } else {
+            group_list_add_job(glist, job);
         }
-        group_list_add_job(glist, job);
     }
     return job_cnt;
 }
@@ -2102,12 +2091,15 @@ int recover_from_previous_crash(struct mxq_server *server)
         mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: unassigned %d jobs.",
             server->hostname, server->server_id, res);
 
-    res=server_reload_running(server);
-    if (res<0) {
-        mx_log_err("recover: server_reload_running: %m");
+    res = load_running_groups(server);
+    mx_log_info("recover: %d running groups loaded.", res);
+
+    res = load_running_jobs(server);
+    if (res < 0) {
+        mx_log_err("recover: load_running_jobs: %m");
         return res;
     }
-    if (res>0)
+    if (res > 0)
         mx_log_info("recover: reload %d running jobs from database", res);
 
     res=fspool_scan(server);
