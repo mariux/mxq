@@ -356,6 +356,7 @@ host_id          : $o{host_id}
 host_hostname    : $o{host_hostname}
 host_pid         : $o{host_pid}
 host_slots       : $o{host_slots}
+host_cpu_set     : $o{host_cpu_set}
 
 date_submit      : $o{date_submit}
 date_start       : $o{date_start} $ago
