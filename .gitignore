@@ -14,8 +14,11 @@ mxqkill.o
 test_mx_util.o
 test_mx_log.o
 test_mx_mysql.o
+test_mxqd_control.o
 mxq_log.o
 mx_mysql.o
+mxqd_control.o
+
 
 mxqsub
 /mxqsub.1
@@ -26,7 +29,8 @@ mxqd
 mxqps
 test_mx_util
 test_mx_log
-test_mx_mysql
+test_mx_mysq
+test_mxqd_control
 
 /web/pages/mxq/mxq
 web/lighttpd.conf

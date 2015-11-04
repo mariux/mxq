@@ -11,8 +11,8 @@
 
 #include <ctype.h>
 
-//#include <sys/types.h>
-//#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 
 #include "mx_log.h"
@@ -1271,4 +1271,31 @@ char *mx_cpuset_to_str(cpu_set_t* cpuset_ptr)
     out=mx_strvec_join(",",strvec);
     mx_strvec_free(strvec);
     return out;
+}
+
+int mx_mkdir_p(char *path, mode_t mode)
+{
+    struct stat st;
+    int err;
+    char *d;
+    _mx_cleanup_free_ char *copy = NULL;
+
+    if (stat(path, &st) == 0)
+        return 0;
+
+    copy=mx_strdup_forever(path);
+    d=copy;
+
+    while (*++d == '/');
+
+    while ((d = strchr(d, '/'))) {
+        *d = '\0';
+        err = stat(copy, &st) && mkdir(copy, mode);
+        *d++ = '/';
+        if (err)
+           return -errno;
+        while (*d == '/')
+            ++d;
+    }
+    return (stat(copy, &st) && mkdir(copy, mode)) ? -errno : 0;
 }

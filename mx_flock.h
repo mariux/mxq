@@ -10,5 +10,6 @@ struct mx_flock {
 
 struct mx_flock *mx_flock(int operation, char *fmt, ...);
 int mx_funlock(struct mx_flock *lock);
+void mx_flock_free(struct mx_flock *lock);
 
 #endif

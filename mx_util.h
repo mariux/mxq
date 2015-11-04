@@ -162,4 +162,7 @@ char*  mx_strvec_join(char *sep,char **strvec);
 char* mx_cpuset_to_str(cpu_set_t* cpuset_ptr);
 int   mx_str_to_cpuset(cpu_set_t* cpuset_ptr,char *str);
 
+int mx_mkdir_p(char *path, mode_t mode);
+
+
 #endif

@@ -58,11 +58,7 @@ static inline void _flock_free(struct mx_flock *lock)
     if (!lock)
         return;
 
-    if (lock->fname)
-        mx_free_null(lock->fname);
-
-    if (lock->fd >= 0)
-        _flock_close(lock);
+    mx_free_null(lock->fname);
 
     free(lock);
 }
@@ -112,6 +108,7 @@ struct mx_flock *mx_flock(int operation, char *fmt, ...)
             if (errno == EWOULDBLOCK)
                 return lock;
             mx_log_err("flock(): %m");
+            _flock_close(lock);
             _flock_free(lock);
             return NULL;
         }
@@ -154,4 +151,9 @@ int mx_funlock(struct mx_flock *lock)
     _flock_free(lock);
 
     return res;
+}
+
+void mx_flock_free(struct mx_flock *lock)
+{
+    _flock_free(lock);
 }

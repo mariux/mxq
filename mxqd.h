@@ -2,6 +2,10 @@
 #define __MXQ_SERVER_H__ 1
 
 #include "mx_mysql.h"
+
+#include "mxq_job.h"
+#include "mxq_group.h"
+
 #include <sched.h>
 
 struct mxq_job_list {
@@ -11,8 +15,6 @@ struct mxq_job_list {
     struct mxq_job job;
 
     unsigned long long int max_sum_rss;
-
-    pid_t pid;
 };
 
 struct mxq_group_list {
@@ -81,6 +83,7 @@ struct mxq_server {
     char *hostname;
     char *server_id;
     char *pidfilename;
+    char *finished_jobsdir;
     struct mx_flock *flock;
 
     char *initial_path;
