@@ -362,7 +362,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     while ((opt=mx_getopt(&optctl, &i)) != MX_GETOPT_END) {
         if (opt == MX_GETOPT_ERROR) {
-            exit(EX_USAGE);
+            return -EX_USAGE;
         }
 
         switch (opt) {
@@ -397,16 +397,16 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 'V':
                 mxq_print_generic_version();
-                exit(EX_USAGE);
+                return -EX_USAGE;
 
             case 'h':
                 print_usage();
-                exit(EX_USAGE);
+                return -EX_USAGE;
 
             case 'j':
                 if (mx_strtoul(optctl.optarg, &arg_threads_total) < 0) {
                     mx_log_err("Invalid argument supplied for option --slots '%s': %m", optctl.optarg);
-                    exit(1);
+                    return -EX_USAGE;
                 }
                 break;
 
@@ -416,7 +416,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
                         mx_log_err("Invalid argument supplied for option --memory '%s': %m", optctl.optarg);
-                        exit(1);
+                        return -EX_USAGE;
                     }
                     arg_memory_total = bytes/1024/1024;
                 }
@@ -430,7 +430,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
                         mx_log_err("Invalid argument supplied for option --max-memory-per-slot '%s': %m", optctl.optarg);
-                        exit(1);
+                        return -EX_USAGE;
                     }
                     arg_memory_max = bytes/1024/1024;
                 }
@@ -462,7 +462,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     if (arg_daemonize && arg_nolog) {
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
-        exit(EX_USAGE);
+        return -EX_USAGE;
     }
 
     memset(server, 0, sizeof(*server));
@@ -475,26 +475,27 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
     server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
     if (!server->flock) {
-        return -1;
+        mx_log_err("mx_flock(/dev/shm/mxqd.%s.%s.lck) failed: %m", server->hostname, server->server_id);
+        return -EX_UNAVAILABLE;
     }
 
     if (!server->flock->locked) {
         mx_log_err("MXQ Server '%s' on host '%s' is already running. Exiting.", server->server_id, server->hostname);
-        exit(2);
+        return -EX_UNAVAILABLE;
     }
 
     mx_asprintf_forever(&server->finished_jobsdir,"%s/%s",MXQ_FINISHED_JOBSDIR,server->server_id);
     res=mx_mkdir_p(server->finished_jobsdir,0700);
     if (res<0) {
         mx_log_err("MAIN: mkdir %s failed: %m. Exiting.",MXQ_FINISHED_JOBSDIR);
-        exit(EX_IOERR);
+        return -EX_IOERR;
     }
 
     if (arg_daemonize) {
         res = daemon(0, 1);
         if (res == -1) {
             mx_log_err("MAIN: daemon(0, 1) failed: %m. Exiting.");
-            exit(EX_UNAVAILABLE);
+            return -EX_OSERR;
         }
     }
 
@@ -502,7 +503,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         res = write_pid_to_file(arg_pidfile);
         if (res < 0) {
             mx_log_err("MAIN: pidfile (%s) setup failed: %m.  Exiting.", arg_pidfile);
-            exit(EX_IOERR);
+            return -EX_IOERR;
         }
 
         server->pidfilename = arg_pidfile;
@@ -511,7 +512,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     res = prctl(PR_SET_CHILD_SUBREAPER, 1);
     if (res == -1) {
         mx_log_err("MAIN: prctl(PR_SET_CHILD_SUBREAPER) setup failed: %m.  Exiting.");
-        exit(EX_IOERR);
+        return -EX_OSERR;
     }
 
     setup_stdin("/dev/null");
@@ -524,14 +525,14 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             if (!RUNNING_AS_ROOT)
                 mx_log_warning("Running mxqd as non-root user.");
             mx_log_err("MAIN: can't write to '%s': %m", arg_logdir);
-            exit(EX_IOERR);
+            return -EX_IOERR;
         }
         res = setup_cronolog("/usr/sbin/cronolog", arg_logdir, "mxqd_log", "%Y/mxqd_log-%Y-%m");
         if (!res) {
             if (!RUNNING_AS_ROOT)
                 mx_log_warning("Running mxqd as non-root user.");
             mx_log_err("MAIN: cronolog setup failed. exiting.");
-            exit(EX_IOERR);
+            return -EX_IOERR;
         }
     }
 
@@ -564,7 +565,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     res = cpuset_init(server);
     if (res < 0) {
         mx_log_err("MAIN: cpuset_init() failed. exiting.");
-        exit(1);
+        return -EX_OSERR;
     }
     server->memory_total = arg_memory_total;
     server->memory_max_per_slot = arg_memory_max;
@@ -581,7 +582,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (server->memory_max_per_slot > server->memory_total)
         server->memory_max_per_slot = server->memory_total;
 
-    return 1;
+    return 0;
 }
 
 static void reset_signals()
@@ -1398,6 +1399,8 @@ void server_free(struct mxq_server *server)
     mx_free_null(server->host_id);
     mx_free_null(server->finished_jobsdir);
     mx_flock_free(server->flock);
+
+    mx_log_finish();
 }
 
 void server_close(struct mxq_server *server)
@@ -2192,8 +2195,8 @@ int main(int argc, char *argv[])
 
     res = server_init(server, argc, argv);
     if (res < 0) {
-        mx_log_err("MXQ Server: Can't initialize server handle. Exiting.");
-        exit(1);
+        server_close(server);
+        exit(-res);
     }
 
     mx_log_info("mxqd - " MXQ_VERSIONFULL);
@@ -2329,5 +2332,5 @@ int main(int argc, char *argv[])
 
     mx_log_finish();
 
-    return 0;
+    exit(0);
 }
