@@ -52,6 +52,9 @@ static void _group_list_init(struct mxq_group_list *glist)
     }
     jobs_max /= group->job_threads;
 
+    if (jobs_max > server->slots / slots_per_job)
+        jobs_max = server->slots / slots_per_job;
+
     /* limit maximum number of jobs on user/group request */
     if (group->job_max_per_node && jobs_max > group->job_max_per_node)
         jobs_max = group->job_max_per_node;
@@ -323,6 +326,15 @@ struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct 
     ulist->group_cnt++;
     server->group_cnt++;
 
+    glist->global_slots_running   = group->group_slots_running;
+    glist->global_threads_running = group->group_jobs_running * group->job_threads;
+
+    ulist->global_slots_running   += glist->global_slots_running;
+    ulist->global_threads_running += glist->global_threads_running;
+
+    server->global_slots_running   += glist->global_slots_running;
+    server->global_threads_running += glist->global_threads_running;
+
     _group_list_init(glist);
 
     return glist;
@@ -354,14 +366,33 @@ struct mxq_group_list *_server_add_group(struct mxq_server *server, struct mxq_g
 static struct mxq_group_list *_user_list_update_group(struct mxq_user_list *ulist, struct mxq_group *group)
 {
     struct mxq_group_list *glist;
+    struct mxq_server *server;
 
     assert(ulist);
     assert(group);
+    assert(ulist->server);
+
+    server = ulist->server;
 
     glist = _group_list_find_by_group(ulist->groups, group);
     if (!glist) {
         return _user_list_add_group(ulist, group);
     }
+
+    server->global_slots_running   -= glist->global_slots_running;
+    server->global_threads_running -= glist->global_threads_running;
+
+    ulist->global_slots_running   -= glist->global_slots_running;
+    ulist->global_threads_running -= glist->global_threads_running;
+
+    glist->global_slots_running   = group->group_slots_running;
+    glist->global_threads_running = group->group_jobs_running * group->job_threads;
+
+    ulist->global_slots_running   += glist->global_slots_running;
+    ulist->global_threads_running += glist->global_threads_running;
+
+    server->global_slots_running   += glist->global_slots_running;
+    server->global_threads_running += glist->global_threads_running;
 
     mxq_group_free_content(&glist->group);
 
@@ -382,4 +413,55 @@ struct mxq_group_list *server_update_group(struct mxq_server *server, struct mxq
     }
 
     return _user_list_update_group(ulist, group);
+}
+
+
+void server_sort_users_by_running_global_slot_count(struct mxq_server *server)
+{
+    struct mxq_user_list *ulist;
+    struct mxq_user_list *unext;
+    struct mxq_user_list *uprev;
+    struct mxq_user_list *uroot;
+    struct mxq_user_list *current;
+
+    assert(server);
+
+    if (!server->user_cnt)
+        return;
+
+    for (ulist = server->users, uroot = NULL; ulist; ulist = unext) {
+        unext = ulist->next;
+
+        ulist->next = NULL;
+
+        if (!uroot) {
+            uroot = ulist;
+            continue;
+        }
+
+        for (current = uroot, uprev = NULL; (current || uprev); uprev = current, current = current->next) {
+            if (!current) {
+                uprev->next = ulist;
+                break;
+            }
+            if (ulist->global_slots_running > current->global_slots_running) {
+                continue;
+            }
+            if (ulist->global_slots_running == current->global_slots_running
+                && ulist->global_threads_running > current->global_threads_running) {
+                continue;
+            }
+
+            ulist->next = current;
+
+            if (!uprev) {
+                uroot = ulist;
+            } else {
+                uprev->next = ulist;
+            }
+            break;
+        }
+    }
+
+    server->users = uroot;
 }

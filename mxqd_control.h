@@ -26,4 +26,6 @@ static struct mxq_group_list *_user_list_update_group(struct mxq_user_list *ulis
 struct mxq_group_list *_server_add_group(struct mxq_server *server, struct mxq_group *group);
 struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct mxq_group *group);
 
+void server_sort_users_by_running_global_slot_count(struct mxq_server *server);
+
 #endif
