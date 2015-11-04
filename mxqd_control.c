@@ -52,6 +52,9 @@ static void _group_list_init(struct mxq_group_list *glist)
     }
     jobs_max /= group->job_threads;
 
+    if (jobs_max > server->slots / slots_per_job)
+        jobs_max = server->slots / slots_per_job;
+
     /* limit maximum number of jobs on user/group request */
     if (group->job_max_per_node && jobs_max > group->job_max_per_node)
         jobs_max = group->job_max_per_node;

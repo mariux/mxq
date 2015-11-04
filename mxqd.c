@@ -1394,11 +1394,13 @@ void server_dump(struct mxq_server *server)
         for (glist = ulist->groups; glist; glist = glist->next) {
             group = &glist->group;
 
-            mx_log_info("        group=%s(%d):%lu %s jobs_in_q=%lu",
+            mx_log_info("        group=%s(%d):%lu %s jobs_max=%lu slots_per_job=%d jobs_in_q=%lu",
                 group->user_name,
                 group->user_uid,
                 group->group_id,
                 group->group_name,
+                glist->jobs_max,
+                glist->slots_per_job,
                 mxq_group_jobs_inq(group));
             for (jlist = glist->jobs; jlist; jlist = jlist->next) {
                 job = &jlist->job;
