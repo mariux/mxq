@@ -2177,7 +2177,8 @@ int main(int argc, char *argv[])
 {
     int group_cnt;
 
-    struct mxq_server server;
+    struct mxq_server __server;
+    struct mxq_server *server = &__server;
 
     unsigned long slots_started  = 0;
     unsigned long slots_returned = 0;
@@ -2189,7 +2190,7 @@ int main(int argc, char *argv[])
 
     mx_log_level_set(MX_LOG_INFO);
 
-    res = server_init(&server, argc, argv);
+    res = server_init(server, argc, argv);
     if (res < 0) {
         mx_log_err("MXQ Server: Can't initialize server handle. Exiting.");
         exit(1);
@@ -2202,15 +2203,20 @@ int main(int argc, char *argv[])
 #ifdef MXQ_DEVELOPMENT
     mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.");
 #endif
-    mx_log_info("hostname=%s server_id=%s :: MXQ server started.", server.hostname, server.server_id);
-    mx_log_info("  host_id=%s", server.host_id);
+    mx_log_info("hostname=%s server_id=%s :: MXQ server started.",
+                    server->hostname,
+                    server->server_id);
+    mx_log_info("  host_id=%s", server->host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
-                  server.slots, server.memory_total, server.memory_avg_per_slot, server.memory_max_per_slot);
-    cpuset_log("cpu set available",&server.cpu_set_available);
+                    server->slots,
+                    server->memory_total,
+                    server->memory_avg_per_slot,
+                    server->memory_max_per_slot);
+    cpuset_log("cpu set available", &(server->cpu_set_available));
 
     /*** database connect ***/
 
-    mx_mysql_connect_forever(&(server.mysql));
+    mx_mysql_connect_forever(&(server->mysql));
 
     /*** main loop ***/
 
@@ -2223,55 +2229,55 @@ int main(int argc, char *argv[])
     signal(SIGTTOU, SIG_IGN);
     signal(SIGCHLD, no_handler);
 
-    res = recover_from_previous_crash(&server);
+    res = recover_from_previous_crash(server);
     if (res < 0) {
         mx_log_warning("recover_from_previous_crash() failed. Aborting execution.");
         fail = 1;
     }
 
-    if (server.recoveronly)
+    if (server->recoveronly)
         fail = 1;
 
     while (!global_sigint_cnt && !global_sigterm_cnt && !global_sigquit_cnt && !fail) {
-        slots_returned = catchall(&server);
-        slots_returned += fspool_scan(&server);
+        slots_returned  = catchall(server);
+        slots_returned += fspool_scan(server);
 
         if (slots_returned)
             mx_log_info("slots_returned=%lu :: Main Loop freed %lu slots.", slots_returned, slots_returned);
 
         if (slots_started || slots_returned) {
-            server_dump(&server);
+            server_dump(server);
             slots_started = 0;
         }
 
-        group_cnt = load_running_groups(&server);
+        group_cnt = load_running_groups(server);
         if (group_cnt)
            mx_log_debug("group_cnt=%d :: %d Groups loaded", group_cnt, group_cnt);
 
-        killall_cancelled(&server);
-        killall_over_time(&server);
-        killall_over_memory(&server);
+        killall_cancelled(server);
+        killall_over_time(server);
+        killall_over_memory(server);
 
-        if (!server.group_cnt) {
-            assert(!server.jobs_running);
+        if (!server->group_cnt) {
+            assert(!server->jobs_running);
             assert(!group_cnt);
             mx_log_info("Nothing to do. Sleeping for a short while. (1 second)");
             sleep(1);
             continue;
         }
 
-        if (server.slots_running == server.slots) {
+        if (server->slots_running == server->slots) {
             mx_log_info("All slots running. Sleeping for a short while (7 seconds).");
             sleep(7);
             continue;
         }
 
-        slots_started = start_users(&server);
+        slots_started = start_users(server);
         if (slots_started)
             mx_log_info("slots_started=%lu :: Main Loop started %lu slots.", slots_started, slots_started);
 
         if (!slots_started && !slots_returned && !global_sigint_cnt && !global_sigterm_cnt) {
-            if (!server.jobs_running) {
+            if (!server->jobs_running) {
                 mx_log_info("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).");
                 sleep(15);
             } else {
@@ -2283,33 +2289,41 @@ int main(int argc, char *argv[])
     }
     /*** clean up ***/
 
-    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d global_sigquit_cnt=%d: Exiting.", global_sigint_cnt, global_sigterm_cnt,global_sigquit_cnt);
+    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d global_sigquit_cnt=%d: Exiting.",
+                    global_sigint_cnt,
+                    global_sigterm_cnt,
+                    global_sigquit_cnt);
 
     if (global_sigterm_cnt||global_sigint_cnt) {
-        while (server.jobs_running) {
-            slots_returned = catchall(&server);
-            slots_returned += fspool_scan(&server);
+        while (server->jobs_running) {
+            slots_returned  = catchall(server);
+            slots_returned += fspool_scan(server);
 
             if (slots_returned) {
                 mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
-                    server.jobs_running, slots_returned, global_sigint_cnt, global_sigterm_cnt);
+                                server->jobs_running,
+                                slots_returned,
+                                global_sigint_cnt,
+                                global_sigterm_cnt);
                 continue;
             }
             if (global_sigint_cnt)
-                killall(&server, SIGTERM, 1);
+                killall(server, SIGTERM, 1);
 
-            killall_cancelled(&server);
-            killall_over_time(&server);
-            killall_over_memory(&server);
+            killall_cancelled(server);
+            killall_over_time(server);
+            killall_over_memory(server);
             mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
-                server.jobs_running, global_sigint_cnt, global_sigterm_cnt);
+                                server->jobs_running,
+                                global_sigint_cnt,
+                                global_sigterm_cnt);
             sleep(1);
         }
     }
 
-    mx_mysql_finish(&(server.mysql));
+    mx_mysql_finish(&(server->mysql));
 
-    server_close(&server);
+    server_close(server);
 
     mx_log_info("cu, mx.");
 
