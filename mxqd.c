@@ -1249,6 +1249,54 @@ unsigned long start_users(struct mxq_server *server)
 
 /**********************************************************************/
 
+long start_user_with_least_running_global_slot_count(struct mxq_server *server)
+{
+    struct mxq_user_list *ulist;
+    struct mxq_group_list *glist;
+    unsigned long slots_started = 0;
+    unsigned long slots_free;
+    unsigned long global_slots_per_user;
+    int waiting = 0;
+
+    assert(server);
+
+    if (!server->user_cnt)
+        return 0;
+
+    server_sort_users_by_running_global_slot_count(server);
+    slots_free = server->slots - server->slots_running;
+
+    if (!slots_free)
+        return 0;
+
+    global_slots_per_user = server->global_slots_running / server->user_cnt;
+
+    for (ulist = server->users; ulist; ulist = ulist->next) {
+        /* if other users are waiting and this user is already using
+         * more slots then avg user in cluster do not start anything
+         * (next users are using even more atm because list is sorted) */
+        if (waiting && ulist->global_slots_running > global_slots_per_user)
+            return -1;
+
+        slots_started = start_user(ulist, 1, slots_free);
+        if (slots_started)
+            return slots_started;
+
+        if (waiting)
+            continue;
+
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            if (glist->jobs_max > glist->jobs_running) {
+                waiting = 1;
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+/**********************************************************************/
+
 int remove_orphaned_group_lists(struct mxq_server *server)
 {
     struct mxq_user_list  *ulist, *unext, *uprev;
@@ -1336,18 +1384,23 @@ void server_dump(struct mxq_server *server)
             continue;
         }
         group = &ulist->groups[0].group;
-        mx_log_info("    user=%s(%d) slots_running=%lu",
+        mx_log_info("    user=%s(%d) slots_running=%lu global_slots_running=%lu global_threads_running=%lu",
                 group->user_name,
                 group->user_uid,
-                ulist->slots_running);
+                ulist->slots_running,
+                ulist->global_slots_running,
+                ulist->global_threads_running);
 
         for (glist = ulist->groups; glist; glist = glist->next) {
             group = &glist->group;
-            mx_log_info("        group=%s(%d):%lu %s jobs_in_q=%lu",
+
+            mx_log_info("        group=%s(%d):%lu %s jobs_max=%lu slots_per_job=%d jobs_in_q=%lu",
                 group->user_name,
                 group->user_uid,
                 group->group_id,
                 group->group_name,
+                glist->jobs_max,
+                glist->slots_per_job,
                 mxq_group_jobs_inq(group));
             for (jlist = glist->jobs; jlist; jlist = jlist->next) {
                 job = &jlist->job;
@@ -1369,6 +1422,9 @@ void server_dump(struct mxq_server *server)
                 server->slots,
                 server->threads_running,
                 server->jobs_running);
+    mx_log_info("global_slots_running=%lu global_threads_running=%lu",
+                server->global_slots_running,
+                server->global_threads_running);
     cpuset_log("cpu set running",
                 &server->cpu_set_running);
     mx_log_info("====================== SERVER DUMP END ======================");
@@ -2275,9 +2331,13 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        slots_started = start_users(server);
-        if (slots_started)
+        slots_started = start_user_with_least_running_global_slot_count(server);
+        if (slots_started == -1) {
+            mx_log_debug("no slots_started => we have users waiting for free slots.");
+            slots_started = 0;
+        } else if (slots_started) {
             mx_log_info("slots_started=%lu :: Main Loop started %lu slots.", slots_started, slots_started);
+        }
 
         if (!slots_started && !slots_returned && !global_sigint_cnt && !global_sigterm_cnt) {
             if (!server->jobs_running) {

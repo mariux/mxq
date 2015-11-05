@@ -39,6 +39,9 @@ struct mxq_group_list {
     unsigned long slots_running;
     unsigned long memory_used;
 
+    unsigned long global_threads_running;
+    unsigned long global_slots_running;
+
     short orphaned;
 };
 
@@ -54,6 +57,9 @@ struct mxq_user_list {
     unsigned long threads_running;
     unsigned long slots_running;
     unsigned long memory_used;
+
+    unsigned long global_threads_running;
+    unsigned long global_slots_running;
 };
 
 struct mxq_server {
@@ -68,6 +74,9 @@ struct mxq_server {
     unsigned long slots_running;
     unsigned long memory_used;
     cpu_set_t      cpu_set_running;
+
+    unsigned long global_threads_running;
+    unsigned long global_slots_running;
 
     unsigned long slots;
     unsigned long memory_total;
