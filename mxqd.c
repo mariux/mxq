@@ -384,6 +384,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             case 4:
                 arg_nolog = 0;
                 arg_logdir = optctl.optarg;
+                if (arg_logdir && *arg_logdir != '/') {
+                    mx_log_err("Invalid argument supplied for option --log-dir '%s': Path has to be absolute", optctl.optarg);
+                    return -EX_USAGE;
+                }
                 break;
 
             case 5:
