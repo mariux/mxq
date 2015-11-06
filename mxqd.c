@@ -320,6 +320,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("help",               'h'),
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
+                MX_OPTION_NO_ARG("no-daemonize",        10),
                 MX_OPTION_NO_ARG("no-log",               3),
                 MX_OPTION_OPTIONAL_ARG("log",            4),
                 MX_OPTION_REQUIRED_ARG("log-directory",  4),
@@ -395,6 +396,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 9:
                 arg_recoveronly = 1;
+                break;
+
+            case 10:
+                arg_daemonize = 0;
                 break;
 
             case 'V':
