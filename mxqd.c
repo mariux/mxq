@@ -56,6 +56,8 @@
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
 volatile sig_atomic_t global_sigquit_cnt=0;
+volatile sig_atomic_t global_sigrestart_cnt=0;
+
 
 int mxq_redirect_output(char *stdout_fname, char *stderr_fname);
 void server_free(struct mxq_server *server);
@@ -295,6 +297,7 @@ static int cpuset_init(struct mxq_server *server)
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
     int res;
+    char *reexecuting;
     char *arg_server_id;
     char *arg_hostname;
     char *arg_mysql_default_group;
@@ -340,6 +343,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     };
 
     memset(server, 0, sizeof(*server));
+
+    reexecuting = getenv("MXQ_HOSTID");
+    if (reexecuting)
+        mx_log_warning("Welcome back. Server is restarting. Ignoring some options by default now.");
 
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
@@ -470,6 +477,11 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     MX_GETOPT_FINISH(optctl, argc, argv);
+
+    if (reexecuting) {
+        arg_daemonize = 0; /* we already daemonized */
+        arg_nolog     = 1; /* we reuse last log */
+    }
 
     if (arg_daemonize && arg_nolog) {
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
@@ -605,6 +617,8 @@ static void reset_signals()
     signal(SIGTTOU, SIG_DFL);
     signal(SIGCHLD, SIG_DFL);
     signal(SIGPIPE, SIG_DFL);
+    signal(SIGUSR1, SIG_DFL);
+    signal(SIGUSR2, SIG_DFL);
 }
 
 static int init_child_process(struct mxq_group_list *glist, struct mxq_job *job)
@@ -2205,6 +2219,11 @@ static void sig_handler(int sig)
       global_sigquit_cnt++;
       return;
     }
+
+    if (sig == SIGUSR1) {
+      global_sigrestart_cnt++;
+      return;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -2220,7 +2239,16 @@ int main(int argc, char *argv[])
     int res;
     int fail = 0;
 
+    int saved_argc;
+    _mx_cleanup_free_ char *saved_argv_str = NULL;
+    _mx_cleanup_free_ char *saved_cwd = NULL;
+
+
     /*** server init ***/
+
+    saved_argc     = argc;
+    saved_argv_str = mx_strvec_to_str(argv);
+    saved_cwd      = get_current_dir_name();
 
     mx_log_level_set(MX_LOG_INFO);
 
@@ -2257,7 +2285,7 @@ int main(int argc, char *argv[])
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, sig_handler);
     signal(SIGQUIT, sig_handler);
-    signal(SIGHUP,  SIG_IGN);
+    signal(SIGUSR1, sig_handler);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
@@ -2272,7 +2300,7 @@ int main(int argc, char *argv[])
     if (server->recoveronly)
         fail = 1;
 
-    while (!global_sigint_cnt && !global_sigterm_cnt && !global_sigquit_cnt && !fail) {
+    while (!global_sigint_cnt && !global_sigterm_cnt && !global_sigquit_cnt && !global_sigrestart_cnt && !fail) {
         slots_returned  = catchall(server);
         slots_returned += fspool_scan(server);
 
@@ -2327,12 +2355,13 @@ int main(int argc, char *argv[])
     }
     /*** clean up ***/
 
-    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d global_sigquit_cnt=%d: Exiting.",
+    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d global_sigquit_cnt=%d global_sigrestart_cnt=%d: Exiting.",
                     global_sigint_cnt,
                     global_sigterm_cnt,
-                    global_sigquit_cnt);
+                    global_sigquit_cnt,
+                    global_sigrestart_cnt);
 
-    if (global_sigterm_cnt||global_sigint_cnt) {
+    if ((global_sigterm_cnt || global_sigint_cnt) && !global_sigrestart_cnt) {
         while (server->jobs_running) {
             slots_returned  = catchall(server);
             slots_returned += fspool_scan(server);
@@ -2362,6 +2391,36 @@ int main(int argc, char *argv[])
     mx_mysql_finish(&(server->mysql));
 
     server_close(server);
+
+    while (global_sigrestart_cnt) {
+        char **saved_argv;
+        saved_argc     = argc;
+        saved_argv_str = mx_strvec_to_str(argv);
+        saved_cwd      = get_current_dir_name();
+
+        mx_log_info("Reexecuting mxqd... ");
+
+        res = chdir(saved_cwd);
+        if (res < 0) {
+            mx_log_fatal("Aborting restart: chdir(%s) failed: %m", saved_cwd);
+            break;
+        }
+
+        saved_argv = mx_strvec_from_str(saved_argv_str);
+        if (!saved_argv) {
+            mx_log_fatal("Can't recaculate commandline. str_to_strvev(%s) failed: %m", saved_argv_str);
+            break;
+        }
+
+        mx_log_info("-------------------------------------------------------------");
+        mx_log_info(" Reexecuting %s", saved_argv_str);
+        mx_log_info("-------------------------------------------------------------");
+
+        res = execvp(saved_argv[0], saved_argv);
+        mx_log_fatal("execvp(\"%s\", ...): %m", saved_argv[0]);
+        break;
+
+    }
 
     mx_log_info("cu, mx.");
 
