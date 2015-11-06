@@ -1427,8 +1427,7 @@ void server_close(struct mxq_server *server)
     if (server->pidfilename)
         unlink(server->pidfilename);
 
-    if (server->flock && server->flock->locked)
-        mx_funlock(server->flock);
+    mx_funlock(server->flock);
     server->flock = NULL;
 
     server_free(server);
