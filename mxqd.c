@@ -625,12 +625,34 @@ static int init_child_process(struct mxq_group_list *glist, struct mxq_job *job)
     }
 
     if (!mx_streq(passwd->pw_name, group->user_name)) {
-        mx_log_err("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping",
-            group->user_name, group->user_uid, group->group_id, job->job_id,
-            group->user_uid, group->user_name, passwd->pw_name);
-        return 0;
-    }
+        mx_log_warning("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping",
+                        group->user_name,
+                        group->user_uid,
+                        group->group_id,
+                        job->job_id,
+                        group->user_uid,
+                        group->user_name,
+                        passwd->pw_name);
 
+        passwd = getpwnam(group->user_name);
+        if (!passwd) {
+            mx_log_err("job=%s(%d):%lu:%lu getpwnam(): %m",
+                group->user_name, group->user_uid, group->group_id, job->job_id);
+            return 0;
+        }
+        if (passwd->pw_uid != group->user_uid) {
+            mx_log_fatal("job=%s(%d):%lu:%lu user_name=%s does not map to uid=%d but to pw_uid=%d. Aborting Child execution.",
+                            group->user_name,
+                            group->user_uid,
+                            group->group_id,
+                            job->job_id,
+                            group->user_name,
+                            group->user_uid,
+                            passwd->pw_uid);
+
+            return 0;
+        }
+    }
 
     /** prepare environment **/
 
