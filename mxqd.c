@@ -2087,6 +2087,7 @@ int load_running_groups(struct mxq_server *server)
     struct mxq_group_list *glist;
     struct mxq_group *grps;
     struct mxq_group *group;
+    struct passwd *passwd;
 
     int grp_cnt;
     int total;
@@ -2103,6 +2104,17 @@ int load_running_groups(struct mxq_server *server)
 
     for (i=0, total=0; i < grp_cnt; i++) {
         group = &grps[grp_cnt-i-1];
+
+        passwd = getpwnam(group->user_name);
+        if (!passwd) {
+            mx_log_fatal("group=%s(%d):%lu Can't find user with name '%s': getpwnam(): %m. Ignoring group.",
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    group->user_name);
+            continue;
+        }
+
         glist = server_update_group(server, group);
         if (!glist) {
             mx_log_err("Could not add Group to control structures.");
