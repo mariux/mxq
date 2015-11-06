@@ -338,6 +338,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_END
     };
 
+    memset(server, 0, sizeof(*server));
+
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
 
@@ -464,8 +466,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
         return -EX_USAGE;
     }
-
-    memset(server, 0, sizeof(*server));
 
     server->hostname = arg_hostname;
     server->server_id = arg_server_id;
@@ -1418,7 +1418,8 @@ void server_close(struct mxq_server *server)
     if (server->pidfilename)
         unlink(server->pidfilename);
 
-    mx_funlock(server->flock);
+    if (server->flock && server->flock->locked)
+        mx_funlock(server->flock);
     server->flock = NULL;
 
     server_free(server);
