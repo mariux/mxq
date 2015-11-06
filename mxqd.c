@@ -2292,6 +2292,8 @@ int main(int argc, char *argv[])
     if (server->recoveronly)
         fail = 1;
 
+    server_dump(server);
+
     while (!global_sigint_cnt && !global_sigterm_cnt && !global_sigquit_cnt && !global_sigrestart_cnt && !fail) {
         slots_returned  = catchall(server);
         slots_returned += fspool_scan(server);
