@@ -22,11 +22,11 @@ static struct mxq_user_list *_user_list_find_by_uid(struct mxq_user_list *ulist,
 
 static struct mxq_group_list *_user_list_update_group(struct mxq_user_list *ulist, struct mxq_group *group)
 */
+int server_remove_orphaned_groups(struct mxq_server *server);
 
 struct mxq_group_list *_server_add_group(struct mxq_server *server, struct mxq_group *group);
 struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct mxq_group *group);
 
-int remove_orphaned_group_lists(struct mxq_server *server);
 
 void server_sort_users_by_running_global_slot_count(struct mxq_server *server);
 

@@ -2130,7 +2130,7 @@ int load_running_groups(struct mxq_server *server)
     }
     free(grps);
 
-    remove_orphaned_group_lists(server);
+    server_remove_orphaned_groups(server);
 
     return total;
 }

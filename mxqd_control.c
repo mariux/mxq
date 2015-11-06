@@ -415,7 +415,7 @@ struct mxq_group_list *server_update_group(struct mxq_server *server, struct mxq
     return _user_list_update_group(ulist, group);
 }
 
-int remove_orphaned_group_lists(struct mxq_server *server)
+int server_remove_orphaned_groups(struct mxq_server *server)
 {
     struct mxq_user_list  *ulist, *unext, *uprev;
     struct mxq_group_list *glist, *gnext, *gprev;
