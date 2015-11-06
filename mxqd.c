@@ -320,6 +320,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_NO_ARG("help",               'h'),
                 MX_OPTION_NO_ARG("version",            'V'),
                 MX_OPTION_NO_ARG("daemonize",            1),
+                MX_OPTION_NO_ARG("no-daemonize",        10),
                 MX_OPTION_NO_ARG("no-log",               3),
                 MX_OPTION_OPTIONAL_ARG("log",            4),
                 MX_OPTION_REQUIRED_ARG("log-directory",  4),
@@ -337,6 +338,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
                 MX_OPTION_END
     };
+
+    memset(server, 0, sizeof(*server));
 
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
@@ -381,6 +384,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             case 4:
                 arg_nolog = 0;
                 arg_logdir = optctl.optarg;
+                if (arg_logdir && *arg_logdir != '/') {
+                    mx_log_err("Invalid argument supplied for option --log-dir '%s': Path has to be absolute", optctl.optarg);
+                    return -EX_USAGE;
+                }
                 break;
 
             case 5:
@@ -393,6 +400,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 
             case 9:
                 arg_recoveronly = 1;
+                break;
+
+            case 10:
+                arg_daemonize = 0;
                 break;
 
             case 'V':
@@ -464,8 +475,6 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
         return -EX_USAGE;
     }
-
-    memset(server, 0, sizeof(*server));
 
     server->hostname = arg_hostname;
     server->server_id = arg_server_id;
@@ -625,12 +634,34 @@ static int init_child_process(struct mxq_group_list *glist, struct mxq_job *job)
     }
 
     if (!mx_streq(passwd->pw_name, group->user_name)) {
-        mx_log_err("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping",
-            group->user_name, group->user_uid, group->group_id, job->job_id,
-            group->user_uid, group->user_name, passwd->pw_name);
-        return 0;
-    }
+        mx_log_warning("job=%s(%d):%lu:%lu user_uid=%d does not map to user_name=%s but to pw_name=%s: Invalid user mapping",
+                        group->user_name,
+                        group->user_uid,
+                        group->group_id,
+                        job->job_id,
+                        group->user_uid,
+                        group->user_name,
+                        passwd->pw_name);
 
+        passwd = getpwnam(group->user_name);
+        if (!passwd) {
+            mx_log_err("job=%s(%d):%lu:%lu getpwnam(): %m",
+                group->user_name, group->user_uid, group->group_id, job->job_id);
+            return 0;
+        }
+        if (passwd->pw_uid != group->user_uid) {
+            mx_log_fatal("job=%s(%d):%lu:%lu user_name=%s does not map to uid=%d but to pw_uid=%d. Aborting Child execution.",
+                            group->user_name,
+                            group->user_uid,
+                            group->group_id,
+                            job->job_id,
+                            group->user_name,
+                            group->user_uid,
+                            passwd->pw_uid);
+
+            return 0;
+        }
+    }
 
     /** prepare environment **/
 
@@ -1296,74 +1327,6 @@ long start_user_with_least_running_global_slot_count(struct mxq_server *server)
 }
 
 /**********************************************************************/
-
-int remove_orphaned_group_lists(struct mxq_server *server)
-{
-    struct mxq_user_list  *ulist, *unext, *uprev;
-    struct mxq_group_list *glist, *gnext, *gprev;
-
-    struct mxq_group *group;
-
-    int cnt=0;
-
-    for (ulist = server->users, uprev = NULL; ulist; ulist = unext) {
-        unext = ulist->next;
-
-        for (glist = ulist->groups, gprev = NULL; glist; glist = gnext) {
-            gnext = glist->next;
-            group = &glist->group;
-
-            if (glist->job_cnt) {
-                gprev = glist;
-                continue;
-            }
-
-            assert(!glist->jobs);
-
-            if (!glist->orphaned && mxq_group_jobs_active(group)) {
-                glist->orphaned = 1;
-                gprev = glist;
-                continue;
-            }
-
-            if (gprev) {
-                gprev->next = gnext;
-            } else {
-                assert(glist == ulist->groups);
-                ulist->groups = gnext;
-            }
-
-            mx_log_info("group=%s(%d):%lu : Removing orphaned group.",
-                        group->user_name,
-                        group->user_uid,
-                        group->group_id);
-
-            ulist->group_cnt--;
-            server->group_cnt--;
-            cnt++;
-            mxq_group_free_content(group);
-            mx_free_null(glist);
-        }
-
-        if(ulist->groups) {
-            uprev = ulist;
-            continue;
-        }
-
-        if (uprev) {
-            uprev->next = unext;
-        } else {
-            assert(ulist == server->users);
-            server->users = unext;
-        }
-
-        server->user_cnt--;
-        mx_free_null(ulist);
-
-        mx_log_info("Removed orphaned user. %lu users left.", server->user_cnt);
-    }
-    return cnt;
-}
 
 void server_dump(struct mxq_server *server)
 {
@@ -2133,6 +2096,7 @@ int load_running_groups(struct mxq_server *server)
     struct mxq_group_list *glist;
     struct mxq_group *grps;
     struct mxq_group *group;
+    struct passwd *passwd;
 
     int grp_cnt;
     int total;
@@ -2149,6 +2113,17 @@ int load_running_groups(struct mxq_server *server)
 
     for (i=0, total=0; i < grp_cnt; i++) {
         group = &grps[grp_cnt-i-1];
+
+        passwd = getpwnam(group->user_name);
+        if (!passwd) {
+            mx_log_fatal("group=%s(%d):%lu Can't find user with name '%s': getpwnam(): %m. Ignoring group.",
+                    group->user_name,
+                    group->user_uid,
+                    group->group_id,
+                    group->user_name);
+            continue;
+        }
+
         glist = server_update_group(server, group);
         if (!glist) {
             mx_log_err("Could not add Group to control structures.");
@@ -2158,7 +2133,7 @@ int load_running_groups(struct mxq_server *server)
     }
     free(grps);
 
-    remove_orphaned_group_lists(server);
+    server_remove_orphaned_groups(server);
 
     return total;
 }

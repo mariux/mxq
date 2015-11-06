@@ -133,11 +133,17 @@ int mx_funlock(struct mx_flock *lock)
 {
     int res;
 
-    assert(lock);
+    if (!lock)
+        return 0;
+
+    if (!lock->locked) {
+        _flock_free(lock);
+        return 0;
+    }
+
     assert(lock->fname);
     assert(lock->fd >= 0);
     assert(lock->operation >= 0);
-    assert(lock->locked);
 
     res = unlink(lock->fname);
     if (res < 0)
