@@ -192,8 +192,6 @@ void job_list_remove_self(struct mxq_job_list *jlist)
         ulist->threads_running  -= group->job_threads;
         server->threads_running -= group->job_threads;
 
-        group->group_jobs_running--;
-
         glist->jobs_running--;
         ulist->jobs_running--;
         server->jobs_running--;
@@ -282,9 +280,6 @@ struct mxq_job_list *group_list_add_job(struct mxq_group_list *glist, struct mxq
     server->threads_running += group->job_threads;
 
     CPU_OR(&server->cpu_set_running, &server->cpu_set_running, &job->host_cpu_set);
-
-    group->group_jobs_running++;
-    group->group_jobs_inq--;
 
     glist->jobs_running++;
     ulist->jobs_running++;

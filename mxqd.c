@@ -1712,14 +1712,6 @@ static int job_has_finished(struct mxq_server *server, struct mxq_group *group, 
 
         mxq_set_job_status_exited(server->mysql, job);
 
-        if (job->job_status == MXQ_JOB_STATUS_FINISHED) {
-            group->group_jobs_finished++;
-        } else if(job->job_status == MXQ_JOB_STATUS_FAILED) {
-            group->group_jobs_failed++;
-        } else if(job->job_status == MXQ_JOB_STATUS_KILLED) {
-            group->group_jobs_failed++;
-        }
-
         rename_outfiles(group, job);
 
         cnt = jlist->group->slots_per_job;
