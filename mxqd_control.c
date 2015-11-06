@@ -230,13 +230,6 @@ static struct mxq_user_list *_user_list_find_by_uid(struct mxq_user_list *ulist,
     return NULL;
 }
 
-struct mxq_user_list *server_find_user_by_uid(struct mxq_server *server, uint32_t uid)
-{
-    assert(server);
-
-    return _user_list_find_by_uid(server->users, uid);
-}
-
 struct mxq_group_list *_group_list_find_by_group(struct mxq_group_list *glist, struct mxq_group *group)
 {
     assert(group);
