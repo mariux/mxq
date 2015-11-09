@@ -14,7 +14,7 @@ struct mxq_job_list {
 
     struct mxq_job job;
 
-    unsigned long long int max_sum_rss;
+    unsigned long long int max_sumrss;
 };
 
 struct mxq_group_list {
