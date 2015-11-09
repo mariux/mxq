@@ -1591,7 +1591,7 @@ int killall_over_memory(struct mxq_server *server)
                 job = &jlist->job;
 
                 /* sigterm has already been send last round ? */
-                if (jlist->max_sum_rss/1024 > group->job_memory)
+                if (jlist->max_sumrss/1024 > group->job_memory)
                     signal = SIGKILL;
                 else
                     signal = SIGTERM;
@@ -1605,14 +1605,14 @@ int killall_over_memory(struct mxq_server *server)
 
                 memory = pinfo->sum_rss * pagesize / 1024;
 
-                if (jlist->max_sum_rss < memory)
-                    jlist->max_sum_rss = memory;
+                if (jlist->max_sumrss < memory)
+                    jlist->max_sumrss = memory;
 
-                if (jlist->max_sum_rss/1024 <= group->job_memory)
+                if (jlist->max_sumrss/1024 <= group->job_memory)
                     continue;
 
                 mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=%d to job=%s(%d):%lu:%lu pgrp=%d",
-                    jlist->max_sum_rss/1024,
+                    jlist->max_sumrss/1024,
                     group->job_memory,
                     signal,
                     group->user_name,
@@ -1819,6 +1819,8 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
     assert(jlist->group);
 
     group = &jlist->group->group;
+
+    job->stats_max_sumrss = jlist->max_sumrss;
 
     job->stats_realtime = realtime;
     job->stats_status   = status;
@@ -2079,7 +2081,7 @@ int catchall(struct mxq_server *server)
 
 
         timersub(&now, &job->stats_starttime, &job->stats_realtime);
-        job->stats_max_sumrss = jlist->max_sum_rss;
+        job->stats_max_sumrss = jlist->max_sumrss;
         job->stats_status = status;
         job->stats_rusage = rusage;
 
