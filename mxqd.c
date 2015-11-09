@@ -1820,6 +1820,8 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
 
     group = &jlist->group->group;
 
+    job->stats_max_sumrss = jlist->max_sumrss;
+
     job->stats_realtime = realtime;
     job->stats_status   = status;
     job->stats_rusage   = rusage;
