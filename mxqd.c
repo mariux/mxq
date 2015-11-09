@@ -2357,31 +2357,29 @@ int main(int argc, char *argv[])
                     global_sigquit_cnt,
                     global_sigrestart_cnt);
 
-    if ((global_sigterm_cnt || global_sigint_cnt) && !global_sigrestart_cnt) {
-        while (server->jobs_running) {
-            slots_returned  = catchall(server);
-            slots_returned += fspool_scan(server);
+    while (server->jobs_running && (global_sigterm_cnt || global_sigint_cnt) && !global_sigrestart_cnt) {
+        slots_returned  = catchall(server);
+        slots_returned += fspool_scan(server);
 
-            if (slots_returned) {
-                mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
-                                server->jobs_running,
-                                slots_returned,
-                                global_sigint_cnt,
-                                global_sigterm_cnt);
-                continue;
-            }
-            if (global_sigint_cnt)
-                killall(server, SIGTERM, 1);
-
-            killall_cancelled(server);
-            killall_over_time(server);
-            killall_over_memory(server);
-            mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
-                                server->jobs_running,
-                                global_sigint_cnt,
-                                global_sigterm_cnt);
-            sleep(1);
+        if (slots_returned) {
+            mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
+                            server->jobs_running,
+                            slots_returned,
+                            global_sigint_cnt,
+                            global_sigterm_cnt);
+            continue;
         }
+        if (global_sigint_cnt)
+            killall(server, SIGTERM, 1);
+
+        killall_cancelled(server);
+        killall_over_time(server);
+        killall_over_memory(server);
+        mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
+                            server->jobs_running,
+                            global_sigint_cnt,
+                            global_sigterm_cnt);
+        sleep(1);
     }
 
     mx_mysql_finish(&(server->mysql));
