@@ -56,6 +56,8 @@
 volatile sig_atomic_t global_sigint_cnt=0;
 volatile sig_atomic_t global_sigterm_cnt=0;
 volatile sig_atomic_t global_sigquit_cnt=0;
+volatile sig_atomic_t global_sigrestart_cnt=0;
+
 
 int mxq_redirect_output(char *stdout_fname, char *stderr_fname);
 void server_free(struct mxq_server *server);
@@ -295,6 +297,7 @@ static int cpuset_init(struct mxq_server *server)
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
     int res;
+    char *reexecuting;
     char *arg_server_id;
     char *arg_hostname;
     char *arg_mysql_default_group;
@@ -340,6 +343,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     };
 
     memset(server, 0, sizeof(*server));
+
+    reexecuting = getenv("MXQ_HOSTID");
+    if (reexecuting)
+        mx_log_warning("Welcome back. Server is restarting. Ignoring some options by default now.");
 
     arg_server_id = "main";
     arg_hostname  = mx_hostname();
@@ -470,6 +477,11 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     MX_GETOPT_FINISH(optctl, argc, argv);
+
+    if (reexecuting) {
+        arg_daemonize = 0; /* we already daemonized */
+        arg_nolog     = 1; /* we reuse last log */
+    }
 
     if (arg_daemonize && arg_nolog) {
         mx_log_err("Error while using conflicting options --daemonize and --no-log at once.");
@@ -605,6 +617,8 @@ static void reset_signals()
     signal(SIGTTOU, SIG_DFL);
     signal(SIGCHLD, SIG_DFL);
     signal(SIGPIPE, SIG_DFL);
+    signal(SIGUSR1, SIG_DFL);
+    signal(SIGUSR2, SIG_DFL);
 }
 
 static int init_child_process(struct mxq_group_list *glist, struct mxq_job *job)
@@ -1577,7 +1591,7 @@ int killall_over_memory(struct mxq_server *server)
                 job = &jlist->job;
 
                 /* sigterm has already been send last round ? */
-                if (jlist->max_sum_rss/1024 > group->job_memory)
+                if (jlist->max_sumrss/1024 > group->job_memory)
                     signal = SIGKILL;
                 else
                     signal = SIGTERM;
@@ -1591,14 +1605,14 @@ int killall_over_memory(struct mxq_server *server)
 
                 memory = pinfo->sum_rss * pagesize / 1024;
 
-                if (jlist->max_sum_rss < memory)
-                    jlist->max_sum_rss = memory;
+                if (jlist->max_sumrss < memory)
+                    jlist->max_sumrss = memory;
 
-                if (jlist->max_sum_rss/1024 <= group->job_memory)
+                if (jlist->max_sumrss/1024 <= group->job_memory)
                     continue;
 
                 mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=%d to job=%s(%d):%lu:%lu pgrp=%d",
-                    jlist->max_sum_rss/1024,
+                    jlist->max_sumrss/1024,
                     group->job_memory,
                     signal,
                     group->user_name,
@@ -1697,14 +1711,6 @@ static int job_has_finished(struct mxq_server *server, struct mxq_group *group, 
         job=&jlist->job;
 
         mxq_set_job_status_exited(server->mysql, job);
-
-        if (job->job_status == MXQ_JOB_STATUS_FINISHED) {
-            group->group_jobs_finished++;
-        } else if(job->job_status == MXQ_JOB_STATUS_FAILED) {
-            group->group_jobs_failed++;
-        } else if(job->job_status == MXQ_JOB_STATUS_KILLED) {
-            group->group_jobs_failed++;
-        }
 
         rename_outfiles(group, job);
 
@@ -1813,6 +1819,8 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
     assert(jlist->group);
 
     group = &jlist->group->group;
+
+    job->stats_max_sumrss = jlist->max_sumrss;
 
     job->stats_realtime = realtime;
     job->stats_status   = status;
@@ -2073,7 +2081,7 @@ int catchall(struct mxq_server *server)
 
 
         timersub(&now, &job->stats_starttime, &job->stats_realtime);
-        job->stats_max_sumrss = jlist->max_sum_rss;
+        job->stats_max_sumrss = jlist->max_sumrss;
         job->stats_status = status;
         job->stats_rusage = rusage;
 
@@ -2205,6 +2213,11 @@ static void sig_handler(int sig)
       global_sigquit_cnt++;
       return;
     }
+
+    if (sig == SIGUSR1) {
+      global_sigrestart_cnt++;
+      return;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -2220,7 +2233,16 @@ int main(int argc, char *argv[])
     int res;
     int fail = 0;
 
+    int saved_argc;
+    _mx_cleanup_free_ char *saved_argv_str = NULL;
+    _mx_cleanup_free_ char *saved_cwd = NULL;
+
+
     /*** server init ***/
+
+    saved_argc     = argc;
+    saved_argv_str = mx_strvec_to_str(argv);
+    saved_cwd      = get_current_dir_name();
 
     mx_log_level_set(MX_LOG_INFO);
 
@@ -2257,7 +2279,7 @@ int main(int argc, char *argv[])
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, sig_handler);
     signal(SIGQUIT, sig_handler);
-    signal(SIGHUP,  SIG_IGN);
+    signal(SIGUSR1, sig_handler);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
@@ -2272,7 +2294,9 @@ int main(int argc, char *argv[])
     if (server->recoveronly)
         fail = 1;
 
-    while (!global_sigint_cnt && !global_sigterm_cnt && !global_sigquit_cnt && !fail) {
+    server_dump(server);
+
+    while (!global_sigint_cnt && !global_sigterm_cnt && !global_sigquit_cnt && !global_sigrestart_cnt && !fail) {
         slots_returned  = catchall(server);
         slots_returned += fspool_scan(server);
 
@@ -2327,41 +2351,70 @@ int main(int argc, char *argv[])
     }
     /*** clean up ***/
 
-    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d global_sigquit_cnt=%d: Exiting.",
+    mx_log_info("global_sigint_cnt=%d global_sigterm_cnt=%d global_sigquit_cnt=%d global_sigrestart_cnt=%d: Exiting.",
                     global_sigint_cnt,
                     global_sigterm_cnt,
-                    global_sigquit_cnt);
+                    global_sigquit_cnt,
+                    global_sigrestart_cnt);
 
-    if (global_sigterm_cnt||global_sigint_cnt) {
-        while (server->jobs_running) {
-            slots_returned  = catchall(server);
-            slots_returned += fspool_scan(server);
+    while (server->jobs_running && (global_sigterm_cnt || global_sigint_cnt) && !global_sigrestart_cnt) {
+        slots_returned  = catchall(server);
+        slots_returned += fspool_scan(server);
 
-            if (slots_returned) {
-                mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
-                                server->jobs_running,
-                                slots_returned,
-                                global_sigint_cnt,
-                                global_sigterm_cnt);
-                continue;
-            }
-            if (global_sigint_cnt)
-                killall(server, SIGTERM, 1);
-
-            killall_cancelled(server);
-            killall_over_time(server);
-            killall_over_memory(server);
-            mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
-                                server->jobs_running,
-                                global_sigint_cnt,
-                                global_sigterm_cnt);
-            sleep(1);
+        if (slots_returned) {
+            mx_log_info("jobs_running=%lu slots_returned=%lu global_sigint_cnt=%d global_sigterm_cnt=%d :",
+                            server->jobs_running,
+                            slots_returned,
+                            global_sigint_cnt,
+                            global_sigterm_cnt);
+            continue;
         }
+        if (global_sigint_cnt)
+            killall(server, SIGTERM, 1);
+
+        killall_cancelled(server);
+        killall_over_time(server);
+        killall_over_memory(server);
+        mx_log_info("jobs_running=%lu global_sigint_cnt=%d global_sigterm_cnt=%d : Exiting. Wating for jobs to finish. Sleeping for a while.",
+                            server->jobs_running,
+                            global_sigint_cnt,
+                            global_sigterm_cnt);
+        sleep(1);
     }
 
     mx_mysql_finish(&(server->mysql));
 
     server_close(server);
+
+    while (global_sigrestart_cnt) {
+        char **saved_argv;
+        saved_argc     = argc;
+        saved_argv_str = mx_strvec_to_str(argv);
+        saved_cwd      = get_current_dir_name();
+
+        mx_log_info("Reexecuting mxqd... ");
+
+        res = chdir(saved_cwd);
+        if (res < 0) {
+            mx_log_fatal("Aborting restart: chdir(%s) failed: %m", saved_cwd);
+            break;
+        }
+
+        saved_argv = mx_strvec_from_str(saved_argv_str);
+        if (!saved_argv) {
+            mx_log_fatal("Can't recaculate commandline. str_to_strvev(%s) failed: %m", saved_argv_str);
+            break;
+        }
+
+        mx_log_info("-------------------------------------------------------------");
+        mx_log_info(" Reexecuting %s", saved_argv_str);
+        mx_log_info("-------------------------------------------------------------");
+
+        res = execvp(saved_argv[0], saved_argv);
+        mx_log_fatal("execvp(\"%s\", ...): %m", saved_argv[0]);
+        break;
+
+    }
 
     mx_log_info("cu, mx.");
 
