@@ -57,12 +57,44 @@ function stop_all_started()
     done
 }
 
+function reload_all_started()
+{
+    for pidfile in ${pidfilebase}* ; do
+        ouid=$(stat --format "%u" "${pidfile}")
+        if [ "${UID}" != "${ouid}" ] ; then
+            continue
+        fi
+        pid=$(cat ${pidfile})
+        echo "${pidfile}: sending signal SIGUSR1 to restart pid ${pid}"
+        kill -USR1 ${pid}
+    done
+}
+
+function kill_all_started()
+{
+    for pidfile in ${pidfilebase}* ; do
+        ouid=$(stat --format "%u" "${pidfile}")
+        if [ "${UID}" != "${ouid}" ] ; then
+            continue
+        fi
+        pid=$(cat ${pidfile})
+        echo "${pidfile}: sending signal SIGINT to kill pid ${pid} and all running jobs"
+        kill -INT ${pid}
+    done
+}
+
 case "${BASH_ARGV[0]}" in
     start)
         start_all_hostconfig
         ;;
     stop)
         stop_all_started
+        ;;
+    kill)
+        kill_all_started
+        ;;
+    reload|restart)
+        reload_all_started
         ;;
     stopall)
         killall -u "${USER}" "${mxqd}"
