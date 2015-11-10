@@ -2357,7 +2357,8 @@ int main(int argc, char *argv[])
                     global_sigquit_cnt,
                     global_sigrestart_cnt);
 
-    while (server->jobs_running && (global_sigterm_cnt || global_sigint_cnt) && !global_sigrestart_cnt) {
+    /* while not quitting and not restarting -> wait for and collect all running jobs */
+    while (server->jobs_running && !global_sigquit_cnt && !global_sigrestart_cnt) {
         slots_returned  = catchall(server);
         slots_returned += fspool_scan(server);
 
