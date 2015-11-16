@@ -1298,6 +1298,7 @@ long start_user_with_least_running_global_slot_count(struct mxq_server *server)
 {
     struct mxq_user_list *ulist;
     struct mxq_group_list *glist;
+    struct mxq_group *group;
     unsigned long slots_started = 0;
     unsigned long slots_free;
     unsigned long global_slots_per_user;
@@ -1331,7 +1332,8 @@ long start_user_with_least_running_global_slot_count(struct mxq_server *server)
             continue;
 
         for (glist = ulist->groups; glist; glist = glist->next) {
-            if (glist->jobs_max > glist->jobs_running) {
+            group = &glist->group;
+            if (glist->jobs_max > glist->jobs_running && group->group_jobs_inq) {
                 waiting = 1;
                 break;
             }
