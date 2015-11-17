@@ -200,8 +200,7 @@ int mxq_load_all_groups(struct mx_mysql *mysql, struct mxq_group **mxq_groups)
             "SELECT"
                 GROUP_FIELDS
             " FROM mxq_group"
-            " ORDER BY user_name, group_mtime"
-            " LIMIT 1000";
+            " ORDER BY user_name, group_mtime";
 
     res = bind_result_group_fields(&result, &g);
     assert(res == 0);
@@ -233,8 +232,7 @@ int mxq_load_all_groups_for_user(struct mx_mysql *mysql, struct mxq_group **mxq_
                 GROUP_FIELDS
             " FROM mxq_group"
             " WHERE user_uid = ?"
-            " ORDER BY user_name, group_mtime"
-            " LIMIT 1000";
+            " ORDER BY user_name, group_mtime";
 
     res = mx_mysql_bind_init_param(&param, 1);
     assert(res == 0);
@@ -273,8 +271,7 @@ int mxq_load_active_groups_for_user(struct mx_mysql *mysql, struct mxq_group **m
             " WHERE ((group_jobs_inq > 0 OR group_jobs_running > 0)"
             "    OR (NOW()-group_date_end < 86400))"
             "   AND user_uid = ?"
-            " ORDER BY user_name, group_mtime"
-            " LIMIT 1000";
+            " ORDER BY user_name, group_mtime";
 
     res = mx_mysql_bind_init_param(&param, 1);
     assert(res == 0);
@@ -310,8 +307,7 @@ int mxq_load_running_groups(struct mx_mysql *mysql, struct mxq_group **mxq_group
                 GROUP_FIELDS
             " FROM mxq_group"
             " WHERE (group_jobs_inq > 0 OR group_jobs_running > 0)"
-            " ORDER BY user_name, group_mtime"
-            " LIMIT 1000";
+            " ORDER BY user_name, group_mtime";
 
     res = bind_result_group_fields(&result, &g);
     assert(res == 0);
@@ -344,8 +340,7 @@ int mxq_load_running_groups_for_user(struct mx_mysql *mysql, struct mxq_group **
             " FROM mxq_group"
             " WHERE (group_jobs_inq > 0 OR group_jobs_running > 0)"
             "   AND user_uid = ?"
-            " ORDER BY user_name, group_mtime"
-            " LIMIT 1000";
+            " ORDER BY user_name, group_mtime";
 
     res = mx_mysql_bind_init_param(&param, 1);
     assert(res == 0);
