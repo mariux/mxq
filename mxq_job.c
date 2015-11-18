@@ -71,7 +71,7 @@ static int bind_result_job_fields(struct mx_mysql_bind *result, struct mxq_job *
     res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_priority));
     res += mx_mysql_bind_var(result, idx++, uint64, &(j->group_id));
     res += mx_mysql_bind_var(result, idx++, string, &(j->job_workdir));
-    res += mx_mysql_bind_var(result, idx++, uint16, &(j->job_argc));
+    res += mx_mysql_bind_var(result, idx++, uint32, &(j->job_argc));
     res += mx_mysql_bind_var(result, idx++, string, &(j->job_argv_str));
     res += mx_mysql_bind_var(result, idx++, string, &(j->job_stdout));
     res += mx_mysql_bind_var(result, idx++, string, &(j->job_stderr));

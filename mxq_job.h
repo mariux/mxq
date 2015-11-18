@@ -22,7 +22,7 @@ struct mxq_job {
 
     char *     job_workdir;
 
-    uint16_t   job_argc;
+    uint32_t   job_argc;
 
     char **    job_argv;
     char *     job_argv_str;

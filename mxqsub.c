@@ -496,7 +496,7 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
     res  = mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
     res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(j->group_id));
     res += mx_mysql_statement_param_bind(stmt, 2, string, &(j->job_workdir));
-    res += mx_mysql_statement_param_bind(stmt, 3, uint16, &(j->job_argc));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(j->job_argc));
     res += mx_mysql_statement_param_bind(stmt, 4, string, &(j->job_argv_str));
     res += mx_mysql_statement_param_bind(stmt, 5, string, &(j->job_stdout));
     res += mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
