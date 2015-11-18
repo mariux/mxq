@@ -125,22 +125,3 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    INDEX (host_hostname(64)),
    INDEX (server_id(64))
 );
-
-CREATE TABLE IF NOT EXISTS mxq_server (
-   host_id          INT4 UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   host_hostname    VARCHAR(511)  NOT NULL DEFAULT 'localhost',
-
-   server_id        VARCHAR(511)  NOT NULL DEFAULT 'default',
-
-   host_slots       INT2 UNSIGNED NOT NULL DEFAULT 1,
-   host_memory      INT8 UNSIGNED NOT NULL DEFAULT 1024,
-   host_time        INT4 UNSIGNED NOT NULL DEFAULT 15,
-
-   host_jobs_running    INT2 UNSIGNED NOT NULL DEFAULT 0,
-   host_slots_running   INT2 UNSIGNED NOT NULL DEFAULT 0,
-
-   host_mtime       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-   server_start     TIMESTAMP DEFAULT 0,
-   server_stop      TIMESTAMP DEFAULT 0
-);

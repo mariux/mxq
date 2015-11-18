@@ -34,3 +34,5 @@ ALTER TABLE mxq_job
 ALTER TABLE mxq_job
     ADD INDEX
         host_id (host_id(128));
+
+DROP TABLE IF EXISTS mxq_server;
