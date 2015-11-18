@@ -5,6 +5,7 @@
 
 #include "mxq_job.h"
 #include "mxq_group.h"
+#include "mxq_daemon.h"
 
 #include <sched.h>
 
@@ -64,6 +65,8 @@ struct mxq_user_list {
 
 struct mxq_server {
     struct mxq_user_list *users;
+
+    struct mxq_daemon daemon;
 
     unsigned long user_cnt;
     unsigned long group_cnt;

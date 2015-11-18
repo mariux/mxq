@@ -82,6 +82,8 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    host_submit    VARCHAR(64)     NOT NULL DEFAULT "localhost",
 
    host_id        VARCHAR(128)    NOT NULL DEFAULT "",
+
+   daemon_id      INT4 UNSIGNED   NOT NULL DEFAULT 0,
    server_id      VARCHAR(64)     NOT NULL DEFAULT "",
 
    host_hostname  VARCHAR(64)     NOT NULL DEFAULT "",
@@ -121,7 +123,41 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    INDEX (group_id),
    INDEX (job_status),
    INDEX (job_priority),
+   INDEX (daemon_id),
    INDEX (host_id(128)),
    INDEX (host_hostname(64)),
    INDEX (server_id(64))
+);
+
+CREATE TABLE IF NOT EXISTS mxq_daemon (
+    daemon_id       INT4 UNSIGNED NOT NULL  PRIMARY KEY AUTO_INCREMENT,
+
+    daemon_name     VARCHAR(64)   NOT NULL  DEFAULT '',
+    status          INT1 UNSIGNED NOT NULL  DEFAULT 0,
+
+    hostname        VARCHAR(64)   NOT NULL  DEFAULT '',
+
+    mxq_version     VARCHAR(32)   NOT NULL  DEFAULT '',
+
+    boot_id         CHAR(36)      NOT NULL  DEFAULT '',
+    pid_starttime   INT8 UNSIGNED NOT NULL  DEFAULT 0,
+
+    daemon_pid      INT4 UNSIGNED NOT NULL  DEFAULT 0,
+
+    daemon_slots    INT4 UNSIGNED NOT NULL  DEFAULT 0,
+    daemon_memory   INT8 UNSIGNED NOT NULL  DEFAULT 0,
+    daemon_time     INT4 UNSIGNED NOT NULL  DEFAULT 0,
+
+    daemon_jobs_running     INT4 UNSIGNED NOT NULL  DEFAULT 0,
+    daemon_slots_running    INT4 UNSIGNED NOT NULL  DEFAULT 0,
+    daemon_threads_running  INT4 UNSIGNED NOT NULL  DEFAULT 0,
+    daemon_memory_used      INT8 UNSIGNED NOT NULL  DEFAULT 0,
+
+    mtime           TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
+
+    daemon_start    TIMESTAMP   NOT NULL    DEFAULT 0,
+    daemon_stop     TIMESTAMP   NOT NULL    DEFAULT 0,
+
+    INDEX (daemon_name(64)),
+    INDEX (hostname(64))
 );

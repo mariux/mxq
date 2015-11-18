@@ -296,6 +296,10 @@ mxq_group.h += mxq_group.h
 mxq_job.h += mxq_job.h
 mxq_job.h += mxq_group.h
 
+### mxq_daemon.h -------------------------------------------------------
+
+mxq_daemon.h += mxq_daemon.h
+
 ### mxqd.h -------------------------------------------------------------
 
 mxqd.h += mxqd.h
@@ -412,6 +416,14 @@ mxq_job.o: $(mx_mysql.h)
 mxq_job.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxq_job.o
+
+### mxq_daemon.o -------------------------------------------------------
+
+mxq_daemon.o: $(mxq_daemon.h)
+mxq_daemon.o: $(mx_mysql.h)
+mxq_daemon.o: CFLAGS += $(CFLAGS_MYSQL)
+
+clean: CLEAN += mxq_daemon.o
 
 ### mxqd_control.o -----------------------------------------------------
 

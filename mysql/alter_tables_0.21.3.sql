@@ -36,3 +36,11 @@ ALTER TABLE mxq_job
         host_id (host_id(128));
 
 DROP TABLE IF EXISTS mxq_server;
+
+ALTER TABLE mxq_job
+    ADD COLUMN
+        daemon_id   INT4 UNSIGNED   NOT NULL DEFAULT 0
+      AFTER
+        host_id,
+    ADD INDEX
+        daemon_id (daemon_id);
