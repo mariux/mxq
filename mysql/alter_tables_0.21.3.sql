@@ -31,3 +31,6 @@ ALTER TABLE mxq_job
     ADD INDEX
         server_id (server_id(64));
 
+ALTER TABLE mxq_job
+    ADD INDEX
+        host_id (host_id(128));

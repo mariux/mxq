@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS mxq_job (
    INDEX (group_id),
    INDEX (job_status),
    INDEX (job_priority),
+   INDEX (host_id(128)),
    INDEX (host_hostname(64)),
    INDEX (server_id(64))
 );
