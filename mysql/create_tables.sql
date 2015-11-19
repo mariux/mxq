@@ -148,6 +148,9 @@ CREATE TABLE IF NOT EXISTS mxq_daemon (
     daemon_memory   INT8 UNSIGNED NOT NULL  DEFAULT 0,
     daemon_time     INT4 UNSIGNED NOT NULL  DEFAULT 0,
 
+    daemon_memory_limit_slot_soft   INT8 UNSIGNED NOT NULL  DEFAULT 0,
+    daemon_memory_limit_slot_hard   INT8 UNSIGNED NOT NULL  DEFAULT 0,
+
     daemon_jobs_running     INT4 UNSIGNED NOT NULL  DEFAULT 0,
     daemon_slots_running    INT4 UNSIGNED NOT NULL  DEFAULT 0,
     daemon_threads_running  INT4 UNSIGNED NOT NULL  DEFAULT 0,

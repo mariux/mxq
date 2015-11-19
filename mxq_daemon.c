@@ -26,6 +26,8 @@
             " daemon_slots," \
             " daemon_memory," \
             " daemon_time," \
+            " daemon_memory_limit_slot_soft," \
+            " daemon_memory_limit_slot_hard," \
             " daemon_jobs_running," \
             " daemon_slots_running," \
             " daemon_threads_running," \
@@ -55,6 +57,9 @@ static int bind_result_daemon_fields(struct mx_mysql_bind *result, struct mxq_da
     res += mx_mysql_bind_var(result, idx++, uint32, &(daemon->daemon_slots));
     res += mx_mysql_bind_var(result, idx++, uint64, &(daemon->daemon_memory));
     res += mx_mysql_bind_var(result, idx++, uint32, &(daemon->daemon_time));
+
+    res += mx_mysql_bind_var(result, idx++, uint64, &(daemon->daemon_memory_limit_slot_soft));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(daemon->daemon_memory_limit_slot_hard));
 
     res += mx_mysql_bind_var(result, idx++, uint32, &(daemon->daemon_jobs_running));
     res += mx_mysql_bind_var(result, idx++, uint32, &(daemon->daemon_slots_running));
@@ -101,6 +106,8 @@ int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon)
     assert(daemon->daemon_pid);
     assert(daemon->daemon_slots);
     assert(daemon->daemon_memory);
+    assert(daemon->daemon_memory_limit_slot_soft <= daemon->daemon_memory_limit_slot_hard);
+    assert(daemon->daemon_memory_limit_slot_hard <= daemon->daemon_memory);
 
     stmt = mx_mysql_statement_prepare(mysql,
             "INSERT INTO"
@@ -116,6 +123,8 @@ int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon)
                 " daemon_slots  = ?,"
                 " daemon_memory = ?,"
                 " daemon_time   = ?,"
+                " daemon_memory_limit_slot_soft = ?,"
+                " daemon_memory_limit_slot_hard = ?,"
                 " daemon_jobs_running    = 0,"
                 " daemon_slots_running   = 0,"
                 " daemon_threads_running = 0,"
@@ -144,6 +153,9 @@ int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon)
     res += mx_mysql_statement_param_bind(stmt, idx++, uint32, &(daemon->daemon_slots));
     res += mx_mysql_statement_param_bind(stmt, idx++, uint64, &(daemon->daemon_memory));
     res += mx_mysql_statement_param_bind(stmt, idx++, uint32, &(daemon->daemon_time));
+
+    res += mx_mysql_statement_param_bind(stmt, idx++, uint64, &(daemon->daemon_memory_limit_slot_soft));
+    res += mx_mysql_statement_param_bind(stmt, idx++, uint64, &(daemon->daemon_memory_limit_slot_hard));
 
     assert(res ==0);
 

@@ -14,11 +14,12 @@ static void _group_list_init(struct mxq_group_list *glist)
     struct mxq_server *server;
     struct mxq_group *group;
 
-    long double memory_threads;
-    long double memory_per_thread;
-    long double memory_max_available;
+    long double memory_per_job_thread;
+    long double memory_available_for_group;
 
     unsigned long slots_per_job;
+    unsigned long slots_per_job_memory;
+    unsigned long slots_per_job_cpu;
     unsigned long jobs_max;
     unsigned long slots_max;
     unsigned long memory_max;
@@ -30,27 +31,36 @@ static void _group_list_init(struct mxq_group_list *glist)
     server = glist->user->server;
     group  = &glist->group;
 
-    memory_per_thread    = (long double)group->job_memory / (long double)group->job_threads;
-    memory_max_available = (long double)server->memory_total * (long double)server->memory_max_per_slot / memory_per_thread;
+    memory_per_job_thread = (long double)group->job_memory / (long double)group->job_threads;
 
-    if (memory_max_available > server->memory_total)
-        memory_max_available = server->memory_total;
+    /* max_memory_per_server_slot_soft < memory_per_job_thread => limit total memory for group default: avg_memory_per_server_slot*/
+    /* max_memory_per_server_slot_hard < memory_per_job_thread => do not start jobs for group  default: memory_total */
 
-    slots_per_job = ceill((long double)group->job_memory / server->memory_avg_per_slot);
+    /* memory_available_for_group = memory_total * max_memory_per_server_slot_soft / memory_per_job_thread */
+    memory_available_for_group = (long double)server->memory_total * (long double)server->memory_limit_slot_soft / memory_per_job_thread;
 
-    if (slots_per_job < group->job_threads)
-        slots_per_job = group->job_threads;
+    if (memory_available_for_group > (long double)server->memory_total)
+        memory_available_for_group = (long double)server->memory_total;
 
-    memory_threads = memory_max_available / memory_per_thread;
+    /* memory_slots_per_job = memory_per_job / memory_per_server_slot */
+    /* cpu_slots_per_job    = job_threads */
+    /* slots_per_job        = max(memory_slots_per_job, cpu_slots_per_job) */
 
-    if (memory_per_thread > server->memory_max_per_slot) {
-        jobs_max = memory_threads + 0.5;
-    } else if (memory_per_thread > server->memory_avg_per_slot) {
-        jobs_max = memory_threads + 0.5;
+    slots_per_job_memory = (unsigned long)ceill((long double)group->job_memory / server->memory_avg_per_slot);
+    slots_per_job_cpu    = group->job_threads;
+
+    if (slots_per_job_memory < slots_per_job_cpu)
+        slots_per_job = slots_per_job_cpu;
+    else
+        slots_per_job = slots_per_job_memory;
+
+    if (memory_per_job_thread > server->memory_limit_slot_hard) {
+        jobs_max = 0;
+    } else if (memory_per_job_thread > server->memory_avg_per_slot) {
+        jobs_max = (unsigned long)ceill(memory_available_for_group / (long double)group->job_memory);
     } else {
-        jobs_max = server->slots;
+        jobs_max = server->slots / group->job_threads;
     }
-    jobs_max /= group->job_threads;
 
     if (jobs_max > server->slots / slots_per_job)
         jobs_max = server->slots / slots_per_job;
@@ -62,14 +72,13 @@ static void _group_list_init(struct mxq_group_list *glist)
     slots_max  = jobs_max * slots_per_job;
     memory_max = jobs_max * group->job_memory;
 
-    if (glist->memory_per_thread != memory_per_thread
-       || glist->memory_max_available != memory_max_available
-       || glist->memory_max_available != memory_max_available
+    if (glist->memory_per_job_thread != memory_per_job_thread
+       || glist->memory_available_for_group != memory_available_for_group
        || glist->slots_per_job != slots_per_job
        || glist->jobs_max != jobs_max
        || glist->slots_max != slots_max
        || glist->memory_max != memory_max) {
-        mx_log_info("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu :: group %sinitialized.",
+        mx_log_info("  group=%s(%u):%lu jobs_max=%lu slots_max=%lu memory_max=%lu slots_per_job=%lu memory_per_job_thread=%Lf :: group %sinitialized.",
                     group->user_name,
                     group->user_uid,
                     group->group_id,
@@ -77,11 +86,12 @@ static void _group_list_init(struct mxq_group_list *glist)
                     slots_max,
                     memory_max,
                     slots_per_job,
+                    memory_per_job_thread,
                     glist->orphaned ? "re" : "");
     }
 
-    glist->memory_per_thread    = memory_per_thread;
-    glist->memory_max_available = memory_max_available;
+    glist->memory_per_job_thread      = memory_per_job_thread;
+    glist->memory_available_for_group = memory_available_for_group;
 
     glist->slots_per_job = slots_per_job;
 

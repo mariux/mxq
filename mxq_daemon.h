@@ -24,6 +24,9 @@ struct mxq_daemon {
     uint64_t  daemon_memory;
     uint32_t  daemon_time;
 
+    uint64_t  daemon_memory_limit_slot_soft;
+    uint64_t  daemon_memory_limit_slot_hard;
+
     uint32_t  daemon_jobs_running;
     uint32_t  daemon_slots_running;
     uint32_t  daemon_threads_running;

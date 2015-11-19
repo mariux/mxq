@@ -72,11 +72,17 @@ static void print_usage(void)
     "\n"
     "options:\n"
     "  -j, --slots     <slots>           default: depends on number of cores\n"
-    "  -m, --memory    <memory>          default: 2G\n"
-    "  -x, --max-memory-per-slot <mem>   default: <memory>/<slots>\n"
+    "  -m, --memory    <totalmemory>     default: 2G\n"
+    "\n"
+    "  -x, --max-memory-per-slot-soft <softlimit>\n"
+    "                         root user: default: <totalmemory>/<slots>\n"
+    "                     non-root user: default: <totalmemory>\n"
+    "\n"
+    "  -X, --max-memory-per-slot-hard <hardlimit>\n"
+    "                                    default: <totalmemory>\n"
     "\n"
     "  -N, --server-id <id>              default: main\n"
-    "      --hostname <hostname>         default: $(hostname)\n"
+    "      --hostname <hostname>         default: system hostname\n"
     "\n"
     "      --pid-file <pidfile>          default: create no pid file\n"
     "      --daemonize                   default: run in foreground\n"
@@ -313,7 +319,8 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     int opt;
     unsigned long arg_threads_total = 0;
     unsigned long arg_memory_total = 2048;
-    unsigned long arg_memory_max   = 0;
+    unsigned long arg_memory_limit_slot_soft = 0;
+    unsigned long arg_memory_limit_slot_hard = 0;
     int i;
 
     _mx_cleanup_free_ struct mx_proc_pid_stat *pps = NULL;
@@ -334,7 +341,9 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("initial-tmpdir", 8),
                 MX_OPTION_REQUIRED_ARG("slots",        'j'),
                 MX_OPTION_REQUIRED_ARG("memory",       'm'),
-                MX_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
+                MX_OPTION_REQUIRED_ARG("max-memory-per-slot",      'x'),
+                MX_OPTION_REQUIRED_ARG("max-memory-per-slot-soft", 'x'),
+                MX_OPTION_REQUIRED_ARG("max-memory-per-slot-hard", 'X'),
                 MX_OPTION_REQUIRED_ARG("server-id",    'N'),
                 MX_OPTION_REQUIRED_ARG("hostname",       6),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
@@ -443,14 +452,26 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 break;
 
             case 'x':
-                if (mx_strtoul(optctl.optarg, &arg_memory_max) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_memory_limit_slot_soft) < 0) {
                     unsigned long long int bytes;
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
-                        mx_log_err("Invalid argument supplied for option --max-memory-per-slot '%s': %m", optctl.optarg);
+                        mx_log_err("Invalid argument supplied for option --max-memory-per-slot-soft '%s': %m", optctl.optarg);
                         return -EX_USAGE;
                     }
-                    arg_memory_max = bytes/1024/1024;
+                    arg_memory_limit_slot_soft = bytes/1024/1024;
+                }
+                break;
+
+            case 'X':
+                if (mx_strtoul(optctl.optarg, &arg_memory_limit_slot_hard) < 0) {
+                    unsigned long long int bytes;
+
+                    if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
+                        mx_log_err("Invalid argument supplied for option --max-memory-per-slot-hard '%s': %m", optctl.optarg);
+                        return -EX_USAGE;
+                    }
+                    arg_memory_limit_slot_hard = bytes/1024/1024;
                 }
                 break;
 
@@ -589,19 +610,32 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         return -EX_OSERR;
     }
     server->memory_total = arg_memory_total;
-    server->memory_max_per_slot = arg_memory_max;
-
-    /* if run as non-root use full memory by default for every job */
-    if (!arg_memory_max && !RUNNING_AS_ROOT)
-        server->memory_max_per_slot = arg_memory_total;
 
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
 
-    if (server->memory_max_per_slot < server->memory_avg_per_slot)
-        server->memory_max_per_slot = server->memory_avg_per_slot;
+    if (!arg_memory_limit_slot_hard) {
+        arg_memory_limit_slot_hard = server->memory_total;
+    } else if (arg_memory_limit_slot_hard < server->memory_avg_per_slot) {
+        arg_memory_limit_slot_hard = server->memory_avg_per_slot;
+    } else if (arg_memory_limit_slot_hard > server->memory_total) {
+        arg_memory_limit_slot_hard = server->memory_total;
+    }
+    server->memory_limit_slot_hard = arg_memory_limit_slot_hard;
 
-    if (server->memory_max_per_slot > server->memory_total)
-        server->memory_max_per_slot = server->memory_total;
+    if (!arg_memory_limit_slot_soft) {
+        if (RUNNING_AS_ROOT) {
+            arg_memory_limit_slot_soft = server->memory_avg_per_slot;
+        } else {
+            arg_memory_limit_slot_soft = server->memory_total;
+        }
+    } else if (arg_memory_limit_slot_soft > server->memory_limit_slot_hard) {
+        arg_memory_limit_slot_soft = server->memory_limit_slot_hard;
+    } else if (arg_memory_limit_slot_soft < server->memory_avg_per_slot) {
+        arg_memory_limit_slot_soft = server->memory_avg_per_slot;
+    } else if (arg_memory_limit_slot_soft > server->memory_total) {
+        arg_memory_limit_slot_soft = server->memory_total;
+    }
+    server->memory_limit_slot_soft = arg_memory_limit_slot_soft;
 
     return 0;
 }
@@ -2265,11 +2299,12 @@ int main(int argc, char *argv[])
                     server->hostname,
                     server->server_id);
     mx_log_info("  host_id=%s", server->host_id);
-    mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
+    mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_limit_slot_soft=%ld memory_limit_slot_hard=%ld :: server initialized.",
                     server->slots,
                     server->memory_total,
                     server->memory_avg_per_slot,
-                    server->memory_max_per_slot);
+                    server->memory_limit_slot_soft,
+                    server->memory_limit_slot_hard);
     cpuset_log("cpu set available", &(server->cpu_set_available));
 
     /*** database connect ***/
