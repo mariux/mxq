@@ -1,3 +1,5 @@
+.maketag.devel
+
 mx_getopt.o
 mx_flock.o
 mx_log.o

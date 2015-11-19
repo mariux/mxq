@@ -193,14 +193,39 @@ manpages/%: manpages/%.xml
 
 ########################################################################
 
-.PHONY: all
+DEVELTAG = .maketag.devel
+
+.PHONY: clean
+clean: CLEAN += ${DEVELTAG}
+
 .PHONY: build
 
-all: build test
+.PHONY: all
+all:
+	@echo "PRODUCTION BUILD"
+	@if [ -e "${DEVELTAG}" ] ; then \
+		${MAKE} --no-print-directory clean ; \
+		rm -f "${DEVELTAG}" ; \
+	fi
+	@${MAKE} --no-print-directory _all
+
+.PHONY: _all
+_all: build
+
+########################################################################
 
 .PHONY: devel
-devel: CFLAGS += -DMXQ_DEVELOPMENT
-devel: all
+devel:
+	@echo "DEVELOPMENT BUILD"
+	@if [ ! -e "${DEVELTAG}" ] ; then \
+		${MAKE} --no-print-directory clean ; \
+		touch "${DEVELTAG}" ; \
+	fi
+	@${MAKE} --no-print-directory _devel
+
+.PHONY: _devel
+_devel: CFLAGS += -DMXQ_DEVELOPMENT
+_devel: build test
 
 ########################################################################
 
@@ -216,7 +241,6 @@ test:
 .PHONY: mrproper
 mrproper: clean
 
-.PHONY: clean
 mrproper clean:
 	@for i in $(CLEAN) ; do \
 	    if [ -e "$$i" ] ; then \
