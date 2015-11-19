@@ -81,7 +81,7 @@ static void print_usage(void)
     "  -X, --max-memory-per-slot-hard <hardlimit>\n"
     "                                    default: <totalmemory>\n"
     "\n"
-    "  -N, --server-id <id>              default: main\n"
+    "  -N, --daemon-name <name>          default: main\n"
     "      --hostname <hostname>         default: system hostname\n"
     "\n"
     "      --pid-file <pidfile>          default: create no pid file\n"
@@ -304,7 +304,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
 {
     int res;
     char *reexecuting;
-    char *arg_server_id;
+    char *arg_daemon_name;
     char *arg_hostname;
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
@@ -345,6 +345,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("max-memory-per-slot-soft", 'x'),
                 MX_OPTION_REQUIRED_ARG("max-memory-per-slot-hard", 'X'),
                 MX_OPTION_REQUIRED_ARG("server-id",    'N'),
+                MX_OPTION_REQUIRED_ARG("daemon-name",  'N'),
                 MX_OPTION_REQUIRED_ARG("hostname",       6),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
@@ -357,7 +358,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (reexecuting)
         mx_log_warning("Welcome back. Server is restarting. Ignoring some options by default now.");
 
-    arg_server_id = "main";
+    arg_daemon_name = "main";
     arg_hostname  = mx_hostname();
 
 #ifdef MXQ_DEVELOPMENT
@@ -476,7 +477,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 break;
 
             case 'N':
-                arg_server_id = optctl.optarg;
+                arg_daemon_name = optctl.optarg;
                 break;
 
             case 7:
@@ -510,7 +511,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     server->hostname = arg_hostname;
-    server->server_id = arg_server_id;
+    server->server_id = arg_daemon_name;
     server->initial_path = arg_initial_path;
     server->initial_tmpdir = arg_initial_tmpdir;
     server->recoveronly = arg_recoveronly;
