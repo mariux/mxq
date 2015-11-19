@@ -909,7 +909,7 @@ int main(int argc, char *argv[])
     if (!arg_program_name) {
         p = strchr(argv[0], ' ');
         if (p) {
-            mx_log_crit("<command> contains whitespace characters. Please set --command-alias if this is intended.", optctl.optarg);
+            mx_log_crit("<command> contains whitespace characters. Please set --command-alias if this is intended.");
             exit(EX_CONFIG);
         }
         arg_program_name = argv[0];

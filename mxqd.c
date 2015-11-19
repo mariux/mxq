@@ -1408,7 +1408,7 @@ void server_dump(struct mxq_server *server)
         for (glist = ulist->groups; glist; glist = glist->next) {
             group = &glist->group;
 
-            mx_log_info("        group=%s(%d):%lu %s jobs_max=%lu slots_per_job=%d jobs_in_q=%lu",
+            mx_log_info("        group=%s(%d):%lu %s jobs_max=%lu slots_per_job=%lu jobs_in_q=%lu",
                 group->user_name,
                 group->user_uid,
                 group->group_id,
@@ -1635,7 +1635,7 @@ int killall_over_memory(struct mxq_server *server)
 
                 pinfo = mx_proc_tree_proc_info(ptree, job->host_pid);
                 if (!pinfo) {
-                    mx_log_warning("killall_over_memory(): Can't find process with pid %llu in process tree",
+                    mx_log_warning("killall_over_memory(): Can't find process with pid %u in process tree",
                         job->host_pid);
                     continue;
                 }
@@ -1648,7 +1648,7 @@ int killall_over_memory(struct mxq_server *server)
                 if (jlist->max_sumrss/1024 <= group->job_memory)
                     continue;
 
-                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=%d to job=%s(%d):%lu:%lu pgrp=%d",
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%luMiB): Sending signal=%d to job=%s(%d):%lu:%lu pgrp=%d",
                     jlist->max_sumrss/1024,
                     group->job_memory,
                     signal,
@@ -1787,7 +1787,7 @@ static char *fspool_get_filename (struct mxq_server *server,long unsigned int jo
     return fspool_filename;
 }
 
-static int fspool_process_file(struct mxq_server *server,char *filename,int job_id) {
+static int fspool_process_file(struct mxq_server *server,char *filename, uint64_t job_id) {
     FILE *in;
     int res;
 
@@ -1836,7 +1836,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
         return -errno;
     }
 
-    mx_log_info("job finished (via fspool) : job %d pid %d status %d",job_id,pid,status);
+    mx_log_info("job finished (via fspool) : job %lu pid %d status %d", job_id, pid, status);
 
     jlist = server_remove_job_list_by_pid(server, pid);
     if (!jlist) {
@@ -1846,7 +1846,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
 
     job = &jlist->job;
     if (job->job_id != job_id) {
-        mx_log_warning("fspool_process_file: %s: job_id(pid)[%ld] != job_id(filename)[%ld]",
+        mx_log_warning("fspool_process_file: %s: job_id(pid)[%lu] != job_id(filename)[%lu]",
                         filename,
                         job->job_id,
                         job_id);
@@ -1969,7 +1969,7 @@ static int lost_scan_one(struct mxq_server *server)
                     return -errno;
 
                 if (!fspool_file_exists(server, job->job_id)) {
-                    mx_log_warning("pid %u: process is gone. cancel job %d",
+                    mx_log_warning("pid %u: process is gone. cancel job %lu",
                                 jlist->job.host_pid,
                                 jlist->job.job_id);
                     server_remove_job_list_by_pid(server, job->host_pid);

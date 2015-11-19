@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
                 passwd = getpwuid(arg_uid);
                 if (!passwd) {
                     if (errno)
-                        mx_log_err("Can't load user '%s': %m");
+                        mx_log_err("Can't load user with uid '%lu': %m", arg_uid);
                     else
                         mx_log_err("Invalid argument for --user '%s': User not found.", optctl.optarg);
                     exit(EX_USAGE);

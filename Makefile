@@ -611,6 +611,7 @@ clean: CLEAN += test_mx_util
 test: test_mx_util
 
 test_mx_log.o: $(mx_log.h)
+test_mx_log.o: CFLAGS += -Wno-format-zero-length
 clean: CLEAN += test_mx_log.o
 
 test_mx_log: mx_log.o
