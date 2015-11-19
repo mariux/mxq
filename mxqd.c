@@ -2372,6 +2372,11 @@ int main(int argc, char *argv[])
                             global_sigterm_cnt);
             continue;
         }
+
+        group_cnt = load_running_groups(server);
+        if (group_cnt)
+           mx_log_debug("group_cnt=%d :: %d Groups loaded", group_cnt, group_cnt);
+
         if (global_sigint_cnt)
             killall(server, SIGTERM, 1);
 
