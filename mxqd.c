@@ -302,6 +302,8 @@ static int cpuset_init(struct mxq_server *server)
 
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
+    assert(server);
+
     int res;
     char *reexecuting;
     char *arg_daemon_name;
@@ -322,6 +324,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     unsigned long arg_memory_limit_slot_soft = 0;
     unsigned long arg_memory_limit_slot_hard = 0;
     int i;
+    struct mxq_daemon *daemon = &server->daemon;
 
     _mx_cleanup_free_ struct mx_proc_pid_stat *pps = NULL;
 
@@ -637,6 +640,19 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         arg_memory_limit_slot_soft = server->memory_total;
     }
     server->memory_limit_slot_soft = arg_memory_limit_slot_soft;
+
+    daemon->daemon_name   = arg_daemon_name;
+    daemon->status        = MXQ_DAEMON_STATUS_OK;
+    daemon->hostname      = arg_hostname;
+    daemon->mxq_version   = MXQ_VERSION;
+    daemon->boot_id       = server->boot_id;
+    daemon->pid_starttime = server->starttime;
+    daemon->daemon_pid    = getpid();
+    daemon->daemon_slots  = server->slots;
+    daemon->daemon_memory = server->memory_total;
+    daemon->daemon_time   = 0;
+    daemon->daemon_memory_limit_slot_soft = server->memory_limit_slot_soft;
+    daemon->daemon_memory_limit_slot_hard = server->memory_limit_slot_hard;
 
     return 0;
 }
@@ -2263,6 +2279,7 @@ int main(int argc, char *argv[])
 
     struct mxq_server __server;
     struct mxq_server *server = &__server;
+    struct mxq_daemon *daemon = &server->daemon;
 
     unsigned long slots_started  = 0;
     unsigned long slots_returned = 0;
@@ -2296,9 +2313,17 @@ int main(int argc, char *argv[])
 #ifdef MXQ_DEVELOPMENT
     mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.");
 #endif
-    mx_log_info("hostname=%s server_id=%s :: MXQ server started.",
+
+    /*** database connect ***/
+
+    mx_mysql_connect_forever(&(server->mysql));
+
+    mxq_daemon_register(server->mysql, daemon);
+
+    mx_log_info("hostname=%s daemon_name=%s daemon_id=%u :: MXQ server started.",
                     server->hostname,
-                    server->server_id);
+                    daemon->daemon_name,
+                    daemon->daemon_id);
     mx_log_info("  host_id=%s", server->host_id);
     mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_limit_slot_soft=%ld memory_limit_slot_hard=%ld :: server initialized.",
                     server->slots,
@@ -2307,10 +2332,6 @@ int main(int argc, char *argv[])
                     server->memory_limit_slot_soft,
                     server->memory_limit_slot_hard);
     cpuset_log("cpu set available", &(server->cpu_set_available));
-
-    /*** database connect ***/
-
-    mx_mysql_connect_forever(&(server->mysql));
 
     /*** main loop ***/
 

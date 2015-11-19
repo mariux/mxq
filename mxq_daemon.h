@@ -6,6 +6,8 @@
 
 #include "mx_mysql.h"
 
+#define MXQ_DAEMON_STATUS_OK 0
+
 struct mxq_daemon {
     uint32_t  daemon_id;
 
@@ -39,5 +41,6 @@ struct mxq_daemon {
 };
 
 void mxq_daemon_free_content(struct mxq_daemon *daemon);
+int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon);
 
 #endif

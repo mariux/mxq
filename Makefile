@@ -463,6 +463,7 @@ mxqd.o: $(mx_util.h)
 mxqd.o: $(mx_proc.h)
 mxqd.o: $(mx_log.h)
 mxqd.o: $(mxqd.h)
+mxqd.o: $(mxq_daemon.h)
 mxqd.o: $(mxq_group.h)
 mxqd.o: $(mxq_job.h)
 mxqd.o: $(mx_mysql.h)
@@ -498,6 +499,7 @@ mxqd: mx_proc.o
 mxqd: mx_log.o
 mxqd: mxq_log.o
 mxqd: mx_getopt.o
+mxqd: mxq_daemon.o
 mxqd: mxq_group.o
 mxqd: mxq_job.o
 mxqd: mx_mysql.o
