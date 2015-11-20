@@ -186,49 +186,49 @@ static int do_jobs_statement(struct mx_mysql *mysql, char *query, struct mx_mysq
     return res;
 }
 
-int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job_id)
+int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **jobs_result, uint64_t job_id)
 {
-    int res;
-    struct mxq_job *jobs = NULL;
+    struct mxq_job *jobs_tmp = NULL;
     struct mx_mysql_bind param = {0};
+    int idx;
+    int res;
 
     assert(mysql);
-    assert(mxq_jobs);
-    assert(!(*mxq_jobs));
+    assert(jobs_result);
+    assert(!(*jobs_result));
 
     char *query =
             "SELECT"
                 JOB_FIELDS
-            " FROM mxq_job"
+            " FROM"
+                " mxq_job"
             " WHERE job_id = ?"
             " LIMIT 1";
 
     res = mx_mysql_bind_init_param(&param, 1);
     assert(res == 0);
 
-    res = mx_mysql_bind_var(&param, 0, uint64, &job_id);
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++, uint64, &job_id);
     assert(res == 0);
 
-    res=do_jobs_statement(mysql, query, &param, &jobs);
-    if (res < 0) {
-        return res;
-    }
+    res = do_jobs_statement(mysql, query, &param, &jobs_tmp);
+    if (res >= 0)
+        *jobs_result = jobs_tmp;
 
-    *mxq_jobs = jobs;
     return res;
 }
 
-
-
-int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp)
+int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **jobs_result, struct mxq_group *grp)
 {
     int res;
-    struct mxq_job *jobs = NULL;
+    struct mxq_job *jobs_tmp = NULL;
     struct mx_mysql_bind param = {0};
 
     assert(mysql);
-    assert(mxq_jobs);
-    assert(!(*mxq_jobs));
+    assert(jobs_result);
+    assert(!(*jobs_result));
 
     char *query =
             "SELECT"
@@ -243,47 +243,48 @@ int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, st
     res = mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
     assert(res == 0);
 
-    res=do_jobs_statement(mysql, query, &param, &jobs);
-    if (res < 0) {
-        return res;
-    }
-
-    *mxq_jobs = jobs;
+    res = do_jobs_statement(mysql, query, &param, &jobs_tmp);
+    if (res >= 0)
+        *jobs_result = jobs_tmp;
     return res;
 }
 
-int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp, uint64_t job_status)
+int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **jobs_result, struct mxq_group *grp, uint64_t job_status)
 {
-    int res;
-    struct mxq_job *jobs = NULL;
+    struct mxq_job *jobs_tmp = NULL;
     struct mx_mysql_bind param = {0};
+    int idx;
+    int res;
 
     assert(mysql);
-    assert(mxq_jobs);
-    assert(!(*mxq_jobs));
+    assert(jobs_result);
+    assert(!(*jobs_result));
 
     char *query =
             "SELECT"
                 JOB_FIELDS
-            " FROM mxq_job"
+            " FROM"
+                " mxq_job"
             " WHERE group_id = ?"
-            "   AND job_status = ?"
-            " ORDER BY server_id, host_hostname, job_id";
+              " AND job_status = ?"
+            " ORDER BY"
+                " server_id,"
+                " host_hostname,"
+                " job_id";
 
     res = mx_mysql_bind_init_param(&param, 2);
     assert(res == 0);
 
-    res = 0;
-    res += mx_mysql_bind_var(&param, 0, uint64, &(grp->group_id));
-    res += mx_mysql_bind_var(&param, 1, uint64, &job_status);
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++, uint64, &(grp->group_id));
+    res += mx_mysql_bind_var(&param, idx++, uint64, &job_status);
     assert(res == 0);
 
-    res=do_jobs_statement(mysql, query, &param, &jobs);
-    if (res < 0) {
-        return res;
-    }
+    res = do_jobs_statement(mysql, query, &param, &jobs_tmp);
+    if (res >= 0)
+        *jobs_result = jobs_tmp;
 
-    *mxq_jobs = jobs;
     return res;
 }
 
@@ -460,6 +461,7 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
     struct mx_mysql_bind param = {0};
 
     assert(mysql);
+
     assert(job);
 
     if (WIFEXITED(job->stats_status)) {
@@ -545,57 +547,28 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
     return res;
 }
 
-int mxq_set_job_status_unknown_for_server(struct mx_mysql *mysql, char *hostname, char *server_id)
-{
-    int res;
-    struct mx_mysql_bind param = {0};
-
-    assert(mysql);
-    assert(hostname);
-    assert(*hostname);
-    assert(server_id);
-    assert(*server_id);
-
-    char *query =
-            "UPDATE mxq_job SET"
-            " job_status = " status_str(MXQ_JOB_STATUS_UNKNOWN) ","
-            " date_end = NULL"
-            " WHERE job_status IN (" status_str(MXQ_JOB_STATUS_LOADED) "," status_str(MXQ_JOB_STATUS_RUNNING) "," status_str(MXQ_JOB_STATUS_KILLING) ")"
-            " AND host_hostname = ?"
-            " AND server_id = ?";
-
-    res = mx_mysql_bind_init_param(&param, 2);
-    assert(res == 0);
-
-    res = 0;
-    res += mx_mysql_bind_var(&param, 0, string, &hostname);
-    res += mx_mysql_bind_var(&param, 1, string, &server_id);
-    assert(res == 0);
-
-    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
-    if (res < 0) {
-        mx_log_err("mx_mysql_do_statement(): %m");
-        return res;
-    }
-
-    return res;
-}
-
 int mxq_set_job_status_unknown(struct mx_mysql *mysql, struct mxq_job *job)
 {
-    int res;
     struct mx_mysql_bind param = {0};
+    int idx;
+    int res;
 
     char *query =
-            "UPDATE mxq_job SET"
-            " job_status = " status_str(MXQ_JOB_STATUS_UNKNOWN)
+            "UPDATE"
+                " mxq_job"
+            " SET"
+                " job_status = " status_str(MXQ_JOB_STATUS_UNKNOWN)
             " WHERE job_id = ?";
 
     res = mx_mysql_bind_init_param(&param, 1);
-    res += mx_mysql_bind_var(&param, 0, uint64, &job->job_id);
     assert(res == 0);
 
-    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++, uint64, &job->job_id);
+    assert(res == 0);
+
+    res += mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
     if (res < 0) {
         mx_log_err("mx_mysql_do_statement(): %m");
         return res;
