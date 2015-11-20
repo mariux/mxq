@@ -392,6 +392,8 @@ mxqdump.o: $(mx_log.h)
 mxqdump.o: $(mx_util.h)
 mxqdump.o: $(mx_mysql.h)
 mxqdump.o: $(mx_getopt.h)
+mxqdump.o: $(mxq_group.h)
+mxqdump.o: $(mxq_job.h)
 mxqdump.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxqdump.o

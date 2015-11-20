@@ -238,7 +238,7 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         j->job_id,
         j->host_pid,
         j->host_hostname,
-        j->server_id,
+        j->daemon_name,
         g->group_name,
         wait_sec,
         run_sec,

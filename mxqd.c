@@ -514,23 +514,23 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     server->hostname = arg_hostname;
-    server->server_id = arg_daemon_name;
+    server->daemon_name = arg_daemon_name;
     server->initial_path = arg_initial_path;
     server->initial_tmpdir = arg_initial_tmpdir;
     server->recoveronly = arg_recoveronly;
 
-    server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
+    server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->daemon_name);
     if (!server->flock) {
-        mx_log_err("mx_flock(/dev/shm/mxqd.%s.%s.lck) failed: %m", server->hostname, server->server_id);
+        mx_log_err("mx_flock(/dev/shm/mxqd.%s.%s.lck) failed: %m", server->hostname, server->daemon_name);
         return -EX_UNAVAILABLE;
     }
 
     if (!server->flock->locked) {
-        mx_log_err("MXQ Server '%s' on host '%s' is already running. Exiting.", server->server_id, server->hostname);
+        mx_log_err("MXQ Server '%s' on host '%s' is already running. Exiting.", server->daemon_name, server->hostname);
         return -EX_UNAVAILABLE;
     }
 
-    mx_asprintf_forever(&server->finished_jobsdir,"%s/%s",MXQ_FINISHED_JOBSDIR,server->server_id);
+    mx_asprintf_forever(&server->finished_jobsdir,"%s/%s",MXQ_FINISHED_JOBSDIR,server->daemon_name);
     res=mx_mkdir_p(server->finished_jobsdir,0700);
     if (res<0) {
         mx_log_err("MAIN: mkdir %s failed: %m. Exiting.",MXQ_FINISHED_JOBSDIR);
@@ -754,7 +754,7 @@ static int init_child_process(struct mxq_group_list *glist, struct mxq_job *job)
     mx_setenvf_forever("MXQ_TIME",    "%d",     group->job_time);
     mx_setenv_forever("MXQ_HOSTID",   server->host_id);
     mx_setenv_forever("MXQ_HOSTNAME", server->hostname);
-    mx_setenv_forever("MXQ_SERVERID", server->server_id);
+    mx_setenv_forever("MXQ_SERVERID", server->daemon_name);
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {
@@ -1116,6 +1116,8 @@ unsigned long start_job(struct mxq_group_list *glist)
 
     struct mxq_group *group;
 
+    struct mxq_daemon *daemon;
+
     pid_t pid;
     int res;
 
@@ -1124,10 +1126,11 @@ unsigned long start_job(struct mxq_group_list *glist)
     assert(glist->user->server);
 
     server = glist->user->server;
+    daemon = &server->daemon;
     group  = &glist->group;
     job    = &_mxqjob;
 
-    res = mxq_load_job_from_group_for_server(server->mysql, job, group->group_id, server->hostname, server->server_id, server->host_id);
+    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon);
     if (!res) {
         return 0;
     }
@@ -2017,7 +2020,10 @@ static int lost_scan(struct mxq_server *server)
 
 static int load_running_jobs(struct mxq_server *server)
 {
+    assert(server);
+
     _mx_cleanup_free_ struct mxq_job *jobs = NULL;
+    struct mxq_daemon *daemon = &server->daemon;
 
     struct mxq_job_list   *jlist;
     struct mxq_group_list *glist;
@@ -2028,7 +2034,7 @@ static int load_running_jobs(struct mxq_server *server)
 
     int j;
 
-    job_cnt = mxq_load_jobs_running_on_server(server->mysql, &jobs, server->hostname, server->server_id);
+    job_cnt = mxq_load_jobs_running_on_server(server->mysql, &jobs, daemon);
     if (job_cnt < 0)
         return job_cnt;
 
@@ -2201,21 +2207,22 @@ int load_running_groups(struct mxq_server *server)
 
 int recover_from_previous_crash(struct mxq_server *server)
 {
-    int res;
-
     assert(server);
     assert(server->mysql);
     assert(server->hostname);
-    assert(server->server_id);
+    assert(server->daemon_name);
 
-    res = mxq_unassign_jobs_of_server(server->mysql, server->hostname, server->server_id);
+    int res;
+    struct mxq_daemon *daemon = &server->daemon;
+
+    res = mxq_unassign_jobs_of_server(server->mysql, daemon);
     if (res < 0) {
         mx_log_info("mxq_unassign_jobs_of_server() failed: %m");
         return res;
     }
     if (res > 0)
-        mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: unassigned %d jobs.",
-            server->hostname, server->server_id, res);
+        mx_log_info("hostname=%s daemon_name=%s :: recovered from previous crash: unassigned %d jobs.",
+            server->hostname, server->daemon_name, res);
 
     res = load_running_groups(server);
     mx_log_info("recover: %d running groups loaded.", res);

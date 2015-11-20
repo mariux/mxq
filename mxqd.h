@@ -94,7 +94,7 @@ struct mxq_server {
     unsigned long long int starttime;
     char *host_id;
     char *hostname;
-    char *server_id;
+    char *daemon_name;
     char *pidfilename;
     char *finished_jobsdir;
     struct mx_flock *flock;
