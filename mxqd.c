@@ -1228,50 +1228,27 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
     for (glist = ulist->groups; glist && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); glist = gnext) {
 
         group  = &glist->group;
+        gnext  = glist->next;
 
         assert(glist->jobs_running <= group->group_jobs);
         assert(glist->jobs_running <= glist->jobs_max);
 
         if (glist->jobs_running == group->group_jobs) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
-
         if (glist->jobs_running == glist->jobs_max) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
-
         if (mxq_group_jobs_inq(group) == 0) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
         if (glist->slots_per_job > slots_to_start) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
 
         if (group->group_priority < prio) {
             if (started) {
-                gnext = ulist->groups;
-                started = 0;
-                continue;
+                goto start_user_rewind;
             }
             prio = group->group_priority;
         }
@@ -1279,7 +1256,6 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
                 group->user_name, group->user_uid, group->group_id, slots_to_start, glist->slots_per_job);
 
         if (start_job(glist)) {
-
             slots_to_start -= glist->slots_per_job;
             jobs_started++;
             slots_started += glist->slots_per_job;
@@ -1287,11 +1263,14 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
             started = 1;
         }
 
-        gnext = glist->next;
-        if (!gnext && started) {
-            gnext = ulist->groups;
-            started = 0;
-        }
+start_user_continue:
+        if (gnext || !started)
+            continue;
+
+start_user_rewind:
+        gnext = ulist->groups;
+        started = 0;
+        continue;
     }
     return slots_started;
 }
