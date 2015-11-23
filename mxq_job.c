@@ -498,7 +498,6 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job)
 
     assert(mysql);
     assert(job);
-    assert(job->daemon_id);
     assert(job->host_pid);
 
     if (WIFEXITED(job->stats_status)) {
