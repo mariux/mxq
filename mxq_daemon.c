@@ -36,6 +36,11 @@
             " UNIX_TIMESTAMP(daemon_start) as daemon_start," \
             " UNIX_TIMESTAMP(daemon_stop)  as daemon_stop"
 
+#undef _to_string
+#undef status_str
+#define _to_string(s) #s
+#define status_str(x) _to_string(x)
+
 static int bind_result_daemon_fields(struct mx_mysql_bind *result, struct mxq_daemon *daemon)
 {
     int res = 0;
@@ -175,6 +180,124 @@ int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon)
     res = mx_mysql_statement_close(&stmt);
 
     return (int)num_rows;
+}
+
+int mxq_daemon_shutdown(struct mx_mysql *mysql, struct mxq_daemon *daemon)
+{
+    assert(daemon);
+    assert(daemon->daemon_id);
+
+    struct mx_mysql_bind param = {0};
+    char *query;
+    int idx;
+    int res;
+
+    query = "UPDATE"
+                " mxq_daemon"
+            " SET"
+                " mtime        = NULL,"
+                " daemon_stop  = NULL,"
+                " status       = " status_str(MXQ_DAEMON_STATUS_EXITED)
+            " WHERE daemon_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 1);
+    assert(res == 0);
+
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_id));
+    assert(res == 0);
+
+    res += mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    daemon->status = MXQ_DAEMON_STATUS_EXITED;
+
+    return res;
+}
+
+int mxq_daemon_mark_crashed(struct mx_mysql *mysql, struct mxq_daemon *daemon)
+{
+    assert(daemon);
+    assert(daemon->daemon_id);
+
+    struct mx_mysql_bind param = {0};
+    char *query;
+    int idx;
+    int res;
+
+    query = "UPDATE"
+                " mxq_daemon"
+            " SET"
+                " daemon_stop  = NULL,"
+                " status       = " status_str(MXQ_DAEMON_STATUS_CRASHED)
+            " WHERE status NOT IN ("
+                    status_str(MXQ_DAEMON_STATUS_EXITED) ","
+                    status_str(MXQ_DAEMON_STATUS_CRASHED) ")"
+              " AND daemon_id  != ?"
+              " AND hostname    = ?"
+              " AND daemon_name = ?";
+
+    res = mx_mysql_bind_init_param(&param, 3);
+    assert(res == 0);
+
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++, uint32, &daemon->daemon_id);
+    res += mx_mysql_bind_var(&param, idx++, string, &daemon->hostname);
+    res += mx_mysql_bind_var(&param, idx++, string, &daemon->daemon_name);
+    assert(res == 0);
+
+    res += mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    return res;
+}
+
+int mxq_daemon_set_status(struct mx_mysql *mysql, struct mxq_daemon *daemon, uint8_t status)
+{
+    assert(daemon);
+    assert(daemon->daemon_id);
+
+    struct mx_mysql_bind param = {0};
+    char *query;
+    int idx;
+    int res;
+
+    if (daemon->status == status)
+        return 0;
+
+    query = "UPDATE"
+                " mxq_daemon"
+            " SET"
+                " mtime        = NULL,"
+                " status       = ?"
+            " WHERE daemon_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 2);
+    assert(res == 0);
+
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++,  uint8, &(status));
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_id));
+    assert(res == 0);
+
+    res += mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    daemon->status = status;
+
+    return res;
 }
 
 int mxq_load_all_daemons(struct mx_mysql *mysql, struct mxq_daemon **daemons)

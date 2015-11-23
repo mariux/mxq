@@ -642,7 +642,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     server->memory_limit_slot_soft = arg_memory_limit_slot_soft;
 
     daemon->daemon_name   = arg_daemon_name;
-    daemon->status        = MXQ_DAEMON_STATUS_OK;
+    daemon->status        = MXQ_DAEMON_STATUS_IDLE;
     daemon->hostname      = arg_hostname;
     daemon->mxq_version   = MXQ_VERSION;
     daemon->boot_id       = server->boot_id;
@@ -1258,7 +1258,6 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
             }
             continue;
         }
-
         if (glist->slots_per_job > slots_to_start) {
             gnext = glist->next;
             if (!gnext && started) {
@@ -2166,6 +2165,12 @@ int recover_from_previous_crash(struct mxq_server *server)
     int res;
     struct mxq_daemon *daemon = &server->daemon;
 
+    res = mxq_daemon_mark_crashed(server->mysql, daemon);
+    if (res < 0) {
+        mx_log_info("mxq_daemon_mark_crashed() failed: %m");
+        return res;
+    }
+
     res = mxq_unassign_jobs_of_server(server->mysql, daemon);
     if (res < 0) {
         mx_log_info("mxq_unassign_jobs_of_server() failed: %m");
@@ -2336,12 +2341,14 @@ int main(int argc, char *argv[])
         if (!server->group_cnt) {
             assert(!server->jobs_running);
             assert(!group_cnt);
+            mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_IDLE);
             mx_log_info("Nothing to do. Sleeping for a short while. (1 second)");
             sleep(1);
             continue;
         }
 
         if (server->slots_running == server->slots) {
+            mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_RUNNING);
             mx_log_info("All slots running. Sleeping for a short while (7 seconds).");
             sleep(7);
             continue;
@@ -2349,6 +2356,7 @@ int main(int argc, char *argv[])
 
         slots_started = start_user_with_least_running_global_slot_count(server);
         if (slots_started == -1) {
+            mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_WAITING);
             mx_log_debug("no slots_started => we have users waiting for free slots.");
             slots_started = 0;
         } else if (slots_started) {
@@ -2357,6 +2365,7 @@ int main(int argc, char *argv[])
 
         if (!slots_started && !slots_returned && !global_sigint_cnt && !global_sigterm_cnt) {
             if (!server->jobs_running) {
+                mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_IDLE);
                 mx_log_info("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).");
                 sleep(15);
             } else {
@@ -2375,6 +2384,8 @@ int main(int argc, char *argv[])
                     global_sigrestart_cnt);
 
     /* while not quitting and not restarting -> wait for and collect all running jobs */
+
+    mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_TERMINATING);
     while (server->jobs_running && !global_sigquit_cnt && !global_sigrestart_cnt) {
         slots_returned  = catchall(server);
         slots_returned += fspool_scan(server);
@@ -2404,6 +2415,8 @@ int main(int argc, char *argv[])
                             global_sigterm_cnt);
         sleep(1);
     }
+
+    mxq_daemon_shutdown(server->mysql, daemon);
 
     mx_mysql_finish(&(server->mysql));
 
