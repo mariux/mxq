@@ -715,12 +715,12 @@ void _mx_mysql_bind_dump_index(struct mx_mysql_bind *b, unsigned int index)
 {
     mx_debug_value("%d", index);
     mx_debug_value("%d", b->bind[index].buffer_type);
-    mx_debug_value("%d", b->bind[index].buffer_length);
+    mx_debug_value("%lu", b->bind[index].buffer_length);
     mx_debug_value("%p", b->bind[index].buffer);
     if (b->bind[index].buffer_type == MYSQL_TYPE_STRING)
-        mx_debug_value("%s", b->bind[index].buffer);
+        mx_debug_value("%s", (char *)b->bind[index].buffer);
     mx_debug_value("%d", b->bind[index].is_unsigned);
-    mx_debug_value("%d", *b->bind[index].length);
+    mx_debug_value("%lu", *b->bind[index].length);
     mx_debug_value("%d", *b->bind[index].is_null);
     mx_debug_value("%d", *b->bind[index].error);
     mx_debug_value("0x%x", b->data[index].flags);
@@ -738,7 +738,7 @@ void _mx_mysql_bind_dump(struct mx_mysql_bind *b)
     }
 
     mx_debug_value("%d", b->type);
-    mx_debug_value("%d", b->count);
+    mx_debug_value("%lu", b->count);
 
     for (i=0; i < b->count; i++) {
         _mx_mysql_bind_dump_index(b, i);
@@ -845,7 +845,7 @@ int mx_mysql_option_set_default_file(struct mx_mysql *mysql, char *fname)
 
     if (fname && (*fname == '/') && (euidaccess(fname, R_OK) != 0)) {
         mx_log_warning("MySQL ignoring defaults file: euidaccess(\"%s\", R_OK) failed: %m", fname);
-        mx_log_warning("MySQL falling back to mysql default config search path.", fname);
+        mx_log_warning("MySQL falling back to mysql default config search path.");
         return -errno;
     }
 

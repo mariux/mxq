@@ -163,7 +163,7 @@ int _close_group_for_user(struct mx_mysql *mysql, uint64_t group_id, uint64_t us
     res = update_group_flags_closed(mysql, group_id, user_uid);
 
     if (res == 0) {
-        mx_log_warning("no group with group_id=%lu found for user with uid=%d",
+        mx_log_warning("no group with group_id=%lu found for user with uid=%lu",
                 group_id, user_uid);
         return -(errno=ENOENT);
     }
@@ -186,7 +186,7 @@ int _reopen_group_for_user(struct mx_mysql *mysql, uint64_t group_id, uint64_t u
     res = update_group_flags_reopen(mysql, group_id, user_uid);
 
     if (res == 0) {
-        mx_log_warning("no group with group_id=%lu found for user with uid=%d",
+        mx_log_warning("no group with group_id=%lu found for user with uid=%lu",
                 group_id, user_uid);
         return -(errno=ENOENT);
     }
@@ -315,7 +315,7 @@ int main(int argc, char *argv[])
                 passwd = getpwuid(arg_uid);
                 if (!passwd) {
                     if (errno)
-                        mx_log_err("Can't load user '%s': %m");
+                        mx_log_err("Can't load user with uid '%lu': %m", arg_uid);
                     else
                         mx_log_err("Invalid argument for --user '%s': User not found.", optctl.optarg);
                     exit(EX_USAGE);

@@ -5,6 +5,7 @@
 
 #include "mxq_job.h"
 #include "mxq_group.h"
+#include "mxq_daemon.h"
 
 #include <sched.h>
 
@@ -27,9 +28,9 @@ struct mxq_group_list {
 
     unsigned long job_cnt;
 
-    long double   memory_per_thread;
+    long double   memory_per_job_thread;
     unsigned long slots_per_job;
-    long double   memory_max_available;
+    long double   memory_available_for_group;
     unsigned long memory_max;
     unsigned long slots_max;
     unsigned long jobs_max;
@@ -65,6 +66,8 @@ struct mxq_user_list {
 struct mxq_server {
     struct mxq_user_list *users;
 
+    struct mxq_daemon daemon;
+
     unsigned long user_cnt;
     unsigned long group_cnt;
     unsigned long job_cnt;
@@ -81,7 +84,8 @@ struct mxq_server {
     unsigned long slots;
     unsigned long memory_total;
     long double   memory_avg_per_slot;
-    unsigned long memory_max_per_slot;
+    unsigned long memory_limit_slot_soft;
+    unsigned long memory_limit_slot_hard;
     cpu_set_t      cpu_set_available;
 
     struct mx_mysql *mysql;
@@ -90,7 +94,7 @@ struct mxq_server {
     unsigned long long int starttime;
     char *host_id;
     char *hostname;
-    char *server_id;
+    char *daemon_name;
     char *pidfilename;
     char *finished_jobsdir;
     struct mx_flock *flock;

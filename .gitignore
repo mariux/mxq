@@ -1,3 +1,5 @@
+.maketag.devel
+
 mx_getopt.o
 mx_flock.o
 mx_log.o
@@ -8,6 +10,7 @@ mxq_group.o
 mxqadmin.o
 mxqdump.o
 mxq_job.o
+mxq_daemon.o
 mxqd.o
 mxqsub.o
 mxqkill.o

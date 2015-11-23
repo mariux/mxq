@@ -238,7 +238,7 @@ static int print_job(struct mxq_group *g, struct mxq_job *j)
         j->job_id,
         j->host_pid,
         j->host_hostname,
-        j->server_id,
+        j->daemon_name,
         g->group_name,
         wait_sec,
         run_sec,
@@ -388,7 +388,7 @@ static int dump_jobs(struct mx_mysql *mysql, uint64_t group_id, uint64_t job_sta
             grp_cnt = mxq_load_running_groups(mysql, &groups);
     }
 
-    mx_debug_value("%lu", grp_cnt);
+    mx_debug_value("%d", grp_cnt);
 
     for (g=0; g < grp_cnt; g++) {
         grp = &groups[g];
@@ -398,7 +398,7 @@ static int dump_jobs(struct mx_mysql *mysql, uint64_t group_id, uint64_t job_sta
         else
             job_cnt = mxq_load_jobs_in_group(mysql, &jobs, grp);
 
-        mx_debug_value("%lu", job_cnt);
+        mx_debug_value("%d", job_cnt);
 
         for (j=0; j < job_cnt; j++) {
             job = &jobs[j];
@@ -783,10 +783,10 @@ int main(int argc, char *argv[])
            mx_log_notice("No group found with group_id=%lu.", arg_group_id);
     } else {
         if (UINT64_HASVALUE(arg_uid) && !arg_all && !(arg_uid == ruid && !arg_running)) {
-            mx_log_debug("DO: print running groups for user with uid=%d", arg_uid);
+            mx_log_debug("DO: print running groups for user with uid=%lu", arg_uid);
             cnt = dump_groups(mysql, MXQ_JOB_STATUS_RUNNING, arg_uid);
             if (!cnt)
-                mx_log_notice("No running groups found for user with uid=%d", arg_uid);
+                mx_log_notice("No running groups found for user with uid=%lu", arg_uid);
         } else if (arg_uid == UINT64_ALL && arg_all) {
             mx_log_debug("DO: print all groups");
             cnt = dump_groups(mysql, UINT64_ALL, UINT64_ALL);
@@ -796,7 +796,7 @@ int main(int argc, char *argv[])
             mx_log_debug("DO: print all groups for user with uid=%lu", arg_uid);
             cnt = dump_groups(mysql, UINT64_ALL, arg_uid);
             if (!cnt)
-                mx_log_notice("No groups found for user with uid=%d.", arg_uid);
+                mx_log_notice("No groups found for user with uid=%lu.", arg_uid);
         } else {
             if (arg_uid == UINT64_ALL) {
                 mx_log_debug("DO: print all running groups");

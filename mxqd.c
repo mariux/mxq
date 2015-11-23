@@ -72,11 +72,17 @@ static void print_usage(void)
     "\n"
     "options:\n"
     "  -j, --slots     <slots>           default: depends on number of cores\n"
-    "  -m, --memory    <memory>          default: 2G\n"
-    "  -x, --max-memory-per-slot <mem>   default: <memory>/<slots>\n"
+    "  -m, --memory    <totalmemory>     default: 2G\n"
     "\n"
-    "  -N, --server-id <id>              default: main\n"
-    "      --hostname <hostname>         default: $(hostname)\n"
+    "  -x, --max-memory-per-slot-soft <softlimit>\n"
+    "                         root user: default: <totalmemory>/<slots>\n"
+    "                     non-root user: default: <totalmemory>\n"
+    "\n"
+    "  -X, --max-memory-per-slot-hard <hardlimit>\n"
+    "                                    default: <totalmemory>\n"
+    "\n"
+    "  -N, --daemon-name <name>          default: main\n"
+    "      --hostname <hostname>         default: system hostname\n"
     "\n"
     "      --pid-file <pidfile>          default: create no pid file\n"
     "      --daemonize                   default: run in foreground\n"
@@ -296,9 +302,11 @@ static int cpuset_init(struct mxq_server *server)
 
 int server_init(struct mxq_server *server, int argc, char *argv[])
 {
+    assert(server);
+
     int res;
     char *reexecuting;
-    char *arg_server_id;
+    char *arg_daemon_name;
     char *arg_hostname;
     char *arg_mysql_default_group;
     char *arg_mysql_default_file;
@@ -313,8 +321,10 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     int opt;
     unsigned long arg_threads_total = 0;
     unsigned long arg_memory_total = 2048;
-    unsigned long arg_memory_max   = 0;
+    unsigned long arg_memory_limit_slot_soft = 0;
+    unsigned long arg_memory_limit_slot_hard = 0;
     int i;
+    struct mxq_daemon *daemon = &server->daemon;
 
     _mx_cleanup_free_ struct mx_proc_pid_stat *pps = NULL;
 
@@ -334,8 +344,11 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("initial-tmpdir", 8),
                 MX_OPTION_REQUIRED_ARG("slots",        'j'),
                 MX_OPTION_REQUIRED_ARG("memory",       'm'),
-                MX_OPTION_REQUIRED_ARG("max-memory-per-slot", 'x'),
+                MX_OPTION_REQUIRED_ARG("max-memory-per-slot",      'x'),
+                MX_OPTION_REQUIRED_ARG("max-memory-per-slot-soft", 'x'),
+                MX_OPTION_REQUIRED_ARG("max-memory-per-slot-hard", 'X'),
                 MX_OPTION_REQUIRED_ARG("server-id",    'N'),
+                MX_OPTION_REQUIRED_ARG("daemon-name",  'N'),
                 MX_OPTION_REQUIRED_ARG("hostname",       6),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
@@ -348,7 +361,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (reexecuting)
         mx_log_warning("Welcome back. Server is restarting. Ignoring some options by default now.");
 
-    arg_server_id = "main";
+    arg_daemon_name = "main";
     arg_hostname  = mx_hostname();
 
 #ifdef MXQ_DEVELOPMENT
@@ -443,19 +456,31 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 break;
 
             case 'x':
-                if (mx_strtoul(optctl.optarg, &arg_memory_max) < 0) {
+                if (mx_strtoul(optctl.optarg, &arg_memory_limit_slot_soft) < 0) {
                     unsigned long long int bytes;
 
                     if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
-                        mx_log_err("Invalid argument supplied for option --max-memory-per-slot '%s': %m", optctl.optarg);
+                        mx_log_err("Invalid argument supplied for option --max-memory-per-slot-soft '%s': %m", optctl.optarg);
                         return -EX_USAGE;
                     }
-                    arg_memory_max = bytes/1024/1024;
+                    arg_memory_limit_slot_soft = bytes/1024/1024;
+                }
+                break;
+
+            case 'X':
+                if (mx_strtoul(optctl.optarg, &arg_memory_limit_slot_hard) < 0) {
+                    unsigned long long int bytes;
+
+                    if(mx_strtobytes(optctl.optarg, &bytes) < 0) {
+                        mx_log_err("Invalid argument supplied for option --max-memory-per-slot-hard '%s': %m", optctl.optarg);
+                        return -EX_USAGE;
+                    }
+                    arg_memory_limit_slot_hard = bytes/1024/1024;
                 }
                 break;
 
             case 'N':
-                arg_server_id = optctl.optarg;
+                arg_daemon_name = optctl.optarg;
                 break;
 
             case 7:
@@ -489,23 +514,23 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     server->hostname = arg_hostname;
-    server->server_id = arg_server_id;
+    server->daemon_name = arg_daemon_name;
     server->initial_path = arg_initial_path;
     server->initial_tmpdir = arg_initial_tmpdir;
     server->recoveronly = arg_recoveronly;
 
-    server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->server_id);
+    server->flock = mx_flock(LOCK_EX, "/dev/shm/mxqd.%s.%s.lck", server->hostname, server->daemon_name);
     if (!server->flock) {
-        mx_log_err("mx_flock(/dev/shm/mxqd.%s.%s.lck) failed: %m", server->hostname, server->server_id);
+        mx_log_err("mx_flock(/dev/shm/mxqd.%s.%s.lck) failed: %m", server->hostname, server->daemon_name);
         return -EX_UNAVAILABLE;
     }
 
     if (!server->flock->locked) {
-        mx_log_err("MXQ Server '%s' on host '%s' is already running. Exiting.", server->server_id, server->hostname);
+        mx_log_err("MXQ Server '%s' on host '%s' is already running. Exiting.", server->daemon_name, server->hostname);
         return -EX_UNAVAILABLE;
     }
 
-    mx_asprintf_forever(&server->finished_jobsdir,"%s/%s",MXQ_FINISHED_JOBSDIR,server->server_id);
+    mx_asprintf_forever(&server->finished_jobsdir,"%s/%s",MXQ_FINISHED_JOBSDIR,server->daemon_name);
     res=mx_mkdir_p(server->finished_jobsdir,0700);
     if (res<0) {
         mx_log_err("MAIN: mkdir %s failed: %m. Exiting.",MXQ_FINISHED_JOBSDIR);
@@ -513,7 +538,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     }
 
     if (arg_daemonize) {
-        res = daemon(0, 1);
+        res = mx_daemon(0, 1);
         if (res == -1) {
             mx_log_err("MAIN: daemon(0, 1) failed: %m. Exiting.");
             return -EX_OSERR;
@@ -589,19 +614,45 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         return -EX_OSERR;
     }
     server->memory_total = arg_memory_total;
-    server->memory_max_per_slot = arg_memory_max;
-
-    /* if run as non-root use full memory by default for every job */
-    if (!arg_memory_max && !RUNNING_AS_ROOT)
-        server->memory_max_per_slot = arg_memory_total;
 
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
 
-    if (server->memory_max_per_slot < server->memory_avg_per_slot)
-        server->memory_max_per_slot = server->memory_avg_per_slot;
+    if (!arg_memory_limit_slot_hard) {
+        arg_memory_limit_slot_hard = server->memory_total;
+    } else if (arg_memory_limit_slot_hard < server->memory_avg_per_slot) {
+        arg_memory_limit_slot_hard = server->memory_avg_per_slot;
+    } else if (arg_memory_limit_slot_hard > server->memory_total) {
+        arg_memory_limit_slot_hard = server->memory_total;
+    }
+    server->memory_limit_slot_hard = arg_memory_limit_slot_hard;
 
-    if (server->memory_max_per_slot > server->memory_total)
-        server->memory_max_per_slot = server->memory_total;
+    if (!arg_memory_limit_slot_soft) {
+        if (RUNNING_AS_ROOT) {
+            arg_memory_limit_slot_soft = server->memory_avg_per_slot;
+        } else {
+            arg_memory_limit_slot_soft = server->memory_total;
+        }
+    } else if (arg_memory_limit_slot_soft > server->memory_limit_slot_hard) {
+        arg_memory_limit_slot_soft = server->memory_limit_slot_hard;
+    } else if (arg_memory_limit_slot_soft < server->memory_avg_per_slot) {
+        arg_memory_limit_slot_soft = server->memory_avg_per_slot;
+    } else if (arg_memory_limit_slot_soft > server->memory_total) {
+        arg_memory_limit_slot_soft = server->memory_total;
+    }
+    server->memory_limit_slot_soft = arg_memory_limit_slot_soft;
+
+    daemon->daemon_name   = arg_daemon_name;
+    daemon->status        = MXQ_DAEMON_STATUS_IDLE;
+    daemon->hostname      = arg_hostname;
+    daemon->mxq_version   = MXQ_VERSION;
+    daemon->boot_id       = server->boot_id;
+    daemon->pid_starttime = server->starttime;
+    daemon->daemon_pid    = getpid();
+    daemon->daemon_slots  = server->slots;
+    daemon->daemon_memory = server->memory_total;
+    daemon->daemon_time   = 0;
+    daemon->daemon_memory_limit_slot_soft = server->memory_limit_slot_soft;
+    daemon->daemon_memory_limit_slot_hard = server->memory_limit_slot_hard;
 
     return 0;
 }
@@ -703,7 +754,7 @@ static int init_child_process(struct mxq_group_list *glist, struct mxq_job *job)
     mx_setenvf_forever("MXQ_TIME",    "%d",     group->job_time);
     mx_setenv_forever("MXQ_HOSTID",   server->host_id);
     mx_setenv_forever("MXQ_HOSTNAME", server->hostname);
-    mx_setenv_forever("MXQ_SERVERID", server->server_id);
+    mx_setenv_forever("MXQ_SERVERID", server->daemon_name);
 
     fh = open("/proc/self/loginuid", O_WRONLY|O_TRUNC);
     if (fh == -1) {
@@ -1065,6 +1116,8 @@ unsigned long start_job(struct mxq_group_list *glist)
 
     struct mxq_group *group;
 
+    struct mxq_daemon *daemon;
+
     pid_t pid;
     int res;
 
@@ -1073,10 +1126,11 @@ unsigned long start_job(struct mxq_group_list *glist)
     assert(glist->user->server);
 
     server = glist->user->server;
+    daemon = &server->daemon;
     group  = &glist->group;
     job    = &_mxqjob;
 
-    res = mxq_load_job_from_group_for_server(server->mysql, job, group->group_id, server->hostname, server->server_id, server->host_id);
+    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon);
     if (!res) {
         return 0;
     }
@@ -1174,51 +1228,27 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
     for (glist = ulist->groups; glist && slots_to_start > 0 && (!job_limit || jobs_started < job_limit); glist = gnext) {
 
         group  = &glist->group;
+        gnext  = glist->next;
 
         assert(glist->jobs_running <= group->group_jobs);
         assert(glist->jobs_running <= glist->jobs_max);
 
         if (glist->jobs_running == group->group_jobs) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
-
         if (glist->jobs_running == glist->jobs_max) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
-
         if (mxq_group_jobs_inq(group) == 0) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
-
         if (glist->slots_per_job > slots_to_start) {
-            gnext = glist->next;
-            if (!gnext && started) {
-                gnext = ulist->groups;
-                started = 0;
-            }
-            continue;
+            goto start_user_continue;
         }
 
         if (group->group_priority < prio) {
             if (started) {
-                gnext = ulist->groups;
-                started = 0;
-                continue;
+                goto start_user_rewind;
             }
             prio = group->group_priority;
         }
@@ -1226,7 +1256,6 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
                 group->user_name, group->user_uid, group->group_id, slots_to_start, glist->slots_per_job);
 
         if (start_job(glist)) {
-
             slots_to_start -= glist->slots_per_job;
             jobs_started++;
             slots_started += glist->slots_per_job;
@@ -1234,62 +1263,16 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
             started = 1;
         }
 
-        gnext = glist->next;
-        if (!gnext && started) {
-            gnext = ulist->groups;
-            started = 0;
-        }
-    }
-    return slots_started;
-}
-
-/**********************************************************************/
-
-unsigned long start_users(struct mxq_server *server)
-{
-    unsigned long slots_started;
-    unsigned long slots_started_total = 0;
-    long slots_to_start;
-    int started = 0;
-
-    struct mxq_user_list *ulist;
-    struct mxq_user_list *unext = NULL;
-
-    assert(server);
-
-    if (!server->user_cnt)
-        return 0;
-
-    mx_log_debug("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users", server->slots - server->slots_running, server->user_cnt);
-
-    for (ulist = server->users; ulist; ulist = ulist->next) {
-
-        slots_to_start = server->slots / server->user_cnt - ulist->slots_running;
-
-        if (slots_to_start < 0)
+start_user_continue:
+        if (gnext || !started)
             continue;
 
-        if (slots_to_start > (server->slots - server->slots_running))
-            slots_to_start = (server->slots - server->slots_running);
-
-        slots_started = start_user(ulist, 0, slots_to_start);
-        slots_started_total += slots_started;
+start_user_rewind:
+        gnext = ulist->groups;
+        started = 0;
+        continue;
     }
-
-    for (ulist = server->users; ulist && server->slots - server->slots_running; ulist = unext) {
-        slots_to_start = server->slots - server->slots_running;
-        slots_started  = start_user(ulist, 1, slots_to_start);
-        slots_started_total += slots_started;
-        started = (started || slots_started);
-
-        unext = ulist->next;
-        if (!unext && started) {
-            unext = server->users;
-            started = 0;
-        }
-    }
-
-    return slots_started_total;
+    return slots_started;
 }
 
 /**********************************************************************/
@@ -1373,7 +1356,7 @@ void server_dump(struct mxq_server *server)
         for (glist = ulist->groups; glist; glist = glist->next) {
             group = &glist->group;
 
-            mx_log_info("        group=%s(%d):%lu %s jobs_max=%lu slots_per_job=%d jobs_in_q=%lu",
+            mx_log_info("        group=%s(%d):%lu %s jobs_max=%lu slots_per_job=%lu jobs_in_q=%lu",
                 group->user_name,
                 group->user_uid,
                 group->group_id,
@@ -1600,7 +1583,7 @@ int killall_over_memory(struct mxq_server *server)
 
                 pinfo = mx_proc_tree_proc_info(ptree, job->host_pid);
                 if (!pinfo) {
-                    mx_log_warning("killall_over_memory(): Can't find process with pid %llu in process tree",
+                    mx_log_warning("killall_over_memory(): Can't find process with pid %u in process tree",
                         job->host_pid);
                     continue;
                 }
@@ -1613,7 +1596,7 @@ int killall_over_memory(struct mxq_server *server)
                 if (jlist->max_sumrss/1024 <= group->job_memory)
                     continue;
 
-                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%lluMiB): Sending signal=%d to job=%s(%d):%lu:%lu pgrp=%d",
+                mx_log_info("killall_over_memory(): used(%lluMiB) > requested(%luMiB): Sending signal=%d to job=%s(%d):%lu:%lu pgrp=%d",
                     jlist->max_sumrss/1024,
                     group->job_memory,
                     signal,
@@ -1752,7 +1735,7 @@ static char *fspool_get_filename (struct mxq_server *server,long unsigned int jo
     return fspool_filename;
 }
 
-static int fspool_process_file(struct mxq_server *server,char *filename,int job_id) {
+static int fspool_process_file(struct mxq_server *server,char *filename, uint64_t job_id) {
     FILE *in;
     int res;
 
@@ -1801,7 +1784,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
         return -errno;
     }
 
-    mx_log_info("job finished (via fspool) : job %d pid %d status %d",job_id,pid,status);
+    mx_log_info("job finished (via fspool) : job %lu pid %d status %d", job_id, pid, status);
 
     jlist = server_remove_job_list_by_pid(server, pid);
     if (!jlist) {
@@ -1811,7 +1794,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename,int job_
 
     job = &jlist->job;
     if (job->job_id != job_id) {
-        mx_log_warning("fspool_process_file: %s: job_id(pid)[%ld] != job_id(filename)[%ld]",
+        mx_log_warning("fspool_process_file: %s: job_id(pid)[%lu] != job_id(filename)[%lu]",
                         filename,
                         job->job_id,
                         job_id);
@@ -1934,7 +1917,7 @@ static int lost_scan_one(struct mxq_server *server)
                     return -errno;
 
                 if (!fspool_file_exists(server, job->job_id)) {
-                    mx_log_warning("pid %u: process is gone. cancel job %d",
+                    mx_log_warning("pid %u: process is gone. cancel job %lu",
                                 jlist->job.host_pid,
                                 jlist->job.job_id);
                     server_remove_job_list_by_pid(server, job->host_pid);
@@ -1966,7 +1949,10 @@ static int lost_scan(struct mxq_server *server)
 
 static int load_running_jobs(struct mxq_server *server)
 {
+    assert(server);
+
     _mx_cleanup_free_ struct mxq_job *jobs = NULL;
+    struct mxq_daemon *daemon = &server->daemon;
 
     struct mxq_job_list   *jlist;
     struct mxq_group_list *glist;
@@ -1977,7 +1963,7 @@ static int load_running_jobs(struct mxq_server *server)
 
     int j;
 
-    job_cnt = mxq_load_jobs_running_on_server(server->mysql, &jobs, server->hostname, server->server_id);
+    job_cnt = mxq_load_jobs_running_on_server(server->mysql, &jobs, daemon);
     if (job_cnt < 0)
         return job_cnt;
 
@@ -2150,21 +2136,28 @@ int load_running_groups(struct mxq_server *server)
 
 int recover_from_previous_crash(struct mxq_server *server)
 {
-    int res;
-
     assert(server);
     assert(server->mysql);
     assert(server->hostname);
-    assert(server->server_id);
+    assert(server->daemon_name);
 
-    res = mxq_unassign_jobs_of_server(server->mysql, server->hostname, server->server_id);
+    int res;
+    struct mxq_daemon *daemon = &server->daemon;
+
+    res = mxq_daemon_mark_crashed(server->mysql, daemon);
+    if (res < 0) {
+        mx_log_info("mxq_daemon_mark_crashed() failed: %m");
+        return res;
+    }
+
+    res = mxq_unassign_jobs_of_server(server->mysql, daemon);
     if (res < 0) {
         mx_log_info("mxq_unassign_jobs_of_server() failed: %m");
         return res;
     }
     if (res > 0)
-        mx_log_info("hostname=%s server_id=%s :: recovered from previous crash: unassigned %d jobs.",
-            server->hostname, server->server_id, res);
+        mx_log_info("hostname=%s daemon_name=%s :: recovered from previous crash: unassigned %d jobs.",
+            server->hostname, server->daemon_name, res);
 
     res = load_running_groups(server);
     mx_log_info("recover: %d running groups loaded.", res);
@@ -2228,6 +2221,7 @@ int main(int argc, char *argv[])
 
     struct mxq_server __server;
     struct mxq_server *server = &__server;
+    struct mxq_daemon *daemon = &server->daemon;
 
     unsigned long slots_started  = 0;
     unsigned long slots_returned = 0;
@@ -2261,20 +2255,25 @@ int main(int argc, char *argv[])
 #ifdef MXQ_DEVELOPMENT
     mx_log_warning("DEVELOPMENT VERSION: Do not use in production environments.");
 #endif
-    mx_log_info("hostname=%s server_id=%s :: MXQ server started.",
-                    server->hostname,
-                    server->server_id);
-    mx_log_info("  host_id=%s", server->host_id);
-    mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_max_per_slot=%ld :: server initialized.",
-                    server->slots,
-                    server->memory_total,
-                    server->memory_avg_per_slot,
-                    server->memory_max_per_slot);
-    cpuset_log("cpu set available", &(server->cpu_set_available));
 
     /*** database connect ***/
 
     mx_mysql_connect_forever(&(server->mysql));
+
+    mxq_daemon_register(server->mysql, daemon);
+
+    mx_log_info("hostname=%s daemon_name=%s daemon_id=%u :: MXQ server started.",
+                    server->hostname,
+                    daemon->daemon_name,
+                    daemon->daemon_id);
+    mx_log_info("  host_id=%s", server->host_id);
+    mx_log_info("slots=%lu memory_total=%lu memory_avg_per_slot=%.0Lf memory_limit_slot_soft=%ld memory_limit_slot_hard=%ld :: server initialized.",
+                    server->slots,
+                    server->memory_total,
+                    server->memory_avg_per_slot,
+                    server->memory_limit_slot_soft,
+                    server->memory_limit_slot_hard);
+    cpuset_log("cpu set available", &(server->cpu_set_available));
 
     /*** main loop ***/
 
@@ -2321,12 +2320,14 @@ int main(int argc, char *argv[])
         if (!server->group_cnt) {
             assert(!server->jobs_running);
             assert(!group_cnt);
+            mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_IDLE);
             mx_log_info("Nothing to do. Sleeping for a short while. (1 second)");
             sleep(1);
             continue;
         }
 
         if (server->slots_running == server->slots) {
+            mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_RUNNING);
             mx_log_info("All slots running. Sleeping for a short while (7 seconds).");
             sleep(7);
             continue;
@@ -2334,6 +2335,7 @@ int main(int argc, char *argv[])
 
         slots_started = start_user_with_least_running_global_slot_count(server);
         if (slots_started == -1) {
+            mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_WAITING);
             mx_log_debug("no slots_started => we have users waiting for free slots.");
             slots_started = 0;
         } else if (slots_started) {
@@ -2342,6 +2344,7 @@ int main(int argc, char *argv[])
 
         if (!slots_started && !slots_returned && !global_sigint_cnt && !global_sigterm_cnt) {
             if (!server->jobs_running) {
+                mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_IDLE);
                 mx_log_info("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).");
                 sleep(15);
             } else {
@@ -2360,6 +2363,8 @@ int main(int argc, char *argv[])
                     global_sigrestart_cnt);
 
     /* while not quitting and not restarting -> wait for and collect all running jobs */
+
+    mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_TERMINATING);
     while (server->jobs_running && !global_sigquit_cnt && !global_sigrestart_cnt) {
         slots_returned  = catchall(server);
         slots_returned += fspool_scan(server);
@@ -2389,6 +2394,8 @@ int main(int argc, char *argv[])
                             global_sigterm_cnt);
         sleep(1);
     }
+
+    mxq_daemon_shutdown(server->mysql, daemon);
 
     mx_mysql_finish(&(server->mysql));
 

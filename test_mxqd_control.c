@@ -12,7 +12,7 @@
 void __init_server(struct mxq_server *server)
 {
     server->memory_total        = MEMORY_TOTAL;
-    server->memory_max_per_slot = MEMORY_MAX_PER_SLOT;
+    server->memory_limit_slot_soft = MEMORY_MAX_PER_SLOT;
     server->slots               = SLOTS;
     server->memory_avg_per_slot = MEMORY_TOTAL / SLOTS;
 }

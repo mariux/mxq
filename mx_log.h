@@ -53,7 +53,7 @@ int mx_log_level_get(void);
 int mx_log_level_mxlog_to_syslog(int level);
 int mx_log_level_syslog_to_mxlog(int level);
 
-int mx_log_do(int level, char *file, unsigned long line, const char *func, const char *fmt, ...);
+int mx_log_do(int level, char *file, unsigned long line, const char *func, const char *fmt, ...) __attribute__ ((format(printf, 5, 6)));;
 int mx_log_printf(const char *fmt, ...);
 
 int mx_log_finish(void);

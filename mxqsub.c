@@ -496,7 +496,7 @@ static int add_job(struct mx_mysql *mysql, struct mxq_job *j)
     res  = mx_mysql_statement_param_bind(stmt, 0, uint16, &(j->job_priority));
     res += mx_mysql_statement_param_bind(stmt, 1, uint64, &(j->group_id));
     res += mx_mysql_statement_param_bind(stmt, 2, string, &(j->job_workdir));
-    res += mx_mysql_statement_param_bind(stmt, 3, uint16, &(j->job_argc));
+    res += mx_mysql_statement_param_bind(stmt, 3, uint32, &(j->job_argc));
     res += mx_mysql_statement_param_bind(stmt, 4, string, &(j->job_argv_str));
     res += mx_mysql_statement_param_bind(stmt, 5, string, &(j->job_stdout));
     res += mx_mysql_statement_param_bind(stmt, 6, string, &(j->job_stderr));
@@ -909,7 +909,7 @@ int main(int argc, char *argv[])
     if (!arg_program_name) {
         p = strchr(argv[0], ' ');
         if (p) {
-            mx_log_crit("<command> contains whitespace characters. Please set --command-alias if this is intended.", optctl.optarg);
+            mx_log_crit("<command> contains whitespace characters. Please set --command-alias if this is intended.");
             exit(EX_CONFIG);
         }
         arg_program_name = argv[0];

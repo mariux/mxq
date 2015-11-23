@@ -1299,3 +1299,8 @@ int mx_mkdir_p(char *path, mode_t mode)
     }
     return (stat(copy, &st) && mkdir(copy, mode)) ? -errno : 0;
 }
+
+int mx_daemon(int nochdir, int noclose)
+{
+    return daemon(nochdir, noclose);
+}

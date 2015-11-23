@@ -164,5 +164,6 @@ int   mx_str_to_cpuset(cpu_set_t* cpuset_ptr,char *str);
 
 int mx_mkdir_p(char *path, mode_t mode);
 
+int mx_daemon(int nochdir, int noclose);
 
 #endif
