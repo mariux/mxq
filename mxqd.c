@@ -1299,55 +1299,6 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
 
 /**********************************************************************/
 
-unsigned long start_users(struct mxq_server *server)
-{
-    unsigned long slots_started;
-    unsigned long slots_started_total = 0;
-    long slots_to_start;
-    int started = 0;
-
-    struct mxq_user_list *ulist;
-    struct mxq_user_list *unext = NULL;
-
-    assert(server);
-
-    if (!server->user_cnt)
-        return 0;
-
-    mx_log_debug("=== starting jobs on free_slots=%lu slots for user_cnt=%lu users", server->slots - server->slots_running, server->user_cnt);
-
-    for (ulist = server->users; ulist; ulist = ulist->next) {
-
-        slots_to_start = server->slots / server->user_cnt - ulist->slots_running;
-
-        if (slots_to_start < 0)
-            continue;
-
-        if (slots_to_start > (server->slots - server->slots_running))
-            slots_to_start = (server->slots - server->slots_running);
-
-        slots_started = start_user(ulist, 0, slots_to_start);
-        slots_started_total += slots_started;
-    }
-
-    for (ulist = server->users; ulist && server->slots - server->slots_running; ulist = unext) {
-        slots_to_start = server->slots - server->slots_running;
-        slots_started  = start_user(ulist, 1, slots_to_start);
-        slots_started_total += slots_started;
-        started = (started || slots_started);
-
-        unext = ulist->next;
-        if (!unext && started) {
-            unext = server->users;
-            started = 0;
-        }
-    }
-
-    return slots_started_total;
-}
-
-/**********************************************************************/
-
 long start_user_with_least_running_global_slot_count(struct mxq_server *server)
 {
     struct mxq_user_list *ulist;
