@@ -71,18 +71,8 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 SET NEW.date_start = NOW();
 
                 UPDATE mxq_group SET
-                    group_slots_running = group_slots_running - OLD.host_slots+NEW.host_slots,
                     group_sum_startime  = group_sum_startime  + UNIX_TIMESTAMP(NEW.date_start) * OLD.host_slots
                 WHERE group_id = NEW.group_id;
-
-                IF OLD.host_slots != NEW.host_slots THEN
-                    IF NEW.daemon_id != 0 THEN
-                        UPDATE mxq_daemon SET
-                            mtime = NULL,
-                            daemon_slots_running = daemon_slots_running + NEW.host_slots - OLD.host_slots
-                        WHERE daemon_id = NEW.daemon_id;
-                    END IF;
-                END IF;
 
             -- LOADED(150) | RUNNING(200) | UNKNOWN_RUN(250) | EXTRUNNING(300) | STOPPED(350) | KILLING(399) -> KILLED(400) | FAILED(750)
             ELSEIF NEW.job_status IN (400, 750) AND OLD.job_status IN (150, 200, 250, 300, 350, 399) THEN
