@@ -59,6 +59,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 END IF;
 
                 UPDATE mxq_group SET
+                    group_sum_starttime = group_sum_starttime + UNIX_TIMESTAMP(NEW.date_start) * OLD.host_slots,
                     group_jobs_inq      = group_jobs_inq      - 1,
                     group_jobs_running  = group_jobs_running  + 1,
                     group_slots_running = group_slots_running + NEW.host_slots
@@ -70,9 +71,9 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 SET NEW.date_start = NOW();
 
                 UPDATE mxq_group SET
-                   group_slots_running=group_slots_running-OLD.host_slots+NEW.host_slots,
-                   group_mtime=NULL
-                WHERE group_id=NEW.group_id;
+                    group_slots_running = group_slots_running - OLD.host_slots+NEW.host_slots,
+                    group_sum_startime  = group_sum_startime  + UNIX_TIMESTAMP(NEW.date_start) * OLD.host_slots
+                WHERE group_id = NEW.group_id;
 
                 IF OLD.host_slots != NEW.host_slots THEN
                     IF NEW.daemon_id != 0 THEN
@@ -97,6 +98,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 END IF;
 
                 UPDATE mxq_group SET
+                    group_sum_starttime   = group_sum_starttime - LEAST(group_sum_starttime, UNIX_TIMESTAMP(OLD.date_start) * OLD.host_slots),
                     group_slots_running   = group_slots_running - OLD.host_slots,
                     group_jobs_running    = group_jobs_running  - 1,
                     group_jobs_failed     = group_jobs_failed   + 1,
@@ -135,6 +137,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 END IF;
 
                 UPDATE mxq_group SET
+                    group_sum_starttime = group_sum_starttime - LEAST(group_sum_starttime, UNIX_TIMESTAMP(OLD.date_start) * OLD.host_slots),
                     group_slots_running = group_slots_running - OLD.host_slots,
                     group_jobs_running  = group_jobs_running  - 1,
                     group_jobs_unknown  = group_jobs_unknown  + 1
@@ -162,6 +165,7 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
                 END IF;
 
                 UPDATE mxq_group SET
+                    group_sum_starttime = group_sum_starttime - LEAST(group_sum_starttime, UNIX_TIMESTAMP(OLD.date_start) * OLD.host_slots),
                     group_slots_running = group_slots_running - OLD.host_slots,
                     group_jobs_running  = group_jobs_running  - 1,
                     group_jobs_finished = group_jobs_finished + 1,

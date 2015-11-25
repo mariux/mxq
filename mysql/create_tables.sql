@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS mxq_group (
    group_jobs_restarted INT8 UNSIGNED NOT NULL DEFAULT 0,
 
    group_slots_running  INT8 UNSIGNED NOT NULL DEFAULT 0,
+   group_sum_starttime  INT8 UNSIGNED NOT NULL DEFAULT 0,
 
    group_mtime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
