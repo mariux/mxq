@@ -67,6 +67,8 @@ CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
             -- LOADED(150) -> RUNNING(200)
             ELSEIF NEW.job_status = 200 AND OLD.job_status = 150 THEN
 
+                SET NEW.date_start = NOW();
+
                 UPDATE mxq_group SET
                    group_slots_running=group_slots_running-OLD.host_slots+NEW.host_slots,
                    group_mtime=NULL
