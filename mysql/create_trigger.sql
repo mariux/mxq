@@ -47,8 +47,8 @@ DROP TRIGGER IF EXISTS mxq_update_job|
 CREATE TRIGGER mxq_update_job BEFORE UPDATE ON mxq_job
     FOR EACH ROW BEGIN
         IF NEW.job_status != OLD.job_status THEN
-            -- INQ(0) | ASSIGNED(100) -> LOADED(150) | RUNNING(200)
-            IF NEW.job_status IN (150, 200) AND OLD.job_status IN (0, 100)  THEN
+            -- ASSIGNED(100) -> LOADED(150)
+            IF NEW.job_status = 150 AND OLD.job_status = 100  THEN
                 IF NEW.daemon_id != 0 THEN
                     UPDATE mxq_daemon SET
                         mtime = NULL,
