@@ -270,8 +270,9 @@ int mxq_daemon_set_status(struct mx_mysql *mysql, struct mxq_daemon *daemon, uin
     int idx;
     int res;
 
+    /* set the same status only once every >= 5 minutes or return 0 */
     if (daemon->status == status)
-        return 0;
+        mx_within_rate_limit_or_return(5*60, 0);
 
     query = "UPDATE"
                 " mxq_daemon"
