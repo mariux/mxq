@@ -2326,8 +2326,14 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        if (server->slots_running == server->slots) {
-            mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_RUNNING);
+        if (server->slots_running >= server->slots) {
+            if (server->threads_running == server->slots) {
+                mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_CPUOPTIMAL);
+            } else if (server->slots_running > server->slots) {
+                mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_BACKFILL);
+            } else {
+                mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_FULL);
+            }
             mx_log_info("All slots running. Sleeping for a short while (7 seconds).");
             sleep(7);
             continue;
@@ -2348,6 +2354,7 @@ int main(int argc, char *argv[])
                 mx_log_info("Tried Hard and nobody is doing anything. Sleeping for a long while (15 seconds).");
                 sleep(15);
             } else {
+                mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_RUNNING);
                 mx_log_info("Tried Hard. But have done nothing. Sleeping for a very short while (3 seconds).");
                 sleep(3);
             }
