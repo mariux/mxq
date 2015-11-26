@@ -9,6 +9,9 @@
 #define MXQ_DAEMON_STATUS_IDLE              0 /* no jobs are running */
 #define MXQ_DAEMON_STATUS_RUNNING          10 /* some jobs are running */
 #define MXQ_DAEMON_STATUS_WAITING          20 /* waiting for more slots to return */
+#define MXQ_DAEMON_STATUS_FULL             30 /* all slots are running/occupied */
+#define MXQ_DAEMON_STATUS_BACKFILL         40 /* more slots are running */
+#define MXQ_DAEMON_STATUS_CPUOPTIMAL       50 /* all cpus are running */
 #define MXQ_DAEMON_STATUS_TERMINATING     200 /* server is going down */
 #define MXQ_DAEMON_STATUS_EXITED          250 /* server exited */
 #define MXQ_DAEMON_STATUS_CRASHED         255 /* server exited with unknown status */
