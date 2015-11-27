@@ -1017,6 +1017,7 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list *glist, struc
 
     signal(SIGINT,  SIG_IGN);
     signal(SIGTERM, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
     signal(SIGHUP,  SIG_IGN);
     signal(SIGXCPU, SIG_IGN);
 
@@ -1786,7 +1787,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
 
     mx_log_info("job finished (via fspool) : job %lu pid %d status %d", job_id, pid, status);
 
-    jlist = server_remove_job_list_by_pid(server, pid);
+    jlist = server_remove_job_list_by_job_id(server, job_id);
     if (!jlist) {
         mx_log_warning("fspool_process_file: %s : job unknown on server", filename);
         return -(errno=ENOENT);
@@ -1907,20 +1908,31 @@ static int lost_scan_one(struct mxq_server *server)
         for (glist = ulist->groups; glist; glist = glist->next) {
             for (jlist = glist->jobs; jlist; jlist = jlist->next) {
                 job = &jlist->job;
+
+                if (job->job_status == MXQ_JOB_STATUS_LOADED) {
+                    mx_log_warning("can't recover jobs with status MXQ_JOB_STATUS_LOADED. setting job status of job %lu to unknown.",
+                                jlist->job.job_id);
+
+                    server_remove_job_list_by_job_id(server, job->job_id);
+
+                    job->job_status = MXQ_JOB_STATUS_UNKNOWN;
+
+                    job_is_lost(server, &glist->group, jlist);
+                    continue;
+                }
+
                 res = kill(job->host_pid, 0);
                 if (res >= 0)
                     continue;
-
-                /* PID is not */
 
                 if (errno != ESRCH)
                     return -errno;
 
                 if (!fspool_file_exists(server, job->job_id)) {
-                    mx_log_warning("pid %u: process is gone. cancel job %lu",
+                    mx_log_warning("pid %u: process is gone. setting job status of job %lu to unknown.",
                                 jlist->job.host_pid,
                                 jlist->job.job_id);
-                    server_remove_job_list_by_pid(server, job->host_pid);
+                    server_remove_job_list_by_job_id(server, job->job_id);
 
                     job->job_status = MXQ_JOB_STATUS_UNKNOWN;
 

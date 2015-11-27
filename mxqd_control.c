@@ -189,6 +189,7 @@ void job_list_remove_self(struct mxq_job_list *jlist)
             continue;
 
         *jprevp = jlist->next;
+        jlist->next = NULL;
 
         glist->job_cnt--;
         ulist->job_cnt--;
@@ -220,6 +221,19 @@ struct mxq_job_list *server_remove_job_list_by_pid(struct mxq_server *server, pi
     assert(server);
 
     jlist = server_get_job_list_by_pid(server, pid);
+    if (jlist) {
+        job_list_remove_self(jlist);
+    }
+    return jlist;
+}
+
+struct mxq_job_list *server_remove_job_list_by_job_id(struct mxq_server *server, uint64_t job_id)
+{
+    struct mxq_job_list *jlist;
+
+    assert(server);
+
+    jlist = server_get_job_list_by_job_id(server, job_id);
     if (jlist) {
         job_list_remove_self(jlist);
     }
@@ -262,7 +276,7 @@ struct mxq_job_list *group_list_add_job(struct mxq_group_list *glist, struct mxq
     assert(glist);
     assert(glist->user);
     assert(glist->user->server);
-    assert(job->job_status == MXQ_JOB_STATUS_RUNNING);
+    assert(job->job_status == MXQ_JOB_STATUS_RUNNING || job->job_status == MXQ_JOB_STATUS_LOADED);
 
     group  = &glist->group;
     ulist  = glist->user;
