@@ -1912,13 +1912,11 @@ static int lost_scan_one(struct mxq_server *server)
                 if (res >= 0)
                     continue;
 
-                /* PID is not */
-
                 if (errno != ESRCH)
                     return -errno;
 
                 if (!fspool_file_exists(server, job->job_id)) {
-                    mx_log_warning("pid %u: process is gone. cancel job %lu",
+                    mx_log_warning("pid %u: process is gone. setting job status of job %lu to unknown.",
                                 jlist->job.host_pid,
                                 jlist->job.job_id);
                     server_remove_job_list_by_job_id(server, job->job_id);
