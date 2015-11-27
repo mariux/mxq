@@ -2384,7 +2384,7 @@ int main(int argc, char *argv[])
     /* while not quitting and not restarting -> wait for and collect all running jobs */
 
     mxq_daemon_set_status(server->mysql, daemon, MXQ_DAEMON_STATUS_TERMINATING);
-    while (server->jobs_running && !global_sigquit_cnt && !global_sigrestart_cnt) {
+    while (server->jobs_running && !global_sigquit_cnt && !global_sigrestart_cnt && !fail) {
         slots_returned  = catchall(server);
         slots_returned += fspool_scan(server);
 
