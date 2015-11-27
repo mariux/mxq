@@ -276,7 +276,7 @@ struct mxq_job_list *group_list_add_job(struct mxq_group_list *glist, struct mxq
     assert(glist);
     assert(glist->user);
     assert(glist->user->server);
-    assert(job->job_status == MXQ_JOB_STATUS_RUNNING);
+    assert(job->job_status == MXQ_JOB_STATUS_RUNNING || job->job_status == MXQ_JOB_STATUS_LOADED);
 
     group  = &glist->group;
     ulist  = glist->user;

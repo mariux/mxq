@@ -1908,6 +1908,19 @@ static int lost_scan_one(struct mxq_server *server)
         for (glist = ulist->groups; glist; glist = glist->next) {
             for (jlist = glist->jobs; jlist; jlist = jlist->next) {
                 job = &jlist->job;
+
+                if (job->job_status == MXQ_JOB_STATUS_LOADED) {
+                    mx_log_warning("can't recover jobs with status MXQ_JOB_STATUS_LOADED. setting job status of job %lu to unknown.",
+                                jlist->job.job_id);
+
+                    server_remove_job_list_by_job_id(server, job->job_id);
+
+                    job->job_status = MXQ_JOB_STATUS_UNKNOWN;
+
+                    job_is_lost(server, &glist->group, jlist);
+                    continue;
+                }
+
                 res = kill(job->host_pid, 0);
                 if (res >= 0)
                     continue;

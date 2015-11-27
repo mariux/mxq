@@ -744,7 +744,9 @@ int mxq_load_jobs_running_on_server(struct mx_mysql *mysql, struct mxq_job **job
                 JOB_FIELDS
             " FROM"
                 " mxq_job"
-            " WHERE job_status = " status_str(MXQ_JOB_STATUS_RUNNING)
+            " WHERE job_status IN ("
+                            status_str(MXQ_JOB_STATUS_LOADED) ","
+                            status_str(MXQ_JOB_STATUS_RUNNING) ")"
               " AND host_hostname = ?"
               " AND server_id     = ?";
     res = mx_mysql_bind_init_param(&param, 2);
