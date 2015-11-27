@@ -43,3 +43,4 @@ web/lighttpd.conf
 gmon.out
 core
 vgcore.*
+.nfs*

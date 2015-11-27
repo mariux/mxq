@@ -458,7 +458,6 @@ int mxq_set_job_status_running(struct mx_mysql *mysql, struct mxq_job *job)
                 " host_pid     = ?,"
                 " host_slots   = ?,"
                 " host_cpu_set = ?,"
-                " date_start   = NULL,"
                 " job_status   = " status_str(MXQ_JOB_STATUS_RUNNING)
             " WHERE job_status    = " status_str(MXQ_JOB_STATUS_LOADED)
               " AND job_id        = ?"
