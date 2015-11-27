@@ -189,6 +189,7 @@ void job_list_remove_self(struct mxq_job_list *jlist)
             continue;
 
         *jprevp = jlist->next;
+        jlist->next = NULL;
 
         glist->job_cnt--;
         ulist->job_cnt--;
