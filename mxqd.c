@@ -1017,6 +1017,7 @@ int reaper_process(struct mxq_server *server,struct mxq_group_list *glist, struc
 
     signal(SIGINT,  SIG_IGN);
     signal(SIGTERM, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
     signal(SIGHUP,  SIG_IGN);
     signal(SIGXCPU, SIG_IGN);
 
