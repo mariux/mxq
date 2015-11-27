@@ -227,6 +227,19 @@ struct mxq_job_list *server_remove_job_list_by_pid(struct mxq_server *server, pi
     return jlist;
 }
 
+struct mxq_job_list *server_remove_job_list_by_job_id(struct mxq_server *server, uint64_t job_id)
+{
+    struct mxq_job_list *jlist;
+
+    assert(server);
+
+    jlist = server_get_job_list_by_job_id(server, job_id);
+    if (jlist) {
+        job_list_remove_self(jlist);
+    }
+    return jlist;
+}
+
 static struct mxq_user_list *_user_list_find_by_uid(struct mxq_user_list *ulist, uint32_t uid)
 {
     for (; ulist; ulist = ulist->next) {
