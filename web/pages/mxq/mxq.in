@@ -63,6 +63,14 @@ EOF
 EOF
 }
 
+sub my_url {
+	my ($module,$params)=@_;
+
+	my $uri=new URI($module,$q->url());
+	$uri->query_form($params,';');
+	return $uri;
+}
+
 sub db_init {
 
 	open my $test,"<@MXQ_MYSQL_DEFAULT_FILE@" or die "@MXQ_MYSQL_DEFAULT_FILE@: $!\n";
@@ -406,7 +414,7 @@ sub group_table_rows {
 			$q->td({class=>'number'},$q->a({href=>selfurl("/group/$group_id")},$group_id)),
 			$q->td($group_name),
 			$q->td({class=>'number'},$job_threads),
-			$q->td($user_name),
+			$q->td($q->a({href=>my_url('groups',{user_name=>$user_name})},$user_name)),
 			$q->td($group_mtime),
 			$q->td(group_status($group_status)),
 			$q->td({class=>'number'},$group_jobs),
@@ -425,7 +433,9 @@ sub group_table_rows {
 
 sub group_table {
 
-	my ($sql_clause,@bind_args)=@_;
+	my ($sql_clause,$sql_binds)=@_;
+
+	$sql_clause||='true';
 
 	my $out;
 
@@ -442,7 +452,7 @@ sub group_table {
 	$out .= '<h2>Active Groups</h2>';
 
 	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running>0 OR group_jobs_inq>0) ORDER BY group_id DESC');
-	$sth->execute(@bind_args);
+	$sth->execute(@$sql_binds);
 	$out.=group_table_rows($sth,\@head);
 
 	@cols=qw(
@@ -476,18 +486,26 @@ sub group_table {
 	$out .= '<h2>Finished Groups</h2>';
 
 	$sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) ORDER BY group_id DESC');
-	$sth->execute(@bind_args);
+	$sth->execute(@$sql_binds);
 	$out.=group_table_rows($sth,\@head);
 
 	return $out;
 }
 
 sub groups {
+	my @sql_clauses;
+	my @sql_binds;
+
+	if ($q->param('user_name')) {
+		push @sql_clauses,'user_name = ?';
+		push @sql_binds,$q->param('user_name');
+	}
+
 	my $out=h1('MXQ Groups');
 
 	$dbh or db_init();
 
-	$out.=group_table('true');
+	$out.=group_table(join('AND',@sql_clauses),\@sql_binds);
 
 	return $out;
 }
@@ -533,5 +551,3 @@ if ($path_info eq '') {
 } else {
 	print header(-status => 404).HEAD().'<h1>not found</h1>';
 }
-
-
