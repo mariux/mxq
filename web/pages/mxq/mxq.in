@@ -8,6 +8,7 @@ use DBI;
 
 our %GROUP_STATUS_NAME;         # ( 0=>'OK',...)
 our %JOB_STATUS_NAME;
+our %DAEMON_STATUS_NAME;
 our $dbh;
 our $q;
 
@@ -21,6 +22,7 @@ div.dumper {border: 2px solid black; border-radius: 5px;  margin: 10px 0; paddin
 
 table.jobs, table.jobs th,table.jobs td { border: 1px solid black;	border-collapse: collapse;}
 table.groups, table.groups th,table.groups td { border: 1px solid black;	border-collapse: collapse;}
+table.server, table.server th,table.server td { border: 1px solid black;	border-collapse: collapse;}
 
 td.number { text-align: right; }
 
@@ -99,6 +101,19 @@ sub db_init {
 		UNKNOWN     =>  999,
 		FINISHED    => 1000,
 	);
+
+	# mxq_daemon.h
+	register_daemon_status(
+		IDLE        =>      0, # /* no jobs are running */
+		RUNNING     =>     10, # /* some jobs are running */
+		WAITING     =>     20, # /* waiting for more slots to return */
+		FULL        =>     30, # /* all slots are running/occupied */
+		BACKFILL    =>     40, # /* more slots are running */
+		CPUOPTIMAL  =>     50, # /* all cpus are running */
+		TERMINATING =>    200, # /* server is going down */
+		EXITED      =>    250, # /* server exited */
+		CRASHED     =>    255, # /* server exited with unknown status */
+	);
 }
 
 sub register_status {
@@ -112,10 +127,12 @@ sub get_status {
         return $hashref->{$in}||sprintf('UNKNOWN(%d)',$in);
 }
 
-sub register_group_status { register_status(\%GROUP_STATUS_NAME,@_) }
-sub register_job_status   { register_status(\%JOB_STATUS_NAME,@_) }
-sub group_status          { return get_status(\%GROUP_STATUS_NAME,@_) }
-sub job_status            { return get_status(\%JOB_STATUS_NAME,@_) }
+sub register_group_status   { register_status(\%GROUP_STATUS_NAME,@_) }
+sub register_job_status     { register_status(\%JOB_STATUS_NAME,@_) }
+sub register_daemon_status  { register_status(\%DAEMON_STATUS_NAME,@_) }
+sub group_status            { return get_status(\%GROUP_STATUS_NAME,@_) }
+sub job_status              { return get_status(\%JOB_STATUS_NAME,@_) }
+sub daemon_status           { return get_status(\%DAEMON_STATUS_NAME,@_) }
 
 sub humanSeconds {
 	my ($seconds)=@_;
@@ -515,6 +532,86 @@ sub active_jobs() {
 	return h1('MXQ Running Jobs').job_table_running().h1('MXQ Pending Jobs').job_table_pending();
 }
 
+sub server() {
+	$dbh or db_init();
+	my $out=h1('MXQ Servers');
+
+	my @cols=qw(
+		daemon_id daemon_name status hostname mxq_version boot_id pid_starttime
+		daemon_pid daemon_slots daemon_memory daemon_time
+		daemon_memory_limit_slot_soft daemon_memory_limit_slot_hard
+		daemon_jobs_running daemon_slots_running
+		daemon_threads_running daemon_memory_used
+		mtime daemon_start daemon_stop
+	);
+
+	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_daemon WHERE status<=200 ORDER BY hostname,daemon_name');
+	$sth->execute();
+
+	$out.='<table class="server">';
+
+	$out.=$q->Tr($q->th([
+		'id',
+		'name',
+		'status',
+		'host',
+		'version',
+#		'boot_id',
+#		'pid_starttime',
+		'pid',
+		'slots',
+		'memory',
+		'time',
+		'slotmem_soft',
+		'slotmem_hard',
+		'jobs',
+		'slots',
+		'threads',
+		'memory',
+#		'mtime',
+#		'start',
+#		'stop',
+	]));
+
+	while (my $row=$sth->fetchrow_arrayref()) {
+		my (
+			$daemon_id,$daemon_name,$status,$hostname,$mxq_version,$boot_id,$pid_starttime,
+			$daemon_pid,$daemon_slots,$daemon_memory,$daemon_time,
+			$daemon_memory_limit_slot_soft,$daemon_memory_limit_slot_hard,
+			$daemon_jobs_running,$daemon_slots_running,
+			$daemon_threads_running,$daemon_memory_used,
+			$mtime,$daemon_start,$daemon_stop
+		) = @$row;
+
+		$hostname =~s/\.molgen\.mpg\.de$//;
+
+		$out.=$q->Tr(
+			$q->td({class=>'number'},$daemon_id),
+			$q->td($daemon_name),
+			$q->td(daemon_status($status)),
+			$q->td($hostname),
+			$q->td($mxq_version),
+#			$q->td($boot_id),
+#			$q->td($pid_starttime),
+			$q->td($daemon_pid),
+			$q->td({class=>'number'},$daemon_slots),
+			$q->td({class=>'number'},$daemon_memory),
+			$q->td($daemon_time),
+			$q->td({class=>'number'},$daemon_memory_limit_slot_soft),
+			$q->td({class=>'number'},$daemon_memory_limit_slot_hard),
+			$q->td({class=>'number'},$daemon_jobs_running),
+			$q->td({class=>'number'},$daemon_slots_running),
+			$q->td({class=>'number'},$daemon_threads_running),
+			$q->td({class=>'number'},$daemon_memory_used),
+#			$q->td($mtime),
+#			$q->td($daemon_start),
+#			$q->td($daemon_stop),
+		);
+	}
+	$out.='</table>';
+	return $out;
+}
+
 sub selfurl {
 	my ($path_info)=@_;
 	return $q->url().$path_info;
@@ -524,6 +621,7 @@ sub top {
 	return $q->ul(
 		$q->li(a({href=>selfurl('/groups')},'groups')),
 		$q->li(a({href=>selfurl('/active_jobs')},'active_jobs')),
+		$q->li(a({href=>selfurl('/server')},'server')),
 	);
 }
 
@@ -540,6 +638,8 @@ my $path_info=$q->path_info()||'';
 $path_info=~s/\/$//;
 if ($path_info eq '') {
 	print header().HEAD().top();
+} elsif ($path_info eq '/server') {
+	print header().HEAD().server();
 } elsif ($path_info eq '/groups') {
 	print header().HEAD().groups();
 } elsif ($path_info eq '/active_jobs') {
