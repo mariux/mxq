@@ -1131,7 +1131,7 @@ unsigned long start_job(struct mxq_group_list *glist)
     group  = &glist->group;
     job    = &_mxqjob;
 
-    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon);
+    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon, glist->slots_per_job);
     if (!res) {
         return 0;
     }
