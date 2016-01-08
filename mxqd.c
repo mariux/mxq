@@ -260,6 +260,23 @@ int write_pid_to_file(char *fname)
     return 0;
 }
 
+int server_update_daemon_statistics(struct mxq_server *server)
+{
+    struct mxq_daemon *daemon;
+
+    assert(server);
+    assert(server->mysql);
+
+    daemon=&server->daemon;
+
+    daemon->daemon_jobs_running = server->jobs_running;
+    daemon->daemon_threads_running = server->threads_running;
+    daemon->daemon_memory_used = server->memory_used;
+    daemon->daemon_slots_running = server->slots_running;
+
+    return mxq_daemon_update_statistics(server->mysql,daemon);
+}
+
 static int cpuset_init(struct mxq_server *server)
 {
     int res;
@@ -1191,6 +1208,10 @@ unsigned long start_job(struct mxq_group_list *glist)
     jlist = group_list_add_job(glist, job);
     assert(jlist);
 
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("start_job: failed to update daemon instance statistics: %m");
+
     mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
         group->user_name, group->user_uid, group->group_id, job->job_id);
 
@@ -1814,6 +1835,9 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
 
     job_has_finished(server, group, jlist);
     unlink(filename);
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("recover: failed to update daemon instance statistics: %m");
     return(0);
 }
 
@@ -1955,6 +1979,9 @@ static int lost_scan(struct mxq_server *server)
             return res;
         count+=res;
     } while (res>0);
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("lost_scan: failed to update daemon instance statistics: %m");
     return count;
 }
 
@@ -2198,18 +2225,11 @@ int recover_from_previous_crash(struct mxq_server *server)
     if (res>0)
         mx_log_warning("recover: %d jobs vanished from the system",res);
 
-    daemon->daemon_jobs_running=server->jobs_running;
-    daemon->daemon_slots_running=server->slots_running;
-    daemon->daemon_threads_running=server->threads_running;
-    daemon->daemon_memory_used=server->memory_used;
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("recover: failed to update daemon instance statistics: %m");
 
-    res=mxq_daemon_update_statistics(server->mysql,daemon);
-    if (res<0) {
-        mx_log_err("recover: failed to update daemon instance statistics: %m\n");
-        return(res);
-    }
-
-    return 0;
+    return res;
 }
 
 /**********************************************************************/
