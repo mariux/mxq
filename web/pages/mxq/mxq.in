@@ -500,9 +500,9 @@ sub group_table {
         unknown
 	);
 
-	$out .= '<h2>Finished Groups</h2>';
+	$out .= '<h2>Finished Groups (last 7 days) </h2>';
 
-	$sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) ORDER BY group_id DESC');
+	$sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) AND group_mtime >= DATE_SUB(NOW(),INTERVAL 7 DAY) ORDER BY group_id DESC');
 	$sth->execute(@$sql_binds);
 	$out.=group_table_rows($sth,\@head);
 
