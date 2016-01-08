@@ -301,6 +301,47 @@ int mxq_daemon_set_status(struct mx_mysql *mysql, struct mxq_daemon *daemon, uin
     return res;
 }
 
+int mxq_daemon_update_statistics(struct mx_mysql *mysql, struct mxq_daemon *daemon)
+{
+    assert(daemon);
+    assert(daemon->daemon_id);
+
+    struct mx_mysql_bind param = {0};
+    char *query;
+    int idx;
+    int res;
+
+    query = "UPDATE"
+                " mxq_daemon"
+            " SET"
+                " mtime = NULL,"
+                " daemon_jobs_running    = ?,"
+                " daemon_slots_running   = ?,"
+                " daemon_threads_running = ?,"
+                " daemon_memory_used     = ?"
+            " WHERE daemon_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 5);
+    assert(res == 0);
+
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_jobs_running));
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_slots_running));
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_threads_running));
+    res += mx_mysql_bind_var(&param, idx++, uint64, &(daemon->daemon_memory_used));
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_id));
+    assert(res == 0);
+
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
+
+    return res;
+}
+
 int mxq_load_all_daemons(struct mx_mysql *mysql, struct mxq_daemon **daemons)
 {
     struct mxq_daemon *daemons_tmp = NULL;

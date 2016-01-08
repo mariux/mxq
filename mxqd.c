@@ -2198,6 +2198,17 @@ int recover_from_previous_crash(struct mxq_server *server)
     if (res>0)
         mx_log_warning("recover: %d jobs vanished from the system",res);
 
+    daemon->daemon_jobs_running=server->jobs_running;
+    daemon->daemon_slots_running=server->slots_running;
+    daemon->daemon_threads_running=server->threads_running;
+    daemon->daemon_memory_used=server->memory_used;
+
+    res=mxq_daemon_update_statistics(server->mysql,daemon);
+    if (res<0) {
+        mx_log_err("recover: failed to update daemon instance statistics: %m\n");
+        return(res);
+    }
+
     return 0;
 }
 
