@@ -316,6 +316,23 @@ struct mxq_job_list *group_list_add_job(struct mxq_group_list *glist, struct mxq
     return jlist;
 }
 
+/*
+ * given a mxq_user_list element, find the tail of its groups list.
+ * returns the address of the pointer containing NULL
+ */
+static struct mxq_group_list **group_list_tail_ptr(struct mxq_user_list *ulist)
+{
+    struct mxq_group_list **tail_ptr=&ulist->groups;
+    while (*tail_ptr) {
+        tail_ptr=&(*tail_ptr)->next;
+    }
+    return tail_ptr;
+}
+
+/*
+ * create a new mxq_group_list element from a mxq_group and add it to the users groups
+ * update user and server counters
+ */
 struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct mxq_group *group)
 {
     struct mxq_group_list *glist;
@@ -332,8 +349,7 @@ struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct 
 
     glist->user = ulist;
 
-    glist->next = ulist->groups;
-    ulist->groups = glist;
+    *group_list_tail_ptr(ulist)=glist;
 
     ulist->group_cnt++;
     server->group_cnt++;

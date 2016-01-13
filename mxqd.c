@@ -2147,7 +2147,7 @@ int load_running_groups(struct mxq_server *server)
         grp_cnt = mxq_load_running_groups_for_user(server->mysql, &grps, getuid());
 
     for (i=0, total=0; i < grp_cnt; i++) {
-        group = &grps[grp_cnt-i-1];
+        group = &grps[i];
 
         passwd = getpwnam(group->user_name);
         if (!passwd) {
