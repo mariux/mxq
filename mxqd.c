@@ -1740,6 +1740,7 @@ static int job_is_lost(struct mxq_server *server,struct mxq_group *group, struct
 
         mxq_set_job_status_unknown(server->mysql, job);
         group->group_jobs_unknown++;
+        group->group_jobs_running--;
 
         rename_outfiles(group, job);
 
