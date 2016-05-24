@@ -101,7 +101,7 @@ void mxq_job_free_content(struct mxq_job *j);
 int mxq_load_job(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, uint64_t job_id);
 int mxq_load_jobs_in_group(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp);
 int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **mxq_jobs, struct mxq_group *grp, uint64_t job_status);
-int mxq_assign_job_from_group_to_daemon(struct mx_mysql *mysql, uint64_t group_id, struct mxq_daemon *daemon);
+int mxq_assign_job_from_group_to_daemon(struct mx_mysql *mysql, uint64_t group_id, struct mxq_daemon *daemon, unsigned long slots_per_job);
 int mxq_unassign_jobs_of_server(struct mx_mysql *mysql, struct mxq_daemon *daemon);
 int mxq_set_job_status_loaded_on_server(struct mx_mysql *mysql, struct mxq_job *job);
 int mxq_set_job_status_running(struct mx_mysql *mysql, struct mxq_job *job);
@@ -109,6 +109,6 @@ int mxq_set_job_status_exited(struct mx_mysql *mysql, struct mxq_job *job);
 int mxq_set_job_status_unknown(struct mx_mysql *mysql, struct mxq_job *job);
 int mxq_job_set_tmpfilenames(struct mxq_group *g, struct mxq_job *j);
 int mxq_load_job_from_group_assigned_to_daemon(struct mx_mysql *mysql, struct mxq_job **jobs_result, uint64_t group_id, struct mxq_daemon *daemon);
-int mxq_load_job_from_group_for_daemon(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, struct mxq_daemon *daemon);
+int mxq_load_job_from_group_for_daemon(struct mx_mysql *mysql, struct mxq_job *mxqjob, uint64_t group_id, struct mxq_daemon *daemon,unsigned long slots_per_job);
 int mxq_load_jobs_running_on_server(struct mx_mysql *mysql, struct mxq_job **jobs_result, struct mxq_daemon *daemon);
 #endif

@@ -500,9 +500,9 @@ sub group_table {
         unknown
 	);
 
-	$out .= '<h2>Finished Groups</h2>';
+	$out .= '<h2>Finished Groups (last 7 days) </h2>';
 
-	$sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) ORDER BY group_id DESC');
+	$sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) AND group_mtime >= DATE_SUB(NOW(),INTERVAL 7 DAY) ORDER BY group_id DESC');
 	$sth->execute(@$sql_binds);
 	$out.=group_table_rows($sth,\@head);
 
@@ -550,6 +550,7 @@ sub server() {
 
 	$out.='<table class="server">';
 
+
 	$out.=$q->Tr($q->th([
 		'id',
 		'name',
@@ -559,19 +560,20 @@ sub server() {
 #		'boot_id',
 #		'pid_starttime',
 		'pid',
-		'slots',
-		'memory',
-		'time',
-		'slotmem_soft',
-		'slotmem_hard',
-		'jobs',
-		'slots',
-		'threads',
-		'memory',
+		'slots<br>available',
+		'memory<br>available',
+#		'time',
+		'slotmem_soft<br>available',
+#		'slotmem_hard',
+		'jobs<br>in use',
+		'slots<br>in use',
+		'threads<br>in use',
+		'memory<br>in use',
 #		'mtime',
 #		'start',
 #		'stop',
 	]));
+
 
 	while (my $row=$sth->fetchrow_arrayref()) {
 		my (
@@ -596,9 +598,9 @@ sub server() {
 			$q->td($daemon_pid),
 			$q->td({class=>'number'},$daemon_slots),
 			$q->td({class=>'number'},$daemon_memory),
-			$q->td($daemon_time),
+#			$q->td($daemon_time),
 			$q->td({class=>'number'},$daemon_memory_limit_slot_soft),
-			$q->td({class=>'number'},$daemon_memory_limit_slot_hard),
+#			$q->td({class=>'number'},$daemon_memory_limit_slot_hard),
 			$q->td({class=>'number'},$daemon_jobs_running),
 			$q->td({class=>'number'},$daemon_slots_running),
 			$q->td({class=>'number'},$daemon_threads_running),

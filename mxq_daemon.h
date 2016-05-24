@@ -51,6 +51,7 @@ struct mxq_daemon {
 void mxq_daemon_free_content(struct mxq_daemon *daemon);
 int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon);
 int mxq_daemon_mark_crashed(struct mx_mysql *mysql, struct mxq_daemon *daemon);
+int mxq_daemon_update_statistics(struct mx_mysql *mysql, struct mxq_daemon *daemon);
 int mxq_daemon_shutdown(struct mx_mysql *mysql, struct mxq_daemon *daemon);
 int mxq_daemon_set_status(struct mx_mysql *mysql, struct mxq_daemon *daemon, uint8_t status);
 #endif

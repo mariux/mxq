@@ -260,6 +260,23 @@ int write_pid_to_file(char *fname)
     return 0;
 }
 
+int server_update_daemon_statistics(struct mxq_server *server)
+{
+    struct mxq_daemon *daemon;
+
+    assert(server);
+    assert(server->mysql);
+
+    daemon=&server->daemon;
+
+    daemon->daemon_jobs_running = server->jobs_running;
+    daemon->daemon_threads_running = server->threads_running;
+    daemon->daemon_memory_used = server->memory_used;
+    daemon->daemon_slots_running = server->slots_running;
+
+    return mxq_daemon_update_statistics(server->mysql,daemon);
+}
+
 static int cpuset_init(struct mxq_server *server)
 {
     int res;
@@ -1131,7 +1148,7 @@ unsigned long start_job(struct mxq_group_list *glist)
     group  = &glist->group;
     job    = &_mxqjob;
 
-    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon);
+    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon, glist->slots_per_job);
     if (!res) {
         return 0;
     }
@@ -1190,6 +1207,10 @@ unsigned long start_job(struct mxq_group_list *glist)
 
     jlist = group_list_add_job(glist, job);
     assert(jlist);
+
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("start_job: failed to update daemon instance statistics: %m");
 
     mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
         group->user_name, group->user_uid, group->group_id, job->job_id);
@@ -1719,6 +1740,7 @@ static int job_is_lost(struct mxq_server *server,struct mxq_group *group, struct
 
         mxq_set_job_status_unknown(server->mysql, job);
         group->group_jobs_unknown++;
+        group->group_jobs_running--;
 
         rename_outfiles(group, job);
 
@@ -1814,6 +1836,9 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
 
     job_has_finished(server, group, jlist);
     unlink(filename);
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("recover: failed to update daemon instance statistics: %m");
     return(0);
 }
 
@@ -1955,6 +1980,9 @@ static int lost_scan(struct mxq_server *server)
             return res;
         count+=res;
     } while (res>0);
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("lost_scan: failed to update daemon instance statistics: %m");
     return count;
 }
 
@@ -2120,7 +2148,7 @@ int load_running_groups(struct mxq_server *server)
         grp_cnt = mxq_load_running_groups_for_user(server->mysql, &grps, getuid());
 
     for (i=0, total=0; i < grp_cnt; i++) {
-        group = &grps[grp_cnt-i-1];
+        group = &grps[i];
 
         passwd = getpwnam(group->user_name);
         if (!passwd) {
@@ -2198,7 +2226,11 @@ int recover_from_previous_crash(struct mxq_server *server)
     if (res>0)
         mx_log_warning("recover: %d jobs vanished from the system",res);
 
-    return 0;
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("recover: failed to update daemon instance statistics: %m");
+
+    return res;
 }
 
 /**********************************************************************/
