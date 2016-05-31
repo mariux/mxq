@@ -554,6 +554,19 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         return -EX_IOERR;
     }
 
+    i=server->supgid_cnt=getgroups(0,NULL);
+    if (i<0) {
+        mx_log_err("MAIN: getgroups(0,NULL) : %m");
+        return -errno;
+    }
+    server->supgid=mx_calloc_forever(i,sizeof(*server->supgid));
+    server->supgid_cnt=i;
+    res=getgroups(i,server->supgid);
+    if (res<0) {
+        mx_log_err("MAIN: getgroups() : %m");
+        return -errno;
+    }
+
     if (arg_daemonize) {
         res = mx_daemon(0, 1);
         if (res == -1) {
@@ -1439,6 +1452,7 @@ void server_free(struct mxq_server *server)
     mx_free_null(server->host_id);
     mx_free_null(server->finished_jobsdir);
     mx_flock_free(server->flock);
+    mx_free_null(server->supgid);
 
     mx_log_finish();
 }
