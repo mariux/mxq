@@ -1864,6 +1864,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
     jlist = server_remove_job_list_by_job_id(server, job_id);
     if (!jlist) {
         mx_log_warning("fspool_process_file: %s : job unknown on server", filename);
+        unlink(filename);
         return -(errno=ENOENT);
     }
 
@@ -1873,6 +1874,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
                         filename,
                         job->job_id,
                         job_id);
+        unlink(filename);
         return -(errno=EINVAL);
     }
 
