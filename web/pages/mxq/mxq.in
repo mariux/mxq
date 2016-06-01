@@ -414,14 +414,40 @@ EOF
 	return $out;
 }
 
-sub group_table_rows {
-	my ($sth,$head)=@_;
-	my $out='';
+sub group_table {
+
+	my ($sql_clause,$sql_binds)=@_;
+
+	$sql_clause||='true';
+
+	my $out;
+	my (@cols,@head);
+
+	$out .= '<h2>Active Groups</h2>';
+
+	@cols=qw(
+		group_id group_name job_threads user_name
+		group_mtime
+		group_status
+		group_jobs
+		group_jobs_inq group_jobs_running
+		group_jobs_finished group_jobs_failed group_jobs_cancelled group_jobs_unknown
+	);
+
+	@head=qw(
+		group_id group_name threads user_name
+		group_mtime
+		group_status
+		jobs
+		inq running
+		finished failed cancelled unknown
+	);
+
+	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running>0 OR group_jobs_inq>0) ORDER BY group_id DESC');
+	$sth->execute(@$sql_binds);
 
 	$out.='<table class="groups">';
-
-	$out.=$q->Tr($q->th($head));
-
+	$out.=$q->Tr($q->th(\@head));
 	while (my $row=$sth->fetchrow_arrayref()) {
 		my ($group_id,$group_name,$job_threads,$user_name,$group_mtime,$group_status,
 			$group_jobs,$group_jobs_inq,$group_jobs_running,$group_jobs_finished,$group_jobs_failed,$group_jobs_cancelled,$group_jobs_unknown
@@ -441,70 +467,53 @@ sub group_table_rows {
 			$q->td({class=>'number'},$group_jobs_failed),
 			$q->td({class=>'number'},$group_jobs_cancelled),
 			$q->td({class=>'number'},$group_jobs_unknown)
-
 		);
 	}
 	$out.='</table>';
-	return $out;
-}
-
-sub group_table {
-
-	my ($sql_clause,$sql_binds)=@_;
-
-	$sql_clause||='true';
-
-	my $out;
-
-	my @cols=qw(
-		group_id group_name job_threads user_name group_mtime group_status
-		group_jobs group_jobs_inq group_jobs_running group_jobs_finished group_jobs_failed group_jobs_cancelled group_jobs_unknown
-	);
-	my @head=qw(
-		group_id group_name threads user_name group_mtime group_status
-		jobs inq running finished failed cancelled unknown
-	);
-
-
-	$out .= '<h2>Active Groups</h2>';
-
-	my $sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running>0 OR group_jobs_inq>0) ORDER BY group_id DESC');
-	$sth->execute(@$sql_binds);
-	$out.=group_table_rows($sth,\@head);
-
-	@cols=qw(
-        group_id
-        group_name
-        job_threads
-        user_name
-        group_date_end
-        group_status
-        group_jobs
-        group_jobs_finished
-        group_jobs_failed
-        group_jobs_cancelled
-        group_jobs_unknown
-	);
-
-	@head=qw(
-        group_id
-        group_name
-        threads
-        user_name
-        date_end
-        group_status
-        jobs
-        finished
-        failed
-        cancelled
-        unknown
-	);
 
 	$out .= '<h2>Finished Groups (last 7 days) </h2>';
 
+	@cols=qw(
+		group_id group_name job_threads user_name
+		group_date_end
+		group_status
+		group_jobs
+		group_jobs_finished group_jobs_failed group_jobs_cancelled group_jobs_unknown
+	);
+
+	@head=qw(
+		group_id group_name threads user_name
+		date_end
+		group_status
+		jobs
+		finished failed cancelled unknown
+	);
+
 	$sth=$dbh->prepare('SELECT '.join(',',@cols).' FROM mxq_group WHERE '.$sql_clause.' AND (group_jobs_running=0 AND group_jobs_inq=0) AND group_mtime >= DATE_SUB(NOW(),INTERVAL 7 DAY) ORDER BY group_id DESC');
 	$sth->execute(@$sql_binds);
-	$out.=group_table_rows($sth,\@head);
+
+	$out.='<table class="groups">';
+	$out.=$q->Tr($q->th(\@head));
+	while (my $row=$sth->fetchrow_arrayref()) {
+		my ($group_id,$group_name,$job_threads,$user_name,$group_date_end,$group_status,
+			$group_jobs,$group_jobs_finished,$group_jobs_failed,$group_jobs_cancelled,$group_jobs_unknown
+		)=@$row;
+
+		$out.=$q->Tr(
+			$q->td({class=>'number'},$q->a({href=>selfurl("/group/$group_id")},$group_id)),
+			$q->td($group_name),
+			$q->td({class=>'number'},$job_threads),
+			$q->td($q->a({href=>my_url('groups',{user_name=>$user_name})},$user_name)),
+			$q->td($group_date_end),
+			$q->td(group_status($group_status)),
+			$q->td({class=>'number'},$group_jobs),
+			$q->td({class=>'number'},$group_jobs_finished),
+			$q->td({class=>'number'},$group_jobs_failed),
+			$q->td({class=>'number'},$group_jobs_cancelled),
+			$q->td({class=>'number'},$group_jobs_unknown)
+		);
+	}
+	$out.='</table>';
 
 	return $out;
 }
