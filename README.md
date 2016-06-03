@@ -1,6 +1,6 @@
 # MXQ - mariux64 job scheduling system
 - by Marius Tolzmann <marius.tolzmann@molgen.mpg.de> 2013-2015
-- and Donald Buczek <buczek@molgen.mpg.de> 2015-2015
+- and Donald Buczek <buczek@molgen.mpg.de> 2015-2016
 
 ## Sources
 ### Main git repository
