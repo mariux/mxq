@@ -102,6 +102,9 @@ struct mxq_server {
     char *initial_path;
     char *initial_tmpdir;
     char recoveronly;
+
+    size_t supgid_cnt;
+    gid_t *supgid;
 };
 
 

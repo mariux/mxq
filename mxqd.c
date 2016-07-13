@@ -554,6 +554,19 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         return -EX_IOERR;
     }
 
+    i=server->supgid_cnt=getgroups(0,NULL);
+    if (i<0) {
+        mx_log_err("MAIN: getgroups(0,NULL) : %m");
+        return -errno;
+    }
+    server->supgid=mx_calloc_forever(i,sizeof(*server->supgid));
+    server->supgid_cnt=i;
+    res=getgroups(i,server->supgid);
+    if (res<0) {
+        mx_log_err("MAIN: getgroups() : %m");
+        return -errno;
+    }
+
     if (arg_daemonize) {
         res = mx_daemon(0, 1);
         if (res == -1) {
@@ -1439,6 +1452,7 @@ void server_free(struct mxq_server *server)
     mx_free_null(server->host_id);
     mx_free_null(server->finished_jobsdir);
     mx_flock_free(server->flock);
+    mx_free_null(server->supgid);
 
     mx_log_finish();
 }
@@ -1679,11 +1693,29 @@ int killall_cancelled(struct mxq_server *server)
     return 0;
 }
 
-static void rename_outfiles(struct mxq_group *group, struct mxq_job *job)
+static void rename_outfiles(struct mxq_server *server, struct mxq_group *group, struct mxq_job *job)
 {
     int res;
 
     mxq_job_set_tmpfilenames(group, job);
+
+    if(RUNNING_AS_ROOT) {
+        res=initgroups(group->user_name,group->user_gid);
+        if (res==-1) {
+            mx_log_err("initgroups(\"%s\",%d): %m",group->user_name,group->user_gid);
+            exit(-errno);
+        }
+        res=setegid(group->user_gid);
+        if (res==-1) {
+            mx_log_err("setedid(%d): %m",group->user_gid);
+            exit(-errno);
+        }
+        res=seteuid(group->user_uid);
+        if (res==-1) {
+            mx_log_err("seteuid(%d): %m",group->user_uid);
+            exit(-errno);
+        }
+    }
 
     if (!mx_streq(job->job_stdout, "/dev/null")) {
         res = rename(job->tmp_stdout, job->job_stdout);
@@ -1708,6 +1740,26 @@ static void rename_outfiles(struct mxq_group *group, struct mxq_job *job)
                     job->host_pid);
         }
     }
+
+   if(RUNNING_AS_ROOT) {
+        uid_t uid=getuid();
+        uid_t gid=getgid();
+        res=seteuid(uid);
+        if (res==-1) {
+            mx_log_err("seteuid(%d): %m",uid);
+            exit(-errno);
+        }
+        res=setegid(gid);
+        if (res==-1) {
+            mx_log_err("setegid(%d): %m",gid);
+            exit(-errno);
+        }
+        res=setgroups(server->supgid_cnt,server->supgid);
+        if (res==-1) {
+            mx_log_err("setgroups(): %m");
+            exit(-errno);
+        }
+    }
 }
 
 static int job_has_finished(struct mxq_server *server, struct mxq_group *group, struct mxq_job_list *jlist)
@@ -1719,7 +1771,7 @@ static int job_has_finished(struct mxq_server *server, struct mxq_group *group, 
 
         mxq_set_job_status_exited(server->mysql, job);
 
-        rename_outfiles(group, job);
+        rename_outfiles(server, group, job);
 
         cnt = jlist->group->slots_per_job;
         cpuset_clear_running(&server->cpu_set_running, &job->host_cpu_set);
@@ -1742,7 +1794,7 @@ static int job_is_lost(struct mxq_server *server,struct mxq_group *group, struct
         group->group_jobs_unknown++;
         group->group_jobs_running--;
 
-        rename_outfiles(group, job);
+        rename_outfiles(server, group, job);
 
         cnt = jlist->group->slots_per_job;
         cpuset_clear_running(&server->cpu_set_running, &job->host_cpu_set);
@@ -1812,6 +1864,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
     jlist = server_remove_job_list_by_job_id(server, job_id);
     if (!jlist) {
         mx_log_warning("fspool_process_file: %s : job unknown on server", filename);
+        unlink(filename);
         return -(errno=ENOENT);
     }
 
@@ -1821,6 +1874,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
                         filename,
                         job->job_id,
                         job_id);
+        unlink(filename);
         return -(errno=EINVAL);
     }
 

@@ -78,7 +78,7 @@ inline int mx_strbeginswithany(char *str, char **starts, char **endptr)
     return _mx_strbeginswithany(str, starts, endptr, 0);
 }
 
-inline int mx_stribeginswithany(char *str, char **starts, char **endptr)
+int mx_stribeginswithany(char *str, char **starts, char **endptr)
 {
     return _mx_strbeginswithany(str, starts, endptr, 1);
 }
