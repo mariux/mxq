@@ -86,6 +86,7 @@ struct mxq_server {
     long double   memory_avg_per_slot;
     unsigned long memory_limit_slot_soft;
     unsigned long memory_limit_slot_hard;
+    unsigned long maxtime;
     cpu_set_t      cpu_set_available;
 
     struct mx_mysql *mysql;
