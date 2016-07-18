@@ -340,6 +340,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     unsigned long arg_memory_total = 2048;
     unsigned long arg_memory_limit_slot_soft = 0;
     unsigned long arg_memory_limit_slot_hard = 0;
+    unsigned long arg_maxtime = 0;
     int i;
     struct mxq_daemon *daemon = &server->daemon;
 
@@ -369,6 +370,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("hostname",       6),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
+                MX_OPTION_OPTIONAL_ARG("max-time",      't'),
                 MX_OPTION_END
     };
 
@@ -515,6 +517,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             case 'S':
                 arg_mysql_default_group = optctl.optarg;
                 break;
+
+            case 't':
+                if (mx_strtoul(optctl.optarg, &arg_maxtime) < 0) {
+                    mx_log_err("Invalid argument supplied for option --max-time '%s': %m", optctl.optarg);
+                    return -EX_USAGE;
+                }
+                break;
         }
     }
 
@@ -643,6 +652,9 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         mx_log_err("MAIN: cpuset_init() failed. exiting.");
         return -EX_OSERR;
     }
+
+    server->maxtime = arg_maxtime;
+
     server->memory_total = arg_memory_total;
 
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
@@ -1359,6 +1371,7 @@ long start_user_with_least_running_global_slot_count(struct mxq_server *server)
     }
     return 0;
 }
+
 
 /**********************************************************************/
 

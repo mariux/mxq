@@ -69,6 +69,10 @@ static void _group_list_init(struct mxq_group_list *glist)
     if (group->job_max_per_node && jobs_max > group->job_max_per_node)
         jobs_max = group->job_max_per_node;
 
+    /* max time constraint on server */
+    if (server->maxtime && group->job_time > server->maxtime)
+        jobs_max=0;
+
     slots_max  = jobs_max * slots_per_job;
     memory_max = jobs_max * group->job_memory;
 
