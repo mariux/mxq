@@ -73,6 +73,7 @@ static void print_usage(void)
     "options:\n"
     "  -j, --slots     <slots>           default: depends on number of cores\n"
     "  -m, --memory    <totalmemory>     default: 2G\n"
+    "  -t, --max-time  <minutes>         default: 0 (unlimited)"
     "\n"
     "  -x, --max-memory-per-slot-soft <softlimit>\n"
     "                         root user: default: <totalmemory>/<slots>\n"
