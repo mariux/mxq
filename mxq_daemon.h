@@ -32,6 +32,7 @@ struct mxq_daemon {
 
     uint32_t  daemon_slots;
     uint64_t  daemon_memory;
+    uint64_t  daemon_maxtime;
     uint32_t  daemon_time;
 
     uint64_t  daemon_memory_limit_slot_soft;

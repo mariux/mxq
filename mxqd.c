@@ -693,6 +693,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     daemon->daemon_pid    = getpid();
     daemon->daemon_slots  = server->slots;
     daemon->daemon_memory = server->memory_total;
+    daemon->daemon_maxtime = server->maxtime;
     daemon->daemon_time   = 0;
     daemon->daemon_memory_limit_slot_soft = server->memory_limit_slot_soft;
     daemon->daemon_memory_limit_slot_hard = server->memory_limit_slot_hard;
