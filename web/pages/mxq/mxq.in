@@ -547,7 +547,7 @@ sub server() {
 
 	my @cols=qw(
 		daemon_id daemon_name status hostname mxq_version boot_id pid_starttime
-		daemon_pid daemon_slots daemon_memory daemon_time
+		daemon_pid daemon_slots daemon_memory daemon_maxtime
 		daemon_memory_limit_slot_soft daemon_memory_limit_slot_hard
 		daemon_jobs_running daemon_slots_running
 		daemon_threads_running daemon_memory_used
@@ -571,6 +571,7 @@ sub server() {
 		'pid',
 		'slots<br>available',
 		'memory<br>available',
+		'max runtime<br>(minutes)',
 #		'time',
 		'slotmem_soft<br>available',
 #		'slotmem_hard',
@@ -587,7 +588,7 @@ sub server() {
 	while (my $row=$sth->fetchrow_arrayref()) {
 		my (
 			$daemon_id,$daemon_name,$status,$hostname,$mxq_version,$boot_id,$pid_starttime,
-			$daemon_pid,$daemon_slots,$daemon_memory,$daemon_time,
+			$daemon_pid,$daemon_slots,$daemon_memory,$daemon_maxtime,
 			$daemon_memory_limit_slot_soft,$daemon_memory_limit_slot_hard,
 			$daemon_jobs_running,$daemon_slots_running,
 			$daemon_threads_running,$daemon_memory_used,
@@ -607,7 +608,7 @@ sub server() {
 			$q->td($daemon_pid),
 			$q->td({class=>'number'},$daemon_slots),
 			$q->td({class=>'number'},$daemon_memory),
-#			$q->td($daemon_time),
+			$q->td({class=>'number'},$daemon_maxtime),
 			$q->td({class=>'number'},$daemon_memory_limit_slot_soft),
 #			$q->td({class=>'number'},$daemon_memory_limit_slot_hard),
 			$q->td({class=>'number'},$daemon_jobs_running),

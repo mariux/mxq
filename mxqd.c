@@ -73,6 +73,7 @@ static void print_usage(void)
     "options:\n"
     "  -j, --slots     <slots>           default: depends on number of cores\n"
     "  -m, --memory    <totalmemory>     default: 2G\n"
+    "  -t, --max-time  <minutes>         default: 0 (unlimited)"
     "\n"
     "  -x, --max-memory-per-slot-soft <softlimit>\n"
     "                         root user: default: <totalmemory>/<slots>\n"
@@ -692,7 +693,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     daemon->daemon_pid    = getpid();
     daemon->daemon_slots  = server->slots;
     daemon->daemon_memory = server->memory_total;
-    daemon->daemon_time   = 0;
+    daemon->daemon_maxtime = server->maxtime;
     daemon->daemon_memory_limit_slot_soft = server->memory_limit_slot_soft;
     daemon->daemon_memory_limit_slot_hard = server->memory_limit_slot_hard;
 
@@ -1245,7 +1246,7 @@ unsigned long start_job(struct mxq_group_list *glist)
 
 /**********************************************************************/
 
-unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_to_start, int *need_more_slots)
+unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_to_start)
 {
     struct mxq_server *server;
     struct mxq_group_list *glist;
@@ -1289,13 +1290,10 @@ unsigned long start_user(struct mxq_user_list *ulist, int job_limit, long slots_
         if (mxq_group_jobs_inq(group) == 0) {
             goto start_user_continue;
         }
-        if (server->maxtime && glist->group.job_time>server->maxtime) {
-            goto start_user_continue;
-        }
         if (glist->slots_per_job > slots_to_start) {
-            *need_more_slots=1;
             goto start_user_continue;
         }
+
         if (group->group_priority < prio) {
             if (started) {
                 goto start_user_rewind;
@@ -1330,10 +1328,12 @@ start_user_rewind:
 long start_user_with_least_running_global_slot_count(struct mxq_server *server)
 {
     struct mxq_user_list *ulist;
+    struct mxq_group_list *glist;
+    struct mxq_group *group;
     unsigned long slots_started = 0;
     unsigned long slots_free;
     unsigned long global_slots_per_user;
-    int need_more_slots=0;
+    int waiting = 0;
 
     assert(server);
 
@@ -1349,14 +1349,30 @@ long start_user_with_least_running_global_slot_count(struct mxq_server *server)
     global_slots_per_user = server->global_slots_running / server->user_cnt;
 
     for (ulist = server->users; ulist; ulist = ulist->next) {
-        need_more_slots=0;
-        slots_started = start_user(ulist, 1, slots_free, &need_more_slots);
-        if (slots_started || need_more_slots) {
+        /* if other users are waiting and this user is already using
+         * more slots then avg user in cluster do not start anything
+         * (next users are using even more atm because list is sorted) */
+        if (waiting && ulist->global_slots_running > global_slots_per_user)
+            return -1;
+
+        slots_started = start_user(ulist, 1, slots_free);
+        if (slots_started)
             return slots_started;
+
+        if (waiting)
+            continue;
+
+        for (glist = ulist->groups; glist; glist = glist->next) {
+            group = &glist->group;
+            if (glist->jobs_max > glist->jobs_running && group->group_jobs_inq) {
+                waiting = 1;
+                break;
+            }
         }
     }
     return 0;
 }
+
 
 /**********************************************************************/
 
