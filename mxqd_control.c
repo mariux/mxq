@@ -489,7 +489,11 @@ int server_remove_orphaned_groups(struct mxq_server *server)
                         group->group_id);
 
             ulist->group_cnt--;
+            ulist->global_slots_running   -= glist->global_slots_running;
+            ulist->global_threads_running -= glist->global_threads_running;
             server->group_cnt--;
+            server->global_slots_running   -= glist->global_slots_running;
+            server->global_threads_running -= glist->global_threads_running;
             cnt++;
             mxq_group_free_content(group);
             mx_free_null(glist);
