@@ -1,0 +1,10 @@
+language: c
+
+addons:
+  apt:
+    packages:
+    - libmysqlclient-dev
+
+script:
+- make
+- make test
