@@ -3,6 +3,7 @@ language: c
 addons:
   apt:
     packages:
+    - libc6-dev
     - libmysqlclient-dev
 
 script:
