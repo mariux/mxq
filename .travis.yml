@@ -10,6 +10,6 @@ script:
 - dpkg -L libc6-dev
 - ls -lR /usr/include
 - grep PR_SET_CHILD_SUBREAPER /usr/include/x86_64-linux-gnu/sys/prctl.h
-- more /usr/include/x86_64-linux-gnu/sys/prctl.h
+- cat /usr/include/x86_64-linux-gnu/sys/prctl.h
 - make V=1
 - make test
