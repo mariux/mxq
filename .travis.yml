@@ -7,6 +7,8 @@ addons:
     - libmysqlclient-dev
 
 script:
+- dpkg -L libc6-dev
+- ls -lR /usr/include
 - grep -R PR_SET_CHILD_SUBREAPER /usr/include
 - make V=1
 - make test
