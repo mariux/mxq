@@ -7,6 +7,7 @@ addons:
     - libmysqlclient-dev
 
 script:
+- cat /etc/os-release
 - cat /usr/include/x86_64-linux-gnu/sys/prctl.h
 - cat /usr/include/linux/prctl.h
 - dpkg -L linux-libc-dev
