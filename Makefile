@@ -454,6 +454,7 @@ clean: CLEAN += mxq_daemon.o
 ### mxqd_control.o -----------------------------------------------------
 
 mxqd_control.o: $(mxqd_control.h)
+mxqd_control.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxqd_control.o
 
