@@ -7,7 +7,8 @@ addons:
     - libmysqlclient-dev
 
 script:
-- grep PR_SET_CHILD_SUBREAPER /usr/include/x86_64-linux-gnu/sys/prctl.h
 - cat /usr/include/x86_64-linux-gnu/sys/prctl.h
+- cat /usr/include/linux/prctl.h
+- dpkg -L linux-libc-dev
 - make V=1
 - make test
