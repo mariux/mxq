@@ -291,7 +291,7 @@ int mxq_load_jobs_in_group_with_status(struct mx_mysql *mysql, struct mxq_job **
     return res;
 }
 
-int mxq_assign_job_from_group_to_daemon(struct mx_mysql *mysql, uint64_t group_id, struct mxq_daemon *daemon)
+int mxq_assign_job_from_group_to_daemon(struct mx_mysql *mysql, uint64_t group_id, struct mxq_daemon *daemon, unsigned long slots_per_job)
 {
     struct mx_mysql_bind param = {0};
     int res;
@@ -311,6 +311,7 @@ int mxq_assign_job_from_group_to_daemon(struct mx_mysql *mysql, uint64_t group_i
             " SET"
                 " daemon_id     = ?,"
                 " host_hostname = ?,"
+                " host_slots    = ?, "
                 " server_id     = ?,"
                 " job_status    = " status_str(MXQ_JOB_STATUS_ASSIGNED)
             " WHERE group_id      = ?"
@@ -324,13 +325,14 @@ int mxq_assign_job_from_group_to_daemon(struct mx_mysql *mysql, uint64_t group_i
               " job_id"
             " LIMIT 1";
 
-    res = mx_mysql_bind_init_param(&param, 4);
+    res = mx_mysql_bind_init_param(&param, 5);
     assert(res == 0);
 
     idx = 0;
     res = 0;
     res += mx_mysql_bind_var(&param, idx++, uint32, &daemon->daemon_id);
     res += mx_mysql_bind_var(&param, idx++, string, &daemon->hostname);
+    res += mx_mysql_bind_var(&param, idx++, uint64, &slots_per_job);
     res += mx_mysql_bind_var(&param, idx++, string, &daemon->daemon_name);
     res += mx_mysql_bind_var(&param, idx++, uint64, &group_id);
     assert(res == 0);
@@ -678,7 +680,8 @@ int mxq_load_job_from_group_assigned_to_daemon(struct mx_mysql *mysql, struct mx
     return res;
 }
 
-int mxq_load_job_from_group_for_daemon(struct mx_mysql *mysql, struct mxq_job *job, uint64_t group_id, struct mxq_daemon *daemon)
+int mxq_load_job_from_group_for_daemon(struct mx_mysql *mysql, struct mxq_job *job, uint64_t group_id, struct mxq_daemon *daemon,
+    unsigned long slots_per_job)
 {
     int res;
     struct mxq_job *jobs_tmp = NULL;
@@ -700,7 +703,7 @@ int mxq_load_job_from_group_for_daemon(struct mx_mysql *mysql, struct mxq_job *j
             break;
         }
 
-        res = mxq_assign_job_from_group_to_daemon(mysql, group_id, daemon);
+        res = mxq_assign_job_from_group_to_daemon(mysql, group_id, daemon, slots_per_job);
         if (res < 0) {
             mx_log_err("  group_id=%lu :: mxq_assign_job_from_group_to_daemon(): %m", group_id);
             return 0;

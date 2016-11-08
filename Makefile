@@ -1,8 +1,8 @@
 MXQ_VERSION_MAJOR = 0
-MXQ_VERSION_MINOR = 22
-MXQ_VERSION_PATCH = 3
+MXQ_VERSION_MINOR = 24
+MXQ_VERSION_PATCH = 1
 MXQ_VERSION_EXTRA = "beta"
-MXQ_VERSIONDATE = 2015
+MXQ_VERSIONDATE = 2016
 
 MXQ_VERSION_GIT := $(shell git describe --long 2>/dev/null)
 
@@ -454,6 +454,7 @@ clean: CLEAN += mxq_daemon.o
 ### mxqd_control.o -----------------------------------------------------
 
 mxqd_control.o: $(mxqd_control.h)
+mxqd_control.o: CFLAGS += $(CFLAGS_MYSQL)
 
 clean: CLEAN += mxqd_control.o
 

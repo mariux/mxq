@@ -73,6 +73,7 @@ static void print_usage(void)
     "options:\n"
     "  -j, --slots     <slots>           default: depends on number of cores\n"
     "  -m, --memory    <totalmemory>     default: 2G\n"
+    "  -t, --max-time  <minutes>         default: 0 (unlimited)"
     "\n"
     "  -x, --max-memory-per-slot-soft <softlimit>\n"
     "                         root user: default: <totalmemory>/<slots>\n"
@@ -260,6 +261,23 @@ int write_pid_to_file(char *fname)
     return 0;
 }
 
+int server_update_daemon_statistics(struct mxq_server *server)
+{
+    struct mxq_daemon *daemon;
+
+    assert(server);
+    assert(server->mysql);
+
+    daemon=&server->daemon;
+
+    daemon->daemon_jobs_running = server->jobs_running;
+    daemon->daemon_threads_running = server->threads_running;
+    daemon->daemon_memory_used = server->memory_used;
+    daemon->daemon_slots_running = server->slots_running;
+
+    return mxq_daemon_update_statistics(server->mysql,daemon);
+}
+
 static int cpuset_init(struct mxq_server *server)
 {
     int res;
@@ -323,6 +341,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     unsigned long arg_memory_total = 2048;
     unsigned long arg_memory_limit_slot_soft = 0;
     unsigned long arg_memory_limit_slot_hard = 0;
+    unsigned long arg_maxtime = 0;
     int i;
     struct mxq_daemon *daemon = &server->daemon;
 
@@ -352,6 +371,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
                 MX_OPTION_REQUIRED_ARG("hostname",       6),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-file",  'M'),
                 MX_OPTION_OPTIONAL_ARG("mysql-default-group", 'S'),
+                MX_OPTION_OPTIONAL_ARG("max-time",      't'),
                 MX_OPTION_END
     };
 
@@ -498,6 +518,13 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
             case 'S':
                 arg_mysql_default_group = optctl.optarg;
                 break;
+
+            case 't':
+                if (mx_strtoul(optctl.optarg, &arg_maxtime) < 0) {
+                    mx_log_err("Invalid argument supplied for option --max-time '%s': %m", optctl.optarg);
+                    return -EX_USAGE;
+                }
+                break;
         }
     }
 
@@ -535,6 +562,19 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     if (res<0) {
         mx_log_err("MAIN: mkdir %s failed: %m. Exiting.",MXQ_FINISHED_JOBSDIR);
         return -EX_IOERR;
+    }
+
+    i=server->supgid_cnt=getgroups(0,NULL);
+    if (i<0) {
+        mx_log_err("MAIN: getgroups(0,NULL) : %m");
+        return -errno;
+    }
+    server->supgid=mx_calloc_forever(i,sizeof(*server->supgid));
+    server->supgid_cnt=i;
+    res=getgroups(i,server->supgid);
+    if (res<0) {
+        mx_log_err("MAIN: getgroups() : %m");
+        return -errno;
     }
 
     if (arg_daemonize) {
@@ -613,6 +653,9 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
         mx_log_err("MAIN: cpuset_init() failed. exiting.");
         return -EX_OSERR;
     }
+
+    server->maxtime = arg_maxtime;
+
     server->memory_total = arg_memory_total;
 
     server->memory_avg_per_slot = (long double)server->memory_total / (long double)server->slots;
@@ -650,7 +693,7 @@ int server_init(struct mxq_server *server, int argc, char *argv[])
     daemon->daemon_pid    = getpid();
     daemon->daemon_slots  = server->slots;
     daemon->daemon_memory = server->memory_total;
-    daemon->daemon_time   = 0;
+    daemon->daemon_maxtime = server->maxtime;
     daemon->daemon_memory_limit_slot_soft = server->memory_limit_slot_soft;
     daemon->daemon_memory_limit_slot_hard = server->memory_limit_slot_hard;
 
@@ -1131,7 +1174,7 @@ unsigned long start_job(struct mxq_group_list *glist)
     group  = &glist->group;
     job    = &_mxqjob;
 
-    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon);
+    res = mxq_load_job_from_group_for_daemon(server->mysql, job, group->group_id, daemon, glist->slots_per_job);
     if (!res) {
         return 0;
     }
@@ -1190,6 +1233,10 @@ unsigned long start_job(struct mxq_group_list *glist)
 
     jlist = group_list_add_job(glist, job);
     assert(jlist);
+
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("start_job: failed to update daemon instance statistics: %m");
 
     mx_log_info("   job=%s(%d):%lu:%lu :: added running job to watch queue.",
         group->user_name, group->user_uid, group->group_id, job->job_id);
@@ -1326,6 +1373,7 @@ long start_user_with_least_running_global_slot_count(struct mxq_server *server)
     return 0;
 }
 
+
 /**********************************************************************/
 
 void server_dump(struct mxq_server *server)
@@ -1418,6 +1466,7 @@ void server_free(struct mxq_server *server)
     mx_free_null(server->host_id);
     mx_free_null(server->finished_jobsdir);
     mx_flock_free(server->flock);
+    mx_free_null(server->supgid);
 
     mx_log_finish();
 }
@@ -1658,11 +1707,29 @@ int killall_cancelled(struct mxq_server *server)
     return 0;
 }
 
-static void rename_outfiles(struct mxq_group *group, struct mxq_job *job)
+static void rename_outfiles(struct mxq_server *server, struct mxq_group *group, struct mxq_job *job)
 {
     int res;
 
     mxq_job_set_tmpfilenames(group, job);
+
+    if(RUNNING_AS_ROOT) {
+        res=initgroups(group->user_name,group->user_gid);
+        if (res==-1) {
+            mx_log_err("initgroups(\"%s\",%d): %m",group->user_name,group->user_gid);
+            exit(-errno);
+        }
+        res=setegid(group->user_gid);
+        if (res==-1) {
+            mx_log_err("setedid(%d): %m",group->user_gid);
+            exit(-errno);
+        }
+        res=seteuid(group->user_uid);
+        if (res==-1) {
+            mx_log_err("seteuid(%d): %m",group->user_uid);
+            exit(-errno);
+        }
+    }
 
     if (!mx_streq(job->job_stdout, "/dev/null")) {
         res = rename(job->tmp_stdout, job->job_stdout);
@@ -1687,6 +1754,26 @@ static void rename_outfiles(struct mxq_group *group, struct mxq_job *job)
                     job->host_pid);
         }
     }
+
+   if(RUNNING_AS_ROOT) {
+        uid_t uid=getuid();
+        uid_t gid=getgid();
+        res=seteuid(uid);
+        if (res==-1) {
+            mx_log_err("seteuid(%d): %m",uid);
+            exit(-errno);
+        }
+        res=setegid(gid);
+        if (res==-1) {
+            mx_log_err("setegid(%d): %m",gid);
+            exit(-errno);
+        }
+        res=setgroups(server->supgid_cnt,server->supgid);
+        if (res==-1) {
+            mx_log_err("setgroups(): %m");
+            exit(-errno);
+        }
+    }
 }
 
 static int job_has_finished(struct mxq_server *server, struct mxq_group *group, struct mxq_job_list *jlist)
@@ -1698,7 +1785,7 @@ static int job_has_finished(struct mxq_server *server, struct mxq_group *group, 
 
         mxq_set_job_status_exited(server->mysql, job);
 
-        rename_outfiles(group, job);
+        rename_outfiles(server, group, job);
 
         cnt = jlist->group->slots_per_job;
         cpuset_clear_running(&server->cpu_set_running, &job->host_cpu_set);
@@ -1719,8 +1806,9 @@ static int job_is_lost(struct mxq_server *server,struct mxq_group *group, struct
 
         mxq_set_job_status_unknown(server->mysql, job);
         group->group_jobs_unknown++;
+        group->group_jobs_running--;
 
-        rename_outfiles(group, job);
+        rename_outfiles(server, group, job);
 
         cnt = jlist->group->slots_per_job;
         cpuset_clear_running(&server->cpu_set_running, &job->host_cpu_set);
@@ -1790,6 +1878,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
     jlist = server_remove_job_list_by_job_id(server, job_id);
     if (!jlist) {
         mx_log_warning("fspool_process_file: %s : job unknown on server", filename);
+        unlink(filename);
         return -(errno=ENOENT);
     }
 
@@ -1799,6 +1888,7 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
                         filename,
                         job->job_id,
                         job_id);
+        unlink(filename);
         return -(errno=EINVAL);
     }
 
@@ -1814,6 +1904,9 @@ static int fspool_process_file(struct mxq_server *server,char *filename, uint64_
 
     job_has_finished(server, group, jlist);
     unlink(filename);
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("recover: failed to update daemon instance statistics: %m");
     return(0);
 }
 
@@ -1955,6 +2048,9 @@ static int lost_scan(struct mxq_server *server)
             return res;
         count+=res;
     } while (res>0);
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("lost_scan: failed to update daemon instance statistics: %m");
     return count;
 }
 
@@ -2120,7 +2216,7 @@ int load_running_groups(struct mxq_server *server)
         grp_cnt = mxq_load_running_groups_for_user(server->mysql, &grps, getuid());
 
     for (i=0, total=0; i < grp_cnt; i++) {
-        group = &grps[grp_cnt-i-1];
+        group = &grps[i];
 
         passwd = getpwnam(group->user_name);
         if (!passwd) {
@@ -2198,7 +2294,11 @@ int recover_from_previous_crash(struct mxq_server *server)
     if (res>0)
         mx_log_warning("recover: %d jobs vanished from the system",res);
 
-    return 0;
+    res = server_update_daemon_statistics(server);
+    if (res < 0)
+        mx_log_err("recover: failed to update daemon instance statistics: %m");
+
+    return res;
 }
 
 /**********************************************************************/

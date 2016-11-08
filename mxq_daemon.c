@@ -25,7 +25,7 @@
             " daemon_pid," \
             " daemon_slots," \
             " daemon_memory," \
-            " daemon_time," \
+            " daemon_maxtime" \
             " daemon_memory_limit_slot_soft," \
             " daemon_memory_limit_slot_hard," \
             " daemon_jobs_running," \
@@ -61,7 +61,7 @@ static int bind_result_daemon_fields(struct mx_mysql_bind *result, struct mxq_da
 
     res += mx_mysql_bind_var(result, idx++, uint32, &(daemon->daemon_slots));
     res += mx_mysql_bind_var(result, idx++, uint64, &(daemon->daemon_memory));
-    res += mx_mysql_bind_var(result, idx++, uint32, &(daemon->daemon_time));
+    res += mx_mysql_bind_var(result, idx++, uint64, &(daemon->daemon_maxtime));
 
     res += mx_mysql_bind_var(result, idx++, uint64, &(daemon->daemon_memory_limit_slot_soft));
     res += mx_mysql_bind_var(result, idx++, uint64, &(daemon->daemon_memory_limit_slot_hard));
@@ -127,7 +127,7 @@ int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon)
                 " daemon_pid    = ?,"
                 " daemon_slots  = ?,"
                 " daemon_memory = ?,"
-                " daemon_time   = ?,"
+                " daemon_maxtime= ?,"
                 " daemon_memory_limit_slot_soft = ?,"
                 " daemon_memory_limit_slot_hard = ?,"
                 " daemon_jobs_running    = 0,"
@@ -157,7 +157,7 @@ int mxq_daemon_register(struct mx_mysql *mysql, struct mxq_daemon *daemon)
 
     res += mx_mysql_statement_param_bind(stmt, idx++, uint32, &(daemon->daemon_slots));
     res += mx_mysql_statement_param_bind(stmt, idx++, uint64, &(daemon->daemon_memory));
-    res += mx_mysql_statement_param_bind(stmt, idx++, uint32, &(daemon->daemon_time));
+    res += mx_mysql_statement_param_bind(stmt, idx++, uint64, &(daemon->daemon_maxtime));
 
     res += mx_mysql_statement_param_bind(stmt, idx++, uint64, &(daemon->daemon_memory_limit_slot_soft));
     res += mx_mysql_statement_param_bind(stmt, idx++, uint64, &(daemon->daemon_memory_limit_slot_hard));
@@ -297,6 +297,47 @@ int mxq_daemon_set_status(struct mx_mysql *mysql, struct mxq_daemon *daemon, uin
     }
 
     daemon->status = status;
+
+    return res;
+}
+
+int mxq_daemon_update_statistics(struct mx_mysql *mysql, struct mxq_daemon *daemon)
+{
+    assert(daemon);
+    assert(daemon->daemon_id);
+
+    struct mx_mysql_bind param = {0};
+    char *query;
+    int idx;
+    int res;
+
+    query = "UPDATE"
+                " mxq_daemon"
+            " SET"
+                " mtime = NULL,"
+                " daemon_jobs_running    = ?,"
+                " daemon_slots_running   = ?,"
+                " daemon_threads_running = ?,"
+                " daemon_memory_used     = ?"
+            " WHERE daemon_id = ?";
+
+    res = mx_mysql_bind_init_param(&param, 5);
+    assert(res == 0);
+
+    idx  = 0;
+    res  = 0;
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_jobs_running));
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_slots_running));
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_threads_running));
+    res += mx_mysql_bind_var(&param, idx++, uint64, &(daemon->daemon_memory_used));
+    res += mx_mysql_bind_var(&param, idx++, uint32, &(daemon->daemon_id));
+    assert(res == 0);
+
+    res = mx_mysql_do_statement_noresult_retry_on_fail(mysql, query, &param);
+    if (res < 0) {
+        mx_log_err("mx_mysql_do_statement(): %m");
+        return res;
+    }
 
     return res;
 }

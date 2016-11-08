@@ -69,6 +69,10 @@ static void _group_list_init(struct mxq_group_list *glist)
     if (group->job_max_per_node && jobs_max > group->job_max_per_node)
         jobs_max = group->job_max_per_node;
 
+    /* max time constraint on server */
+    if (server->maxtime && group->job_time > server->maxtime)
+        jobs_max=0;
+
     slots_max  = jobs_max * slots_per_job;
     memory_max = jobs_max * group->job_memory;
 
@@ -316,6 +320,23 @@ struct mxq_job_list *group_list_add_job(struct mxq_group_list *glist, struct mxq
     return jlist;
 }
 
+/*
+ * given a mxq_user_list element, find the tail of its groups list.
+ * returns the address of the pointer containing NULL
+ */
+static struct mxq_group_list **group_list_tail_ptr(struct mxq_user_list *ulist)
+{
+    struct mxq_group_list **tail_ptr=&ulist->groups;
+    while (*tail_ptr) {
+        tail_ptr=&(*tail_ptr)->next;
+    }
+    return tail_ptr;
+}
+
+/*
+ * create a new mxq_group_list element from a mxq_group and add it to the users groups
+ * update user and server counters
+ */
 struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct mxq_group *group)
 {
     struct mxq_group_list *glist;
@@ -332,8 +353,7 @@ struct mxq_group_list *_user_list_add_group(struct mxq_user_list *ulist, struct 
 
     glist->user = ulist;
 
-    glist->next = ulist->groups;
-    ulist->groups = glist;
+    *group_list_tail_ptr(ulist)=glist;
 
     ulist->group_cnt++;
     server->group_cnt++;
@@ -469,7 +489,11 @@ int server_remove_orphaned_groups(struct mxq_server *server)
                         group->group_id);
 
             ulist->group_cnt--;
+            ulist->global_slots_running   -= glist->global_slots_running;
+            ulist->global_threads_running -= glist->global_threads_running;
             server->group_cnt--;
+            server->global_slots_running   -= glist->global_slots_running;
+            server->global_threads_running -= glist->global_threads_running;
             cnt++;
             mxq_group_free_content(group);
             mx_free_null(glist);

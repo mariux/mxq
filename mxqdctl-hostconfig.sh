@@ -57,6 +57,19 @@ function stop_all_started()
     done
 }
 
+function quit_all_started()
+{
+    for pidfile in ${pidfilebase}* ; do
+        ouid=$(stat --format "%u" "${pidfile}")
+        if [ "${UID}" != "${ouid}" ] ; then
+            continue
+        fi
+        pid=$(cat ${pidfile})
+        echo "${pidfile}: sending signal SIGQUIT to ${pid}"
+        kill -QUIT ${pid}
+    done
+}
+
 function reload_all_started()
 {
     for pidfile in ${pidfilebase}* ; do
@@ -93,11 +106,22 @@ case "${BASH_ARGV[0]}" in
     kill)
         kill_all_started
         ;;
+    quit)
+        quit_all_started
+        ;;
     reload|restart)
         reload_all_started
         ;;
     stopall)
         killall -u "${USER}" "${mxqd}"
         ;;
+    *)
+        echo "usage $0 CMD"
+        echo "  start          : start mxqd (if configured by hostconfig)"
+        echo "  stop           : tell mxqd to stop accepting new jobs, wait for running jobs, exit"
+        echo "  kill           : tell mxqd to stop accepting new jobs, kill and wait for running jobs, exit"
+        echo "  quit           : tell mxqd to exit (leave jobs running)"
+        echo "  reload|restart : tell mxqd to re-exec itself, leave jobs running"
+        echo "  stopall        : as 'stop', but to any mxqd owned by calling user"
+        ;;
 esac
-
