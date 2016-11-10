@@ -21,7 +21,7 @@
 #   define mx_free_null(a) do { free((a)); (a) = NULL; } while(0)
 #endif
 
-static inline int _flock_open(struct mx_flock *lock, mode_t mode)
+static int _flock_open(struct mx_flock *lock, mode_t mode)
 {
     int fd;
 
@@ -39,7 +39,7 @@ static inline int _flock_open(struct mx_flock *lock, mode_t mode)
     return fd;
 }
 
-static inline int _flock_close(struct mx_flock *lock)
+static int _flock_close(struct mx_flock *lock)
 {
     int res;
 
@@ -53,7 +53,7 @@ static inline int _flock_close(struct mx_flock *lock)
     return res;
 }
 
-static inline void _flock_free(struct mx_flock *lock)
+static void _flock_free(struct mx_flock *lock)
 {
     if (!lock)
         return;

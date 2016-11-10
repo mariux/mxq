@@ -108,7 +108,7 @@ void mxq_group_free_content(struct mxq_group *g)
 }
 
 
-inline uint64_t mxq_group_jobs_done(struct mxq_group *g)
+uint64_t mxq_group_jobs_done(struct mxq_group *g)
 {
     uint64_t done = 0;
 
@@ -120,7 +120,7 @@ inline uint64_t mxq_group_jobs_done(struct mxq_group *g)
     return done;
 }
 
-inline uint64_t mxq_group_jobs_active(struct mxq_group *g)
+uint64_t mxq_group_jobs_active(struct mxq_group *g)
 {
     uint64_t active;
 
@@ -134,7 +134,7 @@ inline uint64_t mxq_group_jobs_active(struct mxq_group *g)
     return active;
 }
 
-inline uint64_t mxq_group_jobs_inq(struct mxq_group *g)
+uint64_t mxq_group_jobs_inq(struct mxq_group *g)
 {
     uint64_t inq;
 
