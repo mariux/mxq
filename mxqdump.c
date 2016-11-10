@@ -13,8 +13,6 @@
 
 #include <pwd.h>
 
-#include <mysql.h>
-
 #include "mx_getopt.h"
 
 #include "mxq.h"

@@ -3,8 +3,6 @@
 
 #include <assert.h>
 
-#include <mysql.h>
-
 #include "mx_log.h"
 
 #include "mxq_group.h"
