@@ -18,9 +18,9 @@
 #include "mx_log.h"
 #include "mx_util.h"
 
-static inline size_t mx_strvec_length_cache(char **strvec, int32_t len);
+static size_t mx_strvec_length_cache(char **strvec, int32_t len);
 
-static inline int _mx_strbeginswith(char *str, const char *start, char **endptr, short ignore_case)
+static int _mx_strbeginswith(char *str, const char *start, char **endptr, short ignore_case)
 {
     size_t len;
     int res;
@@ -42,17 +42,17 @@ static inline int _mx_strbeginswith(char *str, const char *start, char **endptr,
     return 1;
 }
 
-inline int mx_strbeginswith(char *str, const char *start, char **endptr)
+int mx_strbeginswith(char *str, const char *start, char **endptr)
 {
     return _mx_strbeginswith(str, start, endptr, 0);
 }
 
-inline int mx_stribeginswith(char *str, const char *start, char **endptr)
+int mx_stribeginswith(char *str, const char *start, char **endptr)
 {
     return _mx_strbeginswith(str, start, endptr, 1);
 }
 
-static inline int _mx_strbeginswithany(char *str, char **starts, char **endptr, short ignore_case)
+static int _mx_strbeginswithany(char *str, char **starts, char **endptr, short ignore_case)
 {
     char **s;
     char *end;
@@ -73,7 +73,7 @@ static inline int _mx_strbeginswithany(char *str, char **starts, char **endptr, 
     return 0;
 }
 
-inline int mx_strbeginswithany(char *str, char **starts, char **endptr)
+int mx_strbeginswithany(char *str, char **starts, char **endptr)
 {
     return _mx_strbeginswithany(str, starts, endptr, 0);
 }
@@ -83,7 +83,7 @@ int mx_stribeginswithany(char *str, char **starts, char **endptr)
     return _mx_strbeginswithany(str, starts, endptr, 1);
 }
 
-inline int mx_strtobytes(char *str, unsigned long long int *bytes)
+int mx_strtobytes(char *str, unsigned long long int *bytes)
 {
     unsigned long long int s = 0;
     unsigned long long int t;
@@ -149,7 +149,7 @@ inline int mx_strtobytes(char *str, unsigned long long int *bytes)
     return 0;
 }
 
-inline int mx_strtoseconds(char *str, unsigned long long int *seconds)
+int mx_strtoseconds(char *str, unsigned long long int *seconds)
 {
     unsigned long long int s = 0;
     unsigned long long int t;
@@ -219,7 +219,7 @@ inline int mx_strtoseconds(char *str, unsigned long long int *seconds)
     return 0;
 }
 
-inline int mx_strtominutes(char *str, unsigned long long int *minutes)
+int mx_strtominutes(char *str, unsigned long long int *minutes)
 {
     int res;
 
@@ -231,7 +231,7 @@ inline int mx_strtominutes(char *str, unsigned long long int *minutes)
     return res;
 }
 
-inline char *mx_strskipwhitespaces(char *str)
+char *mx_strskipwhitespaces(char *str)
 {
     char *s;
 
@@ -245,7 +245,7 @@ inline char *mx_strskipwhitespaces(char *str)
 
 /* wrapper unsigned */
 
-inline int mx_strtoul(char *str, unsigned long int *to)
+int mx_strtoul(char *str, unsigned long int *to)
 {
     unsigned long int ul;
     char *end;
@@ -273,7 +273,7 @@ inline int mx_strtoul(char *str, unsigned long int *to)
     return 0;
 }
 
-inline int mx_strtoull(char *str, unsigned long long int *to)
+int mx_strtoull(char *str, unsigned long long int *to)
 {
     unsigned long long int ull;
     char *end;
@@ -303,7 +303,7 @@ inline int mx_strtoull(char *str, unsigned long long int *to)
 
 /* wrapper signed */
 
-inline int mx_strtol(char *str, signed long int *to)
+int mx_strtol(char *str, signed long int *to)
 {
     long int l;
     char *end;
@@ -328,7 +328,7 @@ inline int mx_strtol(char *str, signed long int *to)
     return 0;
 }
 
-inline int mx_strtoll(char *str, signed long long int *to)
+int mx_strtoll(char *str, signed long long int *to)
 {
     long long int ll;
     char *end;
@@ -945,7 +945,7 @@ char **mx_strvec_new(void)
     return strvec;
 }
 
-static inline size_t mx_strvec_length_cache(char **strvec, int32_t len)
+static size_t mx_strvec_length_cache(char **strvec, int32_t len)
 {
     static char ** sv = NULL;
     static size_t l = 0;

@@ -2,7 +2,6 @@
 #define __MXQ_DAEMON_H__ 1
 
 #include <stdint.h>
-#include <mysql.h>
 
 #include "mx_mysql.h"
 

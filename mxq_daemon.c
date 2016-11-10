@@ -4,8 +4,6 @@
 #include <assert.h>
 #include <errno.h>
 
-#include <mysql.h>
-
 #include "mx_log.h"
 
 #include "mx_util.h"

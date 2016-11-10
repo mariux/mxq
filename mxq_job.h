@@ -2,7 +2,6 @@
 #define __MXQ_JOB_H__ 1
 
 #include <stdint.h>
-#include <mysql.h>
 
 #include <sys/time.h>
 #include <sys/resource.h>

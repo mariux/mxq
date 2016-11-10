@@ -13,7 +13,6 @@ else
     MXQ_VERSIONFULL = "MXQ v${MXQ_VERSION} (${MXQ_VERSION_EXTRA}) [${MXQ_VERSION_GIT}]"
 endif
 
-
 ########################################################################
 
 PREFIX     = /usr
@@ -83,7 +82,11 @@ CFLAGS_MXQ_INITIAL_PATH        = -DMXQ_INITIAL_PATH=\"$(MXQ_INITIAL_PATH)\"
 CFLAGS_MXQ_INITIAL_TMPDIR      = -DMXQ_INITIAL_TMPDIR=\"$(MXQ_INITIAL_TMPDIR)\"
 CFLAGS_MXQ_FINISHED_JOBSDIR    = -DMXQ_FINISHED_JOBSDIR=\"${MXQ_FINISHED_JOBSDIR}\"
 
-MYSQL_CONFIG = mysql_config
+MYSQL_CONFIG = $(shell which mysql_config)
+
+ifeq (, ${MYSQL_CONFIG})
+  $(error "ERROR: Can't find 'mysql_config'. Try to install 'libmysqlclient-dev' package and retry.")
+endif
 
 OS_RELEASE = $(shell ./os-release)
 
@@ -659,6 +662,7 @@ clean: CLEAN += test_mx_mysql
 
 
 test_mxqd_control.o: $(mxqd_control.h)
+test_mxqd_control.o: CFLAGS += $(CFLAGS_MYSQL)
 clean: CLEAN += test_mxqd_control.o
 
 test_mxqd_control: mxqd_control.o

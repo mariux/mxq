@@ -16,7 +16,6 @@
 
 #include <ctype.h>
 
-#include <mysql.h>
 #include <string.h>
 
 #include "mx_log.h"

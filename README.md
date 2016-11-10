@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/mariux/mxq.svg?branch=master)](https://travis-ci.org/mariux/mxq)
+
 # MXQ - mariux64 job scheduling system
 - by Marius Tolzmann <marius.tolzmann@molgen.mpg.de> 2013-2015
 - and Donald Buczek <buczek@molgen.mpg.de> 2015-2016

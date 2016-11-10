@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include <stdio.h>
-#include <mysql.h>
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>

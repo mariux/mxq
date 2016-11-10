@@ -16,9 +16,6 @@
 
 #include <stdarg.h>
 
-#include <my_global.h>
-#include <mysql.h>
-
 #include <inttypes.h>
 
 #include <sys/time.h>
