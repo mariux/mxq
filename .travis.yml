@@ -1,0 +1,7 @@
+language: c
+
+dist: trusty
+
+script:
+- make
+- make test
