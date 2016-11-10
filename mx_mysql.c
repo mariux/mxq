@@ -48,7 +48,7 @@
 
 /**********************************************************************/
 
-static inline int mx__mysql_errno(struct mx_mysql *mysql)
+static int mx__mysql_errno(struct mx_mysql *mysql)
 {
     unsigned int error;
 
@@ -62,7 +62,7 @@ static inline int mx__mysql_errno(struct mx_mysql *mysql)
     return (int)error;
 }
 
-inline const char *mx__mysql_error(struct mx_mysql *mysql)
+static const char *mx__mysql_error(struct mx_mysql *mysql)
 {
     mx_assert_return_NULL(mysql, EINVAL);
     mx_assert_return_NULL(mysql->mysql, EBADF);
@@ -71,7 +71,7 @@ inline const char *mx__mysql_error(struct mx_mysql *mysql)
     return mysql_error(mysql->mysql);
 }
 
-inline const char *mx__mysql_sqlstate(struct mx_mysql *mysql)
+static const char *mx__mysql_sqlstate(struct mx_mysql *mysql)
 {
     mx_assert_return_NULL(mysql, EINVAL);
     mx_assert_return_NULL(mysql->mysql, EBADF);
@@ -80,7 +80,7 @@ inline const char *mx__mysql_sqlstate(struct mx_mysql *mysql)
     return mysql_sqlstate(mysql->mysql);
 }
 
-static inline int mx__mysql_stmt_errno(struct mx_mysql_stmt *stmt)
+static int mx__mysql_stmt_errno(struct mx_mysql_stmt *stmt)
 {
     unsigned int error;
 
@@ -94,7 +94,7 @@ static inline int mx__mysql_stmt_errno(struct mx_mysql_stmt *stmt)
     return (int)error;
 }
 
-static inline const char *mx__mysql_stmt_error(struct mx_mysql_stmt *stmt)
+static const char *mx__mysql_stmt_error(struct mx_mysql_stmt *stmt)
 {
     mx_assert_return_NULL(stmt, EINVAL);
     mx_assert_return_NULL(stmt->stmt, EBADF);
@@ -103,7 +103,7 @@ static inline const char *mx__mysql_stmt_error(struct mx_mysql_stmt *stmt)
     return mysql_stmt_error(stmt->stmt);
 }
 
-static inline const char *mx__mysql_stmt_sqlstate(struct mx_mysql_stmt *stmt)
+static const char *mx__mysql_stmt_sqlstate(struct mx_mysql_stmt *stmt)
 {
     mx_assert_return_NULL(stmt, EINVAL);
     mx_assert_return_NULL(stmt->stmt, EBADF);
@@ -112,7 +112,7 @@ static inline const char *mx__mysql_stmt_sqlstate(struct mx_mysql_stmt *stmt)
     return mysql_stmt_sqlstate(stmt->stmt);
 }
 
-static inline int mx__mysql_init(struct mx_mysql *mysql)
+static int mx__mysql_init(struct mx_mysql *mysql)
 {
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(!mysql->mysql, EUCLEAN);
@@ -129,7 +129,7 @@ static inline int mx__mysql_init(struct mx_mysql *mysql)
     return -errno;
 }
 
-static inline int mx__mysql_options(struct mx_mysql *mysql, enum mysql_option option, const void *arg)
+static int mx__mysql_options(struct mx_mysql *mysql, enum mysql_option option, const void *arg)
 {
     int res;
 
@@ -189,7 +189,7 @@ static int mx__mysql_real_connect(struct mx_mysql *mysql, const char *host, cons
     return -(errno=EBADE);
 }
 
-static inline int mx__mysql_ping(struct mx_mysql *mysql)
+static int mx__mysql_ping(struct mx_mysql *mysql)
 {
     mx_assert_return_minus_errno(mysql, EINVAL);
     mx_assert_return_minus_errno(mysql->mysql, EBADF);
@@ -688,7 +688,7 @@ static int mx__mysql_library_end(void) {
 
 /**********************************************************************/
 
-static inline int _mx_mysql_bind_integer(struct mx_mysql_bind *b, unsigned int index, void *value, int type, int is_unsigned)
+static int _mx_mysql_bind_integer(struct mx_mysql_bind *b, unsigned int index, void *value, int type, int is_unsigned)
 {
     mx_assert_return_minus_errno(b,     EINVAL);
     mx_assert_return_minus_errno(value, EINVAL);
@@ -747,7 +747,7 @@ void _mx_mysql_bind_dump(struct mx_mysql_bind *b)
 }
 
 
-static inline int _mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value)
+static int _mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value)
 {
     mx_assert_return_minus_errno(b,     EINVAL);
     mx_assert_return_minus_errno(value, EINVAL);
@@ -786,7 +786,7 @@ static inline int _mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int in
     return 0;
 }
 
-static inline int _mx_mysql_bind_validate(struct mx_mysql_bind *b)
+static int _mx_mysql_bind_validate(struct mx_mysql_bind *b)
 {
     int i;
 
@@ -1230,7 +1230,7 @@ int mx_mysql_statement_field_count(struct mx_mysql_stmt *stmt)
     return mx__mysql_stmt_field_count(stmt);
 }
 
-inline int mx_mysql_stmt_field_count_set(struct mx_mysql_stmt *stmt)
+int mx_mysql_stmt_field_count_set(struct mx_mysql_stmt *stmt)
 {
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
@@ -1240,7 +1240,7 @@ inline int mx_mysql_stmt_field_count_set(struct mx_mysql_stmt *stmt)
     return 0;
 }
 
-inline int mx_mysql_stmt_field_count_get(struct mx_mysql_stmt *stmt, unsigned long *count)
+int mx_mysql_stmt_field_count_get(struct mx_mysql_stmt *stmt, unsigned long *count)
 {
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(count,      EINVAL);
@@ -1251,7 +1251,7 @@ inline int mx_mysql_stmt_field_count_get(struct mx_mysql_stmt *stmt, unsigned lo
     return 0;
 }
 
-inline int mx_mysql_stmt_param_count_set(struct mx_mysql_stmt *stmt)
+int mx_mysql_stmt_param_count_set(struct mx_mysql_stmt *stmt)
 {
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(stmt->stmt, EBADF);
@@ -1261,7 +1261,7 @@ inline int mx_mysql_stmt_param_count_set(struct mx_mysql_stmt *stmt)
     return 0;
 }
 
-inline int mx_mysql_stmt_param_count_get(struct mx_mysql_stmt *stmt, unsigned long *count)
+int mx_mysql_stmt_param_count_get(struct mx_mysql_stmt *stmt, unsigned long *count)
 {
     mx_assert_return_minus_errno(stmt,       EINVAL);
     mx_assert_return_minus_errno(count,      EINVAL);
@@ -1504,7 +1504,7 @@ int mx_mysql_statement_close_no_bind_cleanup(struct mx_mysql_stmt **stmt)
     return 0;
 }
 
-inline int mx_mysql_bind_integer(struct mx_mysql_bind *b, unsigned int index, void *value, int type, int is_unsigned)
+static int mx_mysql_bind_integer(struct mx_mysql_bind *b, unsigned int index, void *value, int type, int is_unsigned)
 {
     int res;
 
@@ -1516,7 +1516,7 @@ inline int mx_mysql_bind_integer(struct mx_mysql_bind *b, unsigned int index, vo
     return res;
 }
 
-inline int mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value)
+int mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, char **value)
 {
     int res;
 
@@ -1529,42 +1529,42 @@ inline int mx_mysql_bind_string(struct mx_mysql_bind *b, unsigned int index, cha
 
 }
 
-inline int mx_mysql_bind_int8(struct mx_mysql_bind *b, unsigned int index, int8_t *value)
+int mx_mysql_bind_int8(struct mx_mysql_bind *b, unsigned int index, int8_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_TINY, 0);
 }
 
-inline int mx_mysql_bind_uint8(struct mx_mysql_bind *b, unsigned int index, uint8_t *value)
+int mx_mysql_bind_uint8(struct mx_mysql_bind *b, unsigned int index, uint8_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_TINY, 1);
 }
 
-inline int mx_mysql_bind_int16(struct mx_mysql_bind *b, unsigned int index, int16_t *value)
+int mx_mysql_bind_int16(struct mx_mysql_bind *b, unsigned int index, int16_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_SHORT, 0);
 }
 
-inline int mx_mysql_bind_uint16(struct mx_mysql_bind *b, unsigned int index, uint16_t *value)
+int mx_mysql_bind_uint16(struct mx_mysql_bind *b, unsigned int index, uint16_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_SHORT, 1);
 }
 
-inline int mx_mysql_bind_int32(struct mx_mysql_bind *b, unsigned int index, int32_t *value)
+int mx_mysql_bind_int32(struct mx_mysql_bind *b, unsigned int index, int32_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_LONG, 0);
 }
 
-inline int mx_mysql_bind_uint32(struct mx_mysql_bind *b, unsigned int index, uint32_t *value)
+int mx_mysql_bind_uint32(struct mx_mysql_bind *b, unsigned int index, uint32_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_LONG, 1);
 }
 
-inline int mx_mysql_bind_int64(struct mx_mysql_bind *b, unsigned int index, int64_t *value)
+int mx_mysql_bind_int64(struct mx_mysql_bind *b, unsigned int index, int64_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_LONGLONG, 0);
 }
 
-inline int mx_mysql_bind_uint64(struct mx_mysql_bind *b, unsigned int index, uint64_t *value)
+int mx_mysql_bind_uint64(struct mx_mysql_bind *b, unsigned int index, uint64_t *value)
 {
     return mx_mysql_bind_integer(b, index, (void *)value, MYSQL_TYPE_LONGLONG, 1);
 }
